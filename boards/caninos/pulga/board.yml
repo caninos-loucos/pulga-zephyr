@@ -1,0 +1,5 @@
+board:
+  name: pulga
+  vendor: caninos
+  socs:
+    - name: nrf52840
