@@ -1,8 +1,18 @@
 &i2c0 {
-	status = "okay";
+	si1133@55 {
+		compatible = "silabs,si1133";
+		reg = <0x55>;
+		status = "okay";
+	};
+	bmi160@69 {
+		compatible = "bosch,bmi160";
+		reg = <0x69>;
+		int-gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
+		status = "disabled";
+	};
 	bme280@77 {
 		compatible = "bosch,bme280";
 		reg = <0x77>;
+		status = "okay";
 	};
 };
-

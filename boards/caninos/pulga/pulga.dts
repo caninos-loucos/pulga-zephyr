@@ -68,17 +68,29 @@
 
 &gpio0 {
 	status = "okay";
+	gpio-reserved-ranges = <0 2>, <6 1>, <8 3>, <17 7>;
+	gpio-line-names = "XL1", "XL2", "AREF", "A0", "A1", "RTS", "TXD",
+		"CTS", "RXD", "NFC1", "NFC2", "BUTTON1", "BUTTON2", "LED1",
+		"LED2", "LED3", "LED4", "QSPI CS", "RESET", "QSPI CLK",
+		"QSPI DIO0", "QSPI DIO1", "QSPI DIO2", "QSPI DIO3","BUTTON3",
+		"BUTTON4", "SDA", "SCL", "A2", "A3", "A4", "A5";
 };
 
 &gpio1 {
 	status = "okay";
+	gpio-line-names = "", "D0", "D1", "D2", "D3", "D4", "D5", "D6",
+		"D7", "", "D8", "D9", "D10", "D11", "D12", "D13";
 };
 
 &uart0 {
-	compatible = "nordic,nrf-uart";
+	compatible = "nordic,nrf-uarte";
 	status = "okay";
-
-	current-speed = <115200>;
+	
+	current-speed = <9600>;
+	parity = "none";
+	stop-bits = "1";
+	data-bits = <8>;
+	
 	pinctrl-0 = <&uart0_default>;
 	pinctrl-1 = <&uart0_sleep>;
 	pinctrl-names = "default", "sleep";
@@ -91,6 +103,8 @@
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;
 	pinctrl-names = "default", "sleep";
+	
+	clock-frequency = <I2C_BITRATE_STANDARD>;
 };
 
 &ieee802154 {
