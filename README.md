@@ -1,5 +1,5 @@
-# Zephyr Example Application
-
+# Pulga Zephyr Generic Application
+<!-- 
 <a href="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml?query=branch%3Amain">
   <img src="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml/badge.svg?event=push">
 </a>
@@ -11,56 +11,43 @@
 </a>
 <a href="https://zephyrproject-rtos.github.io/example-application/doxygen">
   <img alt="API Documentation" src="https://img.shields.io/badge/API-documentation-3D578C?logo=c&logoColor=white">
-</a>
+</a> -->
 
-This repository contains a Zephyr example application. The main purpose of this
-repository is to serve as a reference on how to structure Zephyr-based
-applications. Some of the features demonstrated in this example are:
+This repository contains a generic application using the Pulga board, 
+developed by Caninos Loucos. This example aims to use all sensors and 
+communication protocols supported by Pulga. The main purpose of this
+repository, based on Zephyr's own [example-application][example_app] on West T2 topology, 
+is to serve as a reference on how to structure Zephyr-based applications 
+on Pulga. It's recommended to consult the example application before 
+developing new features on Pulga to understand how Zephyr works. The 
+following features are to be demonstrated in this example are:
 
-- Basic [Zephyr application][app_dev] skeleton
-- [Zephyr workspace applications][workspace_app]
-- [Zephyr modules][modules]
-- [West T2 topology][west_t2]
-- [Custom boards][board_porting]
-- Custom [devicetree bindings][bindings]
-- Out-of-tree [drivers][drivers]
-- Out-of-tree libraries
-- Example CI configuration (using GitHub Actions)
-- Custom [west extension][west_ext]
-- Doxygen and Sphinx documentation boilerplate
+- S11133 sensor (luminosity, UV)
+- BME280 sensor (umidity, temperature, pressure)
+- BMI160 sensor (accelerometer, gyroscope)
+- SCD30 sensor - external to the board (CO2)
+- LoRaWAN and LoRaWAN peer-to-peer
+- Bluetooth
+- Using a ring buffer to store sensor data
 
-This repository is versioned together with the [Zephyr main tree][zephyr]. This
-means that every time that Zephyr is tagged, this repository is tagged as well
-with the same version number, and the [manifest](west.yml) entry for `zephyr`
-will point to the corresponding Zephyr tag. For example, the `example-application`
-v2.6.0 will point to Zephyr v2.6.0. Note that the `main` branch always
-points to the development branch of Zephyr, also `main`.
-
-[app_dev]: https://docs.zephyrproject.org/latest/develop/application/index.html
-[workspace_app]: https://docs.zephyrproject.org/latest/develop/application/index.html#zephyr-workspace-app
-[modules]: https://docs.zephyrproject.org/latest/develop/modules.html
-[west_t2]: https://docs.zephyrproject.org/latest/develop/west/workspaces.html#west-t2
-[board_porting]: https://docs.zephyrproject.org/latest/guides/porting/board_porting.html
-[bindings]: https://docs.zephyrproject.org/latest/guides/dts/bindings.html
-[drivers]: https://docs.zephyrproject.org/latest/reference/drivers/index.html
-[zephyr]: https://github.com/zephyrproject-rtos/zephyr
-[west_ext]: https://docs.zephyrproject.org/latest/develop/west/extensions.html
+[example_app]: https://github.com/caninos-loucos/pulga-zephyr
 
 ## Getting Started
 
 Before getting started, make sure you have a proper Zephyr development
 environment. Follow the official
-[Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/getting_started/index.html).
+[Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/getting_started/index.html)
+until just before getting Zephyr source code (before ``west init`` command).
 
 ### Initialization
 
 The first step is to initialize the workspace folder (``my-workspace``) where
-the ``example-application`` and all Zephyr modules will be cloned. Run the following
+the ``pulga-zephyr`` repository and all Zephyr modules will be cloned. Run the following
 command:
 
 ```shell
-# initialize my-workspace for the example-application (main branch)
-west init -m https://github.com/zephyrproject-rtos/example-application --mr main my-workspace
+# initialize my-workspace for pulga-zephyr (main branch)
+west init -m https://github.com/caninos-loucos/pulga-zephyr --mr main my-workspace
 # update Zephyr modules
 cd my-workspace
 west update
@@ -71,15 +58,15 @@ west update
 To build the application, run the following command:
 
 ```shell
-cd example-application
+cd pulga-zephyr
 west build -b $BOARD app
 ```
 
-where `$BOARD` is the target board.
-
-You can use the `custom_plank` board found in this
-repository. Note that Zephyr sample boards may be used if an
-appropriate overlay is provided (see `app/boards`).
+where `$BOARD` is the target board, `pulga`.
+If you have problems building the application, try running a pristine build 
+by appending `-p` to the last command. There are also other examples in the
+`samples` folder, that can be built providing by the proper directories instead
+of `app`.
 
 A sample debug configuration is also provided. To apply it, run the following
 command:
@@ -94,7 +81,7 @@ Once you have built the application, run the following command to flash it:
 west flash
 ```
 
-### Testing
+<!-- ### Testing
 
 To execute Twister integration tests, run the following command:
 
@@ -133,4 +120,4 @@ make html
 ```
 
 The output will be stored in the ``_build_sphinx`` folder. You may check for
-other output formats other than HTML by running ``make help``.
+other output formats other than HTML by running ``make help``. -->
