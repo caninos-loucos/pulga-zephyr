@@ -22,7 +22,7 @@ on Pulga. It's recommended to consult the example application before
 developing new features on Pulga to understand how Zephyr works. The 
 following features are to be demonstrated in this example are:
 
-- S11133 sensor (luminosity, UV)
+- Si1133 sensor (luminosity, UV)
 - BME280 sensor (umidity, temperature, pressure)
 - BMI160 sensor (accelerometer, gyroscope)
 - SCD30 sensor - external to the board (CO2)

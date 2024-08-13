@@ -12,6 +12,7 @@
 #define SI1133_VAL_DELAY_MS						(5)
 #define SI1133_VAL_PART_ID						(0x33)
 
+// I2C register addresses
 #define SI1133_I2C_REG_PART_ID					(0x00)
 #define SI1133_I2C_REG_COMMAND					(0x0B)
 #define SI1133_I2C_REG_RESPONSE0				(0x11)
@@ -20,8 +21,10 @@
 #define SI1133_I2C_REG_IRQ_STATUS				(0x12)
 #define SI1133_I2C_REG_HOSTOUT_BASE				(0x13)
 
+// Register codes associated to commands
 #define SI1133_CMD_REG_PRM_SET_PRFX				(0b10000000)
 #define SI1133_CMD_REG_PRM_QRY_PRFX				(0b01000000)
+// Reset of command counter to 0
 #define SI1133_CMD_REG_RST_CMD_CTR				(0x00)
 #define SI1133_CMD_REG_RST_SW					(0x01)
 #define SI1133_CMD_REG_FORCE					(0x11)
@@ -100,12 +103,14 @@ static inline int si1133_reg_read(const struct device *dev,
 	return i2c_burst_read_dt(&cfg->i2c, reg, buf, size);
 }
 
+// Write to I2C register 
 static inline int si1133_reg_write(const struct device *dev,
                                    uint8_t reg, uint8_t *buf, int size) {
 	const struct si1133_config *cfg = dev->config;
 	return i2c_burst_write_dt(&cfg->i2c, reg, buf, size);
 }
 
+// Write to I2C command register
 static inline int si1133_cmd_write(const struct device *dev, uint8_t val) {
 	return si1133_reg_write(dev, SI1133_I2C_REG_COMMAND, &val, 1);
 }
@@ -120,10 +125,12 @@ static inline int si1133_irq_read(const struct device *dev, uint8_t *val) {
 	return si1133_reg_read(dev, SI1133_I2C_REG_IRQ_STATUS, val, 1);
 }
 
+// Read RESPONSE0 register
 static inline int si1133_rsp0_read(const struct device *dev, uint8_t *val) {
 	return si1133_reg_read(dev, SI1133_I2C_REG_RESPONSE0, val, 1);
 }
 
+// Read RESPONSE1 register
 static inline int si1133_rsp1_read(const struct device *dev, uint8_t *val) {
 	return si1133_reg_read(dev, SI1133_I2C_REG_RESPONSE1, val, 1);
 }

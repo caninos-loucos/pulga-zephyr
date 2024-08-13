@@ -12,30 +12,40 @@
 #include <zephyr/logging/log.h>
 #include <drivers/si1133.h>
 
+/**
+ * If the device is compatible with "vendor,device" in the
+ * board devicetree or in the app overlay, here in the driver
+ * it should be compatible with "vendor_device"
+ */
 #define DT_DRV_COMPAT silabs_si1133
 
 #include "si1133_priv.h"
 
+// Log level comes from application
 LOG_MODULE_REGISTER(SI1133, CONFIG_SENSOR_LOG_LEVEL);
 
+// Number of instances of device
 #if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
 #warning "SI1133 driver enabled without any devices"
 #endif
 
+// Clears the command counter 
 static int si1133_cmd_counter_clear(const struct device *dev)
 {
 	struct si1133_data *data = dev->data;
-	uint8_t rsp0;
-	int ret;
-	
+	uint8_t rsp0; // RESPONSE0 register
+	int ret; 
+		
+	// Writes to register
 	if ((ret = si1133_cmd_write(dev, SI1133_CMD_REG_RST_CMD_CTR)) < 0) {
-		LOG_DBG("ctr clear reg write failed");
+		LOG_DBG("cmd ctr clear: reg write failed");
 		return ret;
 	}
 	if ((ret = si1133_rsp0_read(dev, &rsp0)) < 0) {
 		LOG_DBG("rsp0 read failed");
 		return ret;
 	}
+	// Stores last 4 bits of RESPONSE0
 	data->cmd_counter = (rsp0 & SI1133_RESPONSE0_MSK_CMD_CTR);
 	return 0;
 }
