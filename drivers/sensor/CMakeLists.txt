@@ -3,3 +3,4 @@
 
 add_subdirectory_ifdef(CONFIG_EXAMPLE_SENSOR example_sensor)
 add_subdirectory_ifdef(CONFIG_SI1133 si1133)
+add_subdirectory_ifdef(CONFIG_SCD30 scd30)
