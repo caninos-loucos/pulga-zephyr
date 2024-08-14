@@ -50,13 +50,15 @@ static int si1133_cmd_counter_clear(const struct device *dev)
 	return 0;
 }
 
+// Increment command counter after a successful command
 static int si1133_cmd_counter_wait_increment(const struct device *dev)
 {
 	struct si1133_data *data = dev->data;
-	uint8_t next = data->cmd_counter + 1;
+	uint8_t next = data->cmd_counter + 1; // Next value for counter
 	int ret, retry;
-	uint8_t rsp0;
+	uint8_t rsp0; // RESPONSE0 register
 	
+	// Repeatedly waits and tries to read rsp0
 	for (retry = 0; retry < SI1133_VAL_RETRY; retry++)
 	{
 		k_sleep(K_MSEC(SI1133_VAL_DELAY_MS));
@@ -65,11 +67,13 @@ static int si1133_cmd_counter_wait_increment(const struct device *dev)
 			LOG_DBG("rsp0 read failed");
 			return ret;
 		}
+		// If error bit is set, last 4 bits of RESPONSE0 are the error code
 		if (rsp0 & SI1133_RESPONSE0_BIT_CMD_ERR) {
 			LOG_DBG("cmd failed: 0x%x", rsp0 & SI1133_RESPONSE0_MSK_CMD_CTR);
 			(void)si1133_cmd_counter_clear(dev);
 			return -EIO;
 		}
+		// Verifies command counter was incremented
 		if ((rsp0 & SI1133_RESPONSE0_MSK_CMD_CTR) == next) {
 			data->cmd_counter = next;
 			return 0;

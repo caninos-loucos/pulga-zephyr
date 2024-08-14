@@ -8,7 +8,9 @@
 #define _SI1133_PRIV_H_
 
 #define SI1133_VAL_STARTUP_TIME_MS				(30)
+// Limit for retries when reading registers
 #define SI1133_VAL_RETRY						(20)
+// Time kernel waits before trying to read registers
 #define SI1133_VAL_DELAY_MS						(5)
 #define SI1133_VAL_PART_ID						(0x33)
 
@@ -44,6 +46,7 @@
 #define SI1133_IRQ_CHANNEL_1					(BIT(1))
 #define SI1133_IRQ_CHANNEL_2					(BIT(2))
 
+// RESPONSE0 register components
 #define SI1133_RESPONSE0_BIT_RUNNING			(BIT(7))
 #define SI1133_RESPONSE0_BIT_SUSPEND			(BIT(6))
 #define SI1133_RESPONSE0_BIT_SLEEP				(BIT(5))
