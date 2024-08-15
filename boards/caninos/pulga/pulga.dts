@@ -155,3 +155,13 @@ zephyr_udc0: &usbd {
 	compatible = "nordic,nrf-usbd";
 	status = "okay";
 };
+
+//Enable nRF52 series System on Chip High Voltage DC/DC converter.
+&reg0 {
+	status = "okay";
+};
+
+// Enable nRF52 series System on Chip DC/DC converter.
+&reg1 {
+	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
