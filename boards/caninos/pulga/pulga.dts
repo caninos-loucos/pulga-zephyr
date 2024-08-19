@@ -10,8 +10,13 @@
 	chosen {
 		zephyr,console = &uart0;
 		zephyr,shell-uart = &uart0;
+		// Remote management via UART
 		zephyr,uart-mcumgr = &uart0;
+		// UART used to monitor logging
 		zephyr,bt-mon-uart = &uart0;
+		// UART used to communicate between Bluetooth 
+		// controller (physical and link layer) and host
+		// (GAP, GATT, etc) - HCI protocol
 		zephyr,bt-c2h-uart = &uart0;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
@@ -23,11 +28,11 @@
 		compatible = "gpio-leds";
 		led0: led_0 {
 			gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
-			label = "Green LED 0";
+			label = "LED 0";
 		};
 		led1: led_1 {
 			gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
-			label = "Green LED 1";
+			label = "LED 1";
 		};
 	};
 	

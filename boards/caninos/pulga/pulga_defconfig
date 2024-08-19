@@ -1,23 +1,36 @@
+# Activates Memory and Stack protection, increases their size
 CONFIG_ARM_MPU=y
 CONFIG_HW_STACK_PROTECTION=y
 CONFIG_MAIN_STACK_SIZE=2048
 CONFIG_HEAP_MEM_POOL_SIZE=4096
+# Configures interfaces
 CONFIG_GPIO=y
 CONFIG_I2C=y
 CONFIG_SPI=y
 CONFIG_SERIAL=y
 CONFIG_CONSOLE=y
+# Activates UART support for console and async transmit buffer
 CONFIG_UART_CONSOLE=y
 CONFIG_UART_INTERRUPT_DRIVEN=y
 CONFIG_UART_ASYNC_API=y
+# Additional timer
 CONFIG_NRFX_SYSTICK=y
+# Activates logs and outputs them with UART
 CONFIG_LOG=y
 CONFIG_LOG_BACKEND_UART=y
 CONFIG_LOG_PROCESS_THREAD_SLEEP_MS=100
+# Activates thread monitoring and configuring their names and custom data
 CONFIG_THREAD_MONITOR=y
 CONFIG_THREAD_NAME=y
 CONFIG_THREAD_RUNTIME_STATS=y
 CONFIG_THREAD_CUSTOM_DATA=y
+# Schedules the ready list of threads as a Red/Black tree, consuming 2kb of code
+# Recommended for large number of threads
+# Those threads are ready to be executed and are waiting for a CPU
 CONFIG_SCHED_SCALABLE=y
+# Implements wait queue as balanced tree, consuming 2kb of code
+# Recommended for large number of threads
+# Those threads are waiting for a specific resource
 CONFIG_WAITQ_SCALABLE=y
+# Enables sys_reboot API
 CONFIG_REBOOT=y
