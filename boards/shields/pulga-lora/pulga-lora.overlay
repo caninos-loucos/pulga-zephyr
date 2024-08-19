@@ -1,0 +1,35 @@
+/*
+ * Copyright (c) 2023 LSI-TEC
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		lora0 = &lora;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&spi1 {
+	status = "okay";
+
+	cs-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;	/* P0.26 */
+
+	lora: lora@0 {
+		compatible = "semtech,sx1272";
+		reg = <0x0>;
+		spi-max-frequency = <3000000>;
+
+		reset-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;   /* P1.15 */
+
+		dio-gpios = <&gpio0 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;  /* P0.12 */
+
+		power-amplifier-output = "pa-boost"; // TODO PA-BOOST?
+
+		status = "okay";
+	};
+};
