@@ -10,10 +10,6 @@
 	};
 };
 
-&i2c0 {
-	status = "okay";
-};
-
 &spi1 {
 	status = "okay";
 
@@ -27,8 +23,10 @@
 		reset-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;   /* P1.15 */
 
 		dio-gpios = <&gpio0 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;  /* P0.12 */
+		
+		pa-boost-enable-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 
-		power-amplifier-output = "pa-boost"; // TODO PA-BOOST?
+		power-amplifier-output = "pa-boost";
 
 		status = "okay";
 	};
