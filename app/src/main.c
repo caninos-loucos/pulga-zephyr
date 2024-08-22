@@ -4,6 +4,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <drivers/si1133.h>
+#include "communication/comm_interface.c"
 
 // change log level in debug.conf
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
@@ -90,6 +91,9 @@ int main(void)
 							 sensors_thread_function, (void *)&allSensors, NULL, NULL,
 							 SENSORS_THREAD_PRIORITY, 0, K_NO_WAIT);
 
+	comm_channel_enum comm_channels[3] = {-1};
+	comm_channels[0] = BLE;
+	distribute_data("testing", comm_channels, 1);
 	while (1)
 	{
 		LOG_DBG("waiting data");

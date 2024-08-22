@@ -10,6 +10,13 @@ menu "Zephyr"
 source "Kconfig.zephyr"
 endmenu
 
+config SAMPLE_CONN_ITERATIONS
+	int "Connection iterations"
+	range 0 255
+	default 0
+	help
+	  Expected number of times to reattempt connection with device
+
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
