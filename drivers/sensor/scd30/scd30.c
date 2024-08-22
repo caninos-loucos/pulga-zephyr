@@ -34,6 +34,11 @@
 
 #define DT_DRV_COMPAT sensirion_scd30
 
+// Number of instances of device
+#if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
+#warning "SI1133 driver enabled without any devices"
+#endif
+
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/kernel.h>

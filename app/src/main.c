@@ -25,12 +25,21 @@ typedef struct
 		struct sensor_value uv_index;
 		int error;
 	} si1133;
+	struct
+	{
+		struct sensor_value co2;
+		struct sensor_value temperature;
+		struct sensor_value humidity;
+		int error;
+	} scd30;	
+
 } allSensorsData;
 
 typedef struct
 {
 	const struct device *bme280;
 	const struct device *si1133;
+	const struct device *scd30;
 	allSensorsData allSensorsData;
 	struct k_mutex lock;
 	struct k_sem data_ready;
@@ -53,6 +62,7 @@ int main(void)
 	static allSensorsType allSensors = {
 		.bme280 = DEVICE_DT_GET_ANY(bosch_bme280),
 		.si1133 = DEVICE_DT_GET_ANY(silabs_si1133),
+		.scd30  = DEVICE_DT_GET_ANY(sensirion_scd30),
 	};
 	static allSensorsData data;
 
@@ -66,6 +76,11 @@ int main(void)
 		LOG_ERR("si1133 not declared at device tree");
 		return 0;
 	}
+	if (!allSensors.scd30)
+	{
+		LOG_ERR("scd30 not declared at device tree");
+		return 0;
+	}
 	if (!device_is_ready(allSensors.bme280))
 	{
 		LOG_ERR("device \"%s\" is not ready", allSensors.bme280->name);
@@ -74,6 +89,11 @@ int main(void)
 	if (!device_is_ready(allSensors.si1133))
 	{
 		LOG_ERR("device \"%s\" is not ready", allSensors.si1133->name);
+		return 0;
+	}
+	if (!device_is_ready(allSensors.scd30))
+	{
+		LOG_ERR("device \"%s\" is not ready", allSensors.scd30->name);
 		return 0;
 	}
 
@@ -131,6 +151,17 @@ int main(void)
 				   data.si1133.uv.val1, data.si1133.uv_index.val1,
 				   data.si1133.uv_index.val2 / 10000);
 		}
+		if (data.scd30.error < 0)
+		{
+			LOG_ERR("fetch sample from \"%s\" failed: %d",
+					allSensors.scd30->name, data.scd30.error);
+		}
+		else
+		{
+			printk("CO2: %d ppm; Temperature: %d ºC; Humidity: %d %% RH;\n",
+				   data.scd30.co2.val1, data.scd30.temperature.val1,
+				   data.scd30.humidity.val1);
+		}
 	}
 	return 0;
 }
@@ -146,6 +177,7 @@ static void sensors_thread_function(void *param0, void *param1, void *param2)
 	{
 		data.bme280.error = sensor_sample_fetch(allSensors->bme280);
 		data.si1133.error = sensor_sample_fetch(allSensors->si1133);
+		data.scd30.error  = sensor_sample_fetch(allSensors->scd30);
 
 		if (!data.bme280.error)
 		{
@@ -168,6 +200,17 @@ static void sensors_thread_function(void *param0, void *param1, void *param2)
 			sensor_channel_get(allSensors->si1133, SENSOR_CHAN_UVI,
 							   &data.si1133.uv_index);
 		}
+
+		if (!data.scd30.error)
+		{
+			sensor_channel_get(allSensors->scd30, SENSOR_CHAN_CO2,
+							   &data.scd30.temperature);
+			sensor_channel_get(allSensors->scd30, SENSOR_CHAN_AMBIENT_TEMP,
+							   &data.scd30.temperature);
+			sensor_channel_get(allSensors->scd30, SENSOR_CHAN_HUMIDITY,
+							   &data.scd30.humidity);
+		}
+
 		//Start of critical region
 		k_mutex_lock(&allSensors->lock, K_FOREVER);
 		allSensors->allSensorsData = data; /* copy to shared data */
