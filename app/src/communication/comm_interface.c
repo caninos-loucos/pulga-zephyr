@@ -7,14 +7,12 @@ typedef enum{
 } comm_channel_enum;
 
 static int send_data(char* message, comm_channel_enum used_channel){
-    printk("entrou aqui2");
     init_peripheral(CONFIG_SAMPLE_CONN_ITERATIONS);
     return 0;
 }
 
 static inline int distribute_data(char* message, comm_channel_enum* used_channels, \
     short int length_channels){
-    printk("entrou aqui");
     short int i_channels;
 
     for(i_channels = 0; i_channels < length_channels; i_channels++){

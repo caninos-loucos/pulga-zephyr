@@ -16,3 +16,4 @@ manifest:
         name-allowlist:
           - cmsis      # required by the ARM port
           - hal_nordic # required by the custom_plank board (Nordic based)
+          - tinycrypt # required by GATT caching and cryptography in BLE stack

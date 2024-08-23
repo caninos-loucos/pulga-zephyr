@@ -141,8 +141,11 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	conn_count--;
 }
 
-// Callback function that logs and accepts peer requests to change connection parameters
-// https://punchthrough.com/manage-ble-connection/
+/* Callback function that logs and accepts peer requests to change connection parameters
+** https://punchthrough.com/manage-ble-connection/
+** When connecting to Android devices, it's expected that they request
+** lower parameters and then return to normal to speed up connection
+*/
 static bool ble_param_request(struct bt_conn *conn, struct bt_le_conn_param *new_params)
 {
 	char address[BT_ADDR_LE_STR_LEN];
