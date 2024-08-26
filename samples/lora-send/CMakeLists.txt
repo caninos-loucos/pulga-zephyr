@@ -2,8 +2,9 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
+set(SHIELD pulga-lora)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(lora_send)
+project(app LANGUAGES C)
 
 FILE(GLOB app_sources src/*.c)
 target_sources(app PRIVATE ${app_sources})
