@@ -4,12 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/device.h>
-#include <zephyr/drivers/lora.h>
-#include <zephyr/drivers/gpio.h>
 #include <errno.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/lora.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(lora_receive, CONFIG_APP_LOG_LEVEL);
 
 #define DEFAULT_RADIO_NODE DT_ALIAS(lora0)
 BUILD_ASSERT(DT_NODE_HAS_STATUS(DEFAULT_RADIO_NODE, okay),
@@ -26,7 +30,7 @@ LOG_MODULE_REGISTER(lora_receive);
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
-		     int16_t rssi, int8_t snr)
+	                 int16_t rssi, int8_t snr)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(size);
@@ -44,7 +48,7 @@ void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
 
 int main(void)
 {
-	const struct device *const lora_dev = DEVICE_DT_GET(DEFAULT_RADIO_NODE);
+	const struct device *lora_dev = DEVICE_DT_GET(DEFAULT_RADIO_NODE);
 	struct lora_modem_config config;
 	int ret;
 
@@ -86,3 +90,4 @@ int main(void)
 	k_sleep(K_FOREVER);
 	return 0;
 }
+

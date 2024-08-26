@@ -1,30 +1,19 @@
-/*
- * Copyright (c) 2019 Manivannan Sadhasivam
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
-#include <zephyr/device.h>
-#include <zephyr/drivers/lora.h>
-#include <errno.h>
-#include <zephyr/sys/util.h>
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/lora.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(lora_send, CONFIG_APP_LOG_LEVEL);
 
 #define DEFAULT_RADIO_NODE DT_ALIAS(lora0)
-BUILD_ASSERT(DT_NODE_HAS_STATUS(DEFAULT_RADIO_NODE, okay),
-	     "No default LoRa radio specified in DT");
-
 #define MAX_DATA_LEN 10
-
-#define LOG_LEVEL CONFIG_LOG_DEFAULT_LEVEL
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(lora_send);
 
 char data[MAX_DATA_LEN] = {'h', 'e', 'l', 'l', 'o', 'w', 'o', 'r', 'l', 'd'};
 
 int main(void)
 {
-	const struct device *const lora_dev = DEVICE_DT_GET(DEFAULT_RADIO_NODE);
+	const struct device *lora_dev = DEVICE_DT_GET(DEFAULT_RADIO_NODE);
 	struct lora_modem_config config;
 	int ret;
 
@@ -63,3 +52,4 @@ int main(void)
 	}
 	return 0;
 }
+

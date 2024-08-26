@@ -6,28 +6,50 @@
 
 / {
 	aliases {
-		lora0 = &lora;
+		lora0 = &lora0;
+	};
+};
+
+&pinctrl {
+	spi1_default: spi1_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 8)>,
+					<NRF_PSEL(SPIM_MOSI, 0, 4)>,
+					<NRF_PSEL(SPIM_MISO, 0, 6)>;
+		};
+	};
+
+	spi1_sleep: spi1_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 8)>,
+					<NRF_PSEL(SPIM_MOSI, 0, 4)>,
+					<NRF_PSEL(SPIM_MISO, 0, 6)>;
+			low-power-enable;
+		};
 	};
 };
 
 &spi1 {
+	compatible = "nordic,nrf-spim";
 	status = "okay";
-
-	cs-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;	/* P0.26 */
-
-	lora: lora@0 {
+	
+	pinctrl-0 = <&spi1_default>;
+	pinctrl-1 = <&spi1_sleep>;
+	pinctrl-names = "default", "sleep";
+	
+	cs-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;  /* P0.26 */
+	
+	lora0: lora@0 {
 		compatible = "semtech,sx1272";
 		reg = <0x0>;
-		spi-max-frequency = <1000000>;
-
-		reset-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;   /* P1.15 */
-
-		dio-gpios = <&gpio0 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;  /* P0.12 */
 		
-		pa-boost-enable-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
-
+		spi-max-frequency = <3000000>;
+		reset-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>; /* P1.15 */
+		dio-gpios = <&gpio0 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>; /* P0.12 */
 		power-amplifier-output = "pa-boost";
-
+		pa-boost-enable-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>; /* P0.2 */
+		
 		status = "okay";
 	};
 };
+

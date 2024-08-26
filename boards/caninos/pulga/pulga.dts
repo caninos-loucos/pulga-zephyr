@@ -102,30 +102,27 @@
 };
 
 &i2c0 {
-	compatible = "nordic,nrf-twi";
+	compatible = "nordic,nrf-twim";
 	status = "okay";
 	
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;
 	pinctrl-names = "default", "sleep";
-	
-	clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+&i2c1 {
+	compatible = "nordic,nrf-twi";
+	status = "disabled";
 };
 
 &spi0 {
 	compatible = "nordic,nrf-spim";
 	status = "disabled";
-	pinctrl-0 = <&spi0_default>;
-	pinctrl-1 = <&spi0_sleep>;
-	pinctrl-names = "default", "sleep";
 };
 
 &spi1 {
-	compatible = "nordic,nrf-spim";
-	status = "okay";
-	pinctrl-0 = <&spi1_default>;
-	pinctrl-1 = <&spi1_sleep>;
-	pinctrl-names = "default", "sleep";
+	compatible = "nordic,nrf-spi";
+	status = "disabled";
 };
 
 &ieee802154 {
