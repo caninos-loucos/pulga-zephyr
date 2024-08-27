@@ -4,6 +4,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <drivers/si1133.h>
+//#include <drivers/scd30.h>
 
 // change log level in debug.conf
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);

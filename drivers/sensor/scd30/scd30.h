@@ -32,8 +32,8 @@
  * SPDX-License-Identifier: BSD-3-CLAUSE
  */
 
-#ifndef ZEPHYR_DRIVER_SENSOR_SCD30_SCD30_H_
-#define ZEPHYR_DRIVER_SENSOR_SCD30_SCD30_H_
+#ifndef _SCD30_H_
+#define _SCD30_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,4 +105,4 @@ struct scd30_word {
 }
 #endif
 
-#endif /* ZEPHYR_DRIVER_SENSOR_SCD30_SCD30_H_ */
+#endif /* _SCD30_H_ */

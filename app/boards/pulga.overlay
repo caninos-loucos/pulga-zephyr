@@ -29,6 +29,7 @@
 		compatible = "sensirion,scd30";
 		reg = <0x61>;   /* Address of sensor */
 		status = "okay";
+		sample-period = <5>;
 	};
 };
 

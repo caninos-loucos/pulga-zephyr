@@ -29,4 +29,19 @@
 		};
 	};
 
+	i2c1_default: i2c1_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 29)>, 
+			        <NRF_PSEL(TWIM_SCL, 0, 11)>; // Esse pino no esquematico nao aparenta ser um GPIO (é chamado de ZOEM8B). Bugs eventuais, checar aqui!
+		};
+	};
+
+	i2c1_sleep: i2c1_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 29)>, 
+			        <NRF_PSEL(TWIM_SCL, 0, 11)>; // Esse pino no esquematico nao aparenta ser um GPIO (é chamado de ZOEM8B). Bugs eventuais, checar aqui!
+			low-power-enable;
+		};
+	};
+
 };

@@ -32,23 +32,24 @@
  * SPDX-License-Identifier: BSD-3-CLAUSE
  */
 
-#define DT_DRV_COMPAT sensirion_scd30
-
-// Number of instances of device
-#if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
-#warning "SI1133 driver enabled without any devices"
-#endif
-
+#include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
-#include <zephyr/kernel.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/crc.h>
 #include <zephyr/logging/log.h>
 
+#define DT_DRV_COMPAT sensirion_scd30
+
 #include "scd30.h"
+
+
+// Number of instances of device
+#if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
+#warning "SI1133 driver enabled without any devices"
+#endif
 
 LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
 
