@@ -4,7 +4,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <drivers/si1133.h>
-#include "communication/comm_interface.c"
+#include "communication/bluetooth/comm_interface.c"
 
 // change log level in debug.conf
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
@@ -26,16 +26,16 @@ typedef struct
 		struct sensor_value uv_index;
 		int error;
 	} si1133;
-} allSensorsData;
+} all_sensors_data;
 
 typedef struct
 {
 	const struct device *bme280;
 	const struct device *si1133;
-	allSensorsData allSensorsData;
+	all_sensors_data all_sensors_data;
 	struct k_mutex lock;
 	struct k_sem data_ready;
-} allSensorsType;
+} all_sensors_type;
 
 /*
  * Refer to:
@@ -51,35 +51,35 @@ int main(void)
 {
 	/* Sensors type and data variables are not stored in the stack,
 	Static variables preserve their value even outside the scope */
-	static allSensorsType allSensors = {
+	static all_sensors_type all_sensors = {
 		.bme280 = DEVICE_DT_GET_ANY(bosch_bme280),
 		.si1133 = DEVICE_DT_GET_ANY(silabs_si1133),
 	};
-	static allSensorsData data;
+	static all_sensors_data data;
 
-	if (!allSensors.bme280)
+	if (!all_sensors.bme280)
 	{
 		LOG_ERR("bme280 not declared at device tree");
 		return 0;
 	}
-	if (!allSensors.si1133)
+	if (!all_sensors.si1133)
 	{
 		LOG_ERR("si1133 not declared at device tree");
 		return 0;
 	}
-	if (!device_is_ready(allSensors.bme280))
+	if (!device_is_ready(all_sensors.bme280))
 	{
-		LOG_ERR("device \"%s\" is not ready", allSensors.bme280->name);
+		LOG_ERR("device \"%s\" is not ready", all_sensors.bme280->name);
 		return 0;
 	}
-	if (!device_is_ready(allSensors.si1133))
+	if (!device_is_ready(all_sensors.si1133))
 	{
-		LOG_ERR("device \"%s\" is not ready", allSensors.si1133->name);
+		LOG_ERR("device \"%s\" is not ready", all_sensors.si1133->name);
 		return 0;
 	}
 
-	k_mutex_init(&allSensors.lock);
-	k_sem_init(&allSensors.data_ready, 0, 1);
+	k_mutex_init(&all_sensors.lock);
+	k_sem_init(&all_sensors.data_ready, 0, 1);
 
 	//Thread control block - metadata
 	struct k_thread sensors_thread_data;
@@ -88,7 +88,7 @@ int main(void)
 	/* Create thread and start it immediately. */
 	sensors_thread_id = k_thread_create(&sensors_thread_data, sensors_thread_stack_area,
 							 K_THREAD_STACK_SIZEOF(sensors_thread_stack_area),
-							 sensors_thread_function, (void *)&allSensors, NULL, NULL,
+							 sensors_thread_function, (void *)&all_sensors, NULL, NULL,
 							 SENSORS_THREAD_PRIORITY, 0, K_NO_WAIT);
 
 	comm_channel_enum comm_channels[3] = {-1};
@@ -98,21 +98,21 @@ int main(void)
 	{
 		LOG_DBG("waiting data");
 		//Waits indefinitely until sensor measurements are ready
-		k_sem_take(&allSensors.data_ready, K_FOREVER);
+		k_sem_take(&all_sensors.data_ready, K_FOREVER);
 		LOG_DBG("data ready");
 
 		/* fetch available data */
 		//Start of critical region
-		k_mutex_lock(&allSensors.lock, K_FOREVER);
-		data = allSensors.allSensorsData; /* copy from shared data */
-		k_mutex_unlock(&allSensors.lock);
+		k_mutex_lock(&all_sensors.lock, K_FOREVER);
+		data = all_sensors.all_sensors_data; /* copy from shared data */
+		k_mutex_unlock(&all_sensors.lock);
 		//End of critical region
 
 		/* print data */
 		if (data.bme280.error < 0)
 		{
 			LOG_ERR("fetch sample from \"%s\" failed: %d",
-					allSensors.bme280->name, data.bme280.error);
+					all_sensors.bme280->name, data.bme280.error);
 		}
 		else
 		{
@@ -126,7 +126,7 @@ int main(void)
 		if (data.si1133.error < 0)
 		{
 			LOG_ERR("fetch sample from \"%s\" failed: %d",
-					allSensors.si1133->name, data.si1133.error);
+					all_sensors.si1133->name, data.si1133.error);
 		}
 		else
 		{
@@ -141,45 +141,45 @@ int main(void)
 
 static void sensors_thread_function(void *param0, void *param1, void *param2)
 {
-	allSensorsType *allSensors = (allSensorsType *)(param0);
-	allSensorsData data;
+	all_sensors_type *all_sensors = (all_sensors_type *)(param0);
+	all_sensors_data data;
 	ARG_UNUSED(param1);
 	ARG_UNUSED(param2);
 
 	while (1)
 	{
-		data.bme280.error = sensor_sample_fetch(allSensors->bme280);
-		data.si1133.error = sensor_sample_fetch(allSensors->si1133);
+		data.bme280.error = sensor_sample_fetch(all_sensors->bme280);
+		data.si1133.error = sensor_sample_fetch(all_sensors->si1133);
 
 		if (!data.bme280.error)
 		{
-			sensor_channel_get(allSensors->bme280, SENSOR_CHAN_AMBIENT_TEMP,
+			sensor_channel_get(all_sensors->bme280, SENSOR_CHAN_AMBIENT_TEMP,
 							   &data.bme280.temperature);
-			sensor_channel_get(allSensors->bme280, SENSOR_CHAN_PRESS,
+			sensor_channel_get(all_sensors->bme280, SENSOR_CHAN_PRESS,
 							   &data.bme280.pressure);
-			sensor_channel_get(allSensors->bme280, SENSOR_CHAN_HUMIDITY,
+			sensor_channel_get(all_sensors->bme280, SENSOR_CHAN_HUMIDITY,
 							   &data.bme280.humidity);
 		}
 
 		if (!data.si1133.error)
 		{
-			sensor_channel_get(allSensors->si1133, SENSOR_CHAN_LIGHT,
+			sensor_channel_get(all_sensors->si1133, SENSOR_CHAN_LIGHT,
 							   &data.si1133.light);
-			sensor_channel_get(allSensors->si1133, SENSOR_CHAN_IR,
+			sensor_channel_get(all_sensors->si1133, SENSOR_CHAN_IR,
 							   &data.si1133.infrared);
-			sensor_channel_get(allSensors->si1133, SENSOR_CHAN_UV,
+			sensor_channel_get(all_sensors->si1133, SENSOR_CHAN_UV,
 							   &data.si1133.uv);
-			sensor_channel_get(allSensors->si1133, SENSOR_CHAN_UVI,
+			sensor_channel_get(all_sensors->si1133, SENSOR_CHAN_UVI,
 							   &data.si1133.uv_index);
 		}
 		//Start of critical region
-		k_mutex_lock(&allSensors->lock, K_FOREVER);
-		allSensors->allSensorsData = data; /* copy to shared data */
-		k_mutex_unlock(&allSensors->lock);
+		k_mutex_lock(&all_sensors->lock, K_FOREVER);
+		all_sensors->all_sensors_data = data; /* copy to shared data */
+		k_mutex_unlock(&all_sensors->lock);
 		//End of critical region
 
 		//Notify measurements are ready with semaphore
-		k_sem_give(&allSensors->data_ready);
+		k_sem_give(&all_sensors->data_ready);
 		k_sleep(K_MSEC(1000));
 	}
 }
