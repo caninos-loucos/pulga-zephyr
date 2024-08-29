@@ -1,11 +1,14 @@
 
-#include <stddef.h>
-#include <zephyr/sys/printk.h>
+// #include <stddef.h>
+// #include <zephyr/sys/printk.h>
 #include <zephyr/sys/util.h>
 
-#include <zephyr/bluetooth/bluetooth.h>
-#include <zephyr/bluetooth/conn.h>
-#include <zephyr/bluetooth/hci.h>
+// #include <zephyr/settings/settings.h>
+
+// #include <zephyr/bluetooth/conn.h>
+// #include <zephyr/bluetooth/hci.h>
+
+#include "comm_ble_service.c"
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -21,6 +24,8 @@ static bool volatile is_disconnecting;
 static const struct bt_data adv_data[] = {
 	// General discoverable enabled, enhanced data rate disabled
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(BT_UUID_BAS_VAL)),
+	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_SERVICE_PULGA),
 };
 
 // Data to be sent in Scan Response packets (when central asks for more info)
@@ -114,11 +119,16 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	{
 		k_work_submit(&work_adv_start);
 	}
-
 	// Gets address of connected device and converts it to string
 	bt_addr_le_to_str(bt_conn_get_dst(conn), address, sizeof(address));
 
 	printk("Connected (%u): %s\n", conn_count, address);
+	
+	err = services_notify();
+	if(err){
+		printk("Error in notifying services characteristics, error 0x%02x\n", err);
+		return;
+	}
 }
 
 // Callback function when device disconnects
@@ -236,6 +246,17 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
 	}
 }
 
+// Shows passkey so it can be entered on central device
+static void auth_passkey_display(struct bt_conn *connection, unsigned int passkey)
+{
+	char address[BT_ADDR_LE_STR_LEN];
+
+	// Gets address of connected device and converts it to string
+	bt_addr_le_to_str(bt_conn_get_dst(connection), address, sizeof(address));
+
+	printk("Passkey for %s: %06u\n", address, passkey);
+}
+
 // Logs when pairing process is cancelled
 static void auth_cancel(struct bt_conn *conn)
 {
@@ -250,9 +271,23 @@ static void auth_cancel(struct bt_conn *conn)
 // Registers struct contaning callback functions 
 // related to authentication events
 static struct bt_conn_auth_cb auth_callbacks = {
+	.passkey_display = auth_passkey_display,
+	.passkey_entry = NULL, // Lacks ability to enter passkey
 	.cancel = auth_cancel,
 };
 #endif /* CONFIG_BT_SMP */
+
+/*
+** BLE GATT handling
+*/
+// Updating maximum transmission unit
+void mtu_updated(struct bt_conn *connection, uint16_t tx, uint16_t rx){
+	printk("Updated MTU: TX: %d RX: %d bytes\n", tx, rx);
+}
+// Registering GATT callback
+static struct bt_gatt_cb gatt_callbacks = {
+	.att_mtu_updated = mtu_updated
+};
 
 // Registers struct containing callback functions 
 // related to Bluetooth connections
@@ -267,11 +302,11 @@ static struct bt_conn_cb conn_callbacks = {
 #endif /* CONFIG_BT_SMP */
 
 #if defined(CONFIG_BT_USER_PHY_UPDATE)
-	.le_phy_updated = le_phy_updated,
+	.le_phy_updated = ble_phy_updated,
 #endif /* CONFIG_BT_USER_PHY_UPDATE */
 
 #if defined(CONFIG_BT_USER_DATA_LEN_UPDATE)
-	.le_data_len_updated = le_data_len_updated,
+	.le_data_len_updated = ble_data_len_updated,
 #endif /* CONFIG_BT_USER_DATA_LEN_UPDATE */
 };
 
@@ -288,8 +323,16 @@ int init_peripheral(uint8_t iterations)
 		return err;
 	}
 
+	//Loads Bluetooth keys and state from flash to memory
+	if (IS_ENABLED(CONFIG_SETTINGS)) {
+		settings_load();
+	}
+
 	// Registers connection callbacks
 	bt_conn_cb_register(&conn_callbacks);
+
+	// Registers GATT callbacks
+	bt_gatt_cb_register(&gatt_callbacks);
 
 #if defined(CONFIG_BT_SMP)
 	// Registers authentication callbacks
