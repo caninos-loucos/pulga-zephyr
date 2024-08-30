@@ -15,6 +15,8 @@
 
 // Work responsible for advertising device
 static struct k_work work_adv_start;
+// Work responsible for publishing services
+static struct k_work work_services;
 // Number of connections - expected to change anytime
 static uint8_t volatile conn_count;
 static uint8_t id_current;
@@ -124,11 +126,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
 	printk("Connected (%u): %s\n", conn_count, address);
 	
-	err = services_notify();
-	if(err){
-		printk("Error in notifying services characteristics, error 0x%02x\n", err);
-		return;
-	}
+	// Submits publishing services work to the queue
+	k_work_submit(&work_services);
 }
 
 // Callback function when device disconnects
@@ -149,6 +148,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		k_work_submit(&work_adv_start);
 	}
 	conn_count--;
+	
 }
 
 /* Callback function that logs and accepts peer requests to change connection parameters
@@ -343,6 +343,8 @@ int init_peripheral(uint8_t iterations)
 
 	// Initializes work responsible for start advertising 
 	k_work_init(&work_adv_start, adv_start);
+	// Initializes work responsible for publishing services 
+	k_work_init(&work_services, services_notify);
 	// Submits advertising work to the queue for the first time
 	k_work_submit(&work_adv_start);
 

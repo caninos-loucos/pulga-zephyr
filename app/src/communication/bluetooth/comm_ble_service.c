@@ -61,8 +61,8 @@ static void indicate_destroy(struct bt_gatt_indicate_params *params);
 // // Runs after BT initialization and starts services
 // static void init_services(void);
 // Handles services updates on data
-static int services_notify(void);
-
+static void services_notify(struct k_work *work);
+// static int services_notify(void);
 /**
  * Pulga Service Declaration
  */
@@ -131,30 +131,33 @@ static void bas_notify(void){
 }
 
 // Handles services updates on data
-static int services_notify(void){
-    bas_notify();
+static void services_notify(struct k_work *work){
+// static int services_notify(void){
+    while(1){
+        bas_notify();
 
-    char str[BT_UUID_STR_LEN];
-    // Attribute to indicate
-    struct bt_gatt_attr *ind_attr = bt_gatt_find_by_uuid(pulga_service.attrs, pulga_service.attr_count,
-		BT_UUID_TEMPERATURE);
-	bt_uuid_to_str(BT_UUID_TEMPERATURE, str, sizeof(str));
-	printk("Indicate VND attr %p (UUID %s)\n", ind_attr, str);
-    
-    if (indicate_on && ind_attr) {
-        if (indicating) {
-            return -1;
+        char str[BT_UUID_STR_LEN];
+        // Attribute to indicate
+        struct bt_gatt_attr *ind_attr = bt_gatt_find_by_uuid(pulga_service.attrs, pulga_service.attr_count,
+            BT_UUID_TEMPERATURE);
+        bt_uuid_to_str(BT_UUID_TEMPERATURE, str, sizeof(str));
+        printk("Indicate VND attr %p (UUID %s)\n", ind_attr, str);
+        
+        if (indicate_on && ind_attr) {
+            if (indicating) {
+                continue;
+            }
+
+            indicate_params.attr = ind_attr;
+            indicate_params.func = indicate_cb;
+            indicate_params.destroy = indicate_destroy;
+            indicate_params.data = &indicating;
+            indicate_params.len = sizeof(indicating);
+
+            if (bt_gatt_indicate(NULL, &indicate_params) == 0) {
+                indicating = 1U;
+            }
         }
-
-        indicate_params.attr = ind_attr;
-        indicate_params.func = indicate_cb;
-        indicate_params.destroy = indicate_destroy;
-        indicate_params.data = &indicating;
-        indicate_params.len = sizeof(indicating);
-
-        if (bt_gatt_indicate(NULL, &indicate_params) == 0) {
-            indicating = 1U;
-        }
-	}
-    return 0;
+        return;
+    }
 }
