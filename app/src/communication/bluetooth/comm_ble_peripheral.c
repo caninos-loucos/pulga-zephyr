@@ -311,8 +311,12 @@ static struct bt_conn_cb conn_callbacks = {
 };
 
 // Initialization of Bluetooth Low Energy peripheral device
-int init_peripheral(uint8_t iterations)
+void init_peripheral(void *param0, void *param1, void *param2)
 {
+	uint8_t *iterations = (uint8_t *)(param0);
+	ARG_UNUSED(param1);
+	ARG_UNUSED(param2);
+
 	size_t id_count;
 	int err;
 
@@ -320,7 +324,7 @@ int init_peripheral(uint8_t iterations)
 	err = bt_enable(NULL);
 	if (err) {
 		printk("Bluetooth init failed (err %d)\n", err);
-		return err;
+		return;
 	}
 
 	//Loads Bluetooth keys and state from flash to memory
@@ -347,6 +351,8 @@ int init_peripheral(uint8_t iterations)
 	k_work_init(&work_services, services_notify);
 	// Submits advertising work to the queue for the first time
 	k_work_submit(&work_adv_start);
+	// // Submits publishing services work to the queue
+	// k_work_submit(&work_services);
 
 	/* wait for connection attempts on all identities */
 	do {
@@ -365,11 +371,11 @@ int init_peripheral(uint8_t iterations)
 		 * initiated by peer central devices.
 		 */
 		if (conn_count == CONFIG_BT_MAX_CONN) {
-			if (!iterations) {
+			if (!*iterations) {
 				break;
 			}
-			iterations--;
-			printk("Iterations remaining: %u\n", iterations);
+			*iterations = *iterations - 1;
+			printk("Iterations remaining: %u\n", *iterations);
 
 			printk("Wait for disconnections...\n");
 			is_disconnecting = true;
@@ -411,12 +417,10 @@ int init_peripheral(uint8_t iterations)
 		err = bt_le_adv_stop();
 		if (err) {
 			printk("Failed to stop advertising (%d)\n", err);
-
-			return err;
+			return;
 		}
 
 		k_work_submit(&work_adv_start);
 	}
-
-	return 0;
+	return;
 }

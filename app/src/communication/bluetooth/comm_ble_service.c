@@ -158,6 +158,7 @@ static void services_notify(struct k_work *work){
                 indicating = 1U;
             }
         }
+        // Only notifies once because otherwise it doesnt connect
         return;
     }
 }
