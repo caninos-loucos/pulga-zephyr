@@ -66,7 +66,7 @@ int main(void)
 		return 0;
 	}
 
-	ret = lorawan_set_region(LORAWAN_REGION_US915);
+	ret = lorawan_set_region(LORAWAN_REGION_AU915);
 	if (ret < 0) {
 		LOG_ERR("lorawan_set_region failed: %d", ret);
 		return 0;

@@ -33,6 +33,7 @@
 	compatible = "nordic,nrf-spim";
 	status = "okay";
 	
+	clock-frequency = <10000000>;
 	pinctrl-0 = <&spi1_default>;
 	pinctrl-1 = <&spi1_sleep>;
 	pinctrl-names = "default", "sleep";
@@ -43,11 +44,11 @@
 		compatible = "semtech,sx1272";
 		reg = <0x0>;
 		
-		spi-max-frequency = <3000000>;
+		spi-max-frequency = <10000000>;
 		reset-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>; /* P1.15 */
 		dio-gpios = <&gpio0 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>; /* P0.12 */
 		power-amplifier-output = "pa-boost";
-		pa-boost-enable-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>; /* P0.2 */
+		rfi-enable-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>; /* P0.2 */
 		
 		status = "okay";
 	};
