@@ -12,6 +12,10 @@ LOG_MODULE_REGISTER(sensors_interface, CONFIG_APP_LOG_LEVEL);
 
 // TODO: Minimize global variables use by using callbacks
 static K_THREAD_STACK_DEFINE(sensors_thread_stack_area, SENSORS_THREAD_STACK_SIZE);
+//Thread control block - metadata
+static struct k_thread sensors_thread_data;
+static k_tid_t sensors_thread_id;
+
 static SensorsType all_sensors;
 SensorsReturn sensors_return;
 
@@ -28,8 +32,9 @@ static int start_reading();
 static void perform_read_sensors(void *, void *, void *);
 
 /**
- * IMPLEMENTATION
+ * IMPLEMENTATIONS
  */
+
 int read_sensors(){
     if(init_sensors()){
 		LOG_ERR("Error initializing sensors");
@@ -46,7 +51,7 @@ int init_sensors(){
 	int error = 0;
     /* Sensors type and data variables are not stored in the stack,
 	Static variables preserve their value even outside the scope */
-	LOG_INF("Initializing sensors");
+	LOG_DBG("Initializing sensors");
 	#if defined(CONFIG_BME280)
 	all_sensors.bme280 = DEVICE_DT_GET_ANY(bosch_bme280);
 	#endif /* CONFIG_BME280 */
@@ -83,7 +88,7 @@ int init_sensors(){
 	}
     #endif /* CONFIG_SI1133 */
 	
-	LOG_INF("Initializing mutexes");
+	LOG_DBG("Initializing mutexes");
 	error = k_mutex_init(&sensors_return.lock);
 	if(error){
 		LOG_ERR("Couldn't initialize sensor data lock.");
@@ -95,20 +100,12 @@ int init_sensors(){
 		return -101;
 	}
 
-	LOG_INF("stack area: %p, all_sensors: %p, sensors_return: %p",
-		sensors_thread_stack_area, &all_sensors, &sensors_return);
-
     return 0;
 }
 
 int start_reading(){
-	//Thread control block - metadata
-	struct k_thread sensors_thread_data;
-	k_tid_t sensors_thread_id;
-	LOG_INF("Initializing reading thread");
+	LOG_DBG("Initializing reading thread");
 	/* Create thread and start it immediately. */
-	LOG_INF("stack data: %p, stack area: %p, all_sensors: %p, sensors_return: %p", &sensors_thread_data,
-	sensors_thread_stack_area, &all_sensors, &sensors_return);
 	sensors_thread_id = k_thread_create(&sensors_thread_data, sensors_thread_stack_area,
 							 K_THREAD_STACK_SIZEOF(sensors_thread_stack_area),
 							 perform_read_sensors, &all_sensors, &sensors_return, 
@@ -117,17 +114,11 @@ int start_reading(){
 }
 
 static void perform_read_sensors(void *param0, void *param1, void *param2){
-	LOG_INF("in thread");
+	LOG_DBG("Reading thread started");
     SensorsType *all_sensors = (SensorsType *)(param0);
     SensorsReturn *sensors_return = (SensorsReturn *)(param1);
 	SensorsData sensors_data;
 	ARG_UNUSED(param2);
-
-	// Validate pointers before use
-    if (!all_sensors || !sensors_return) {
-        LOG_ERR("Invalid pointers passed to perform_read_sensors");
-        return;
-    }
 
 	while (1)
 	{

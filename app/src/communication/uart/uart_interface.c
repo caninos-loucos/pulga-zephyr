@@ -7,21 +7,27 @@
 
 LOG_MODULE_REGISTER(uart_interface, CONFIG_APP_LOG_LEVEL);
 
+/**
+ * DEFINITIONS
+ */
+
+static K_THREAD_STACK_DEFINE(uart_thread_stack_area, UART_THREAD_STACK_SIZE);
+//Thread control block - metadata
+static struct k_thread uart_thread_data;
+static k_tid_t uart_thread_id;
+// Functions that prints data to UART in separate thread
+static void send_data_uart(void *, void *, void *);
+
 // Time between transmission to UART
 // TODO: Make it configurable from module that receives commands
 static int current_uart_interval = CONFIG_TRANSMISSION_INTERVAL;
 
-static K_THREAD_STACK_DEFINE(uart_thread_stack_area, UART_THREAD_STACK_SIZE);
-
-// Functions that prints data to UART in separate thread
-static void send_data_uart(void *, void *, void *);
-
+/**
+ * IMPLEMENTATIONS
+ */
 
 int send_data(){
-    //Thread control block - metadata
-	struct k_thread uart_thread_data;
-	k_tid_t uart_thread_id;
-
+    LOG_DBG("Initializing send via UART thread");
 	/* Create thread and start it immediately. */
 	uart_thread_id = k_thread_create(&uart_thread_data, uart_thread_stack_area,
 							 K_THREAD_STACK_SIZEOF(uart_thread_stack_area),
@@ -31,6 +37,7 @@ int send_data(){
 }
 
 static void send_data_uart(void *param0, void *param1, void *param2){
+    LOG_DBG("Sending via UART started");
     ARG_UNUSED(param0);
     ARG_UNUSED(param1);
 	ARG_UNUSED(param2);

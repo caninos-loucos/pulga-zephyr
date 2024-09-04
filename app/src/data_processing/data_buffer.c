@@ -4,16 +4,24 @@
 
 LOG_MODULE_REGISTER(data_buffer, CONFIG_APP_LOG_LEVEL);
 
+/**
+ * DEFINITIONS
+ */
+
 static K_THREAD_STACK_DEFINE(buffer_thread_stack_area, BUFFER_THREAD_STACK_SIZE);
+static struct k_thread buffer_thread_data;
+static k_tid_t buffer_thread_id;
 struct k_sem data_in_buffer;
 
 // Functions that bufferizes data in separate thread
 static void perform_insert_in_buffer(void *, void *, void *);
 
+/**
+ * IMPLEMENTATIONS
+ */
+
 int insert_in_buffer(){
     //Thread control block - metadata
-	struct k_thread buffer_thread_data;
-	k_tid_t buffer_thread_id;
     k_sem_init(&data_in_buffer, 0, 1);
 
 	/* Create thread and start it immediately. */

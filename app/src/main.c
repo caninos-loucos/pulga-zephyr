@@ -9,15 +9,16 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 int main(void)
 {
-	LOG_INF("Starting application");
-	if(read_sensors(CONFIG_SAMPLING_INTERVAL)){
+	LOG_DBG("Starting application");
+	if(read_sensors()){
 		LOG_ERR("Couldn't start sensors.");
 	}
 	if(insert_in_buffer()){
 		LOG_ERR("Couldn't start buffer.");
 	}
-	if(send_data(CONFIG_TRANSMISSION_INTERVAL)){
+	if(send_data()){
 		LOG_ERR("Couldn't start communication.");
 	}
+	k_sleep(K_FOREVER);
 	return 0;
 }
