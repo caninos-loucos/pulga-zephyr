@@ -14,7 +14,11 @@ LOG_MODULE_REGISTER(sensors_interface, CONFIG_APP_LOG_LEVEL);
 static K_THREAD_STACK_DEFINE(sensors_thread_stack_area, SENSORS_THREAD_STACK_SIZE);
 static SensorsType all_sensors;
 SensorsReturn sensors_return;
-int current_sampling_interval = CONFIG_SAMPLING_INTERVAL;
+
+// Time between measurements
+// TODO: Make it configurable from module that receives commands
+// TODO: Look for macro that defines variable
+static int current_sampling_interval = CONFIG_SAMPLING_INTERVAL;
 
 // Initializes all sensors and synchronization structures
 static int init_sensors();
@@ -39,6 +43,7 @@ int read_sensors(){
 }
 
 int init_sensors(){
+	int error = 0;
     /* Sensors type and data variables are not stored in the stack,
 	Static variables preserve their value even outside the scope */
 	LOG_INF("Initializing sensors");
@@ -77,9 +82,21 @@ int init_sensors(){
 		return -12;
 	}
     #endif /* CONFIG_SI1133 */
+	
 	LOG_INF("Initializing mutexes");
-	k_mutex_init(&sensors_return.lock);
-	k_sem_init(&sensors_return.data_ready, 0, 1);
+	error = k_mutex_init(&sensors_return.lock);
+	if(error){
+		LOG_ERR("Couldn't initialize sensor data lock.");
+		return -100;
+	}
+	error = k_sem_init(&sensors_return.data_ready, 0, 1);
+	if(error){
+		LOG_ERR("Couldn't initialize sensor data semaphore.");
+		return -101;
+	}
+
+	LOG_INF("stack area: %p, all_sensors: %p, sensors_return: %p",
+		sensors_thread_stack_area, &all_sensors, &sensors_return);
 
     return 0;
 }
@@ -90,10 +107,12 @@ int start_reading(){
 	k_tid_t sensors_thread_id;
 	LOG_INF("Initializing reading thread");
 	/* Create thread and start it immediately. */
+	LOG_INF("stack data: %p, stack area: %p, all_sensors: %p, sensors_return: %p", &sensors_thread_data,
+	sensors_thread_stack_area, &all_sensors, &sensors_return);
 	sensors_thread_id = k_thread_create(&sensors_thread_data, sensors_thread_stack_area,
 							 K_THREAD_STACK_SIZEOF(sensors_thread_stack_area),
-							 perform_read_sensors, (void *)&all_sensors, 
-							 (void *)&sensors_return, NULL, SENSORS_THREAD_PRIORITY, 0, K_NO_WAIT);
+							 perform_read_sensors, &all_sensors, &sensors_return, 
+							 NULL, SENSORS_THREAD_PRIORITY, 0, K_NO_WAIT);
     return 0;
 }
 
@@ -103,6 +122,12 @@ static void perform_read_sensors(void *param0, void *param1, void *param2){
     SensorsReturn *sensors_return = (SensorsReturn *)(param1);
 	SensorsData sensors_data;
 	ARG_UNUSED(param2);
+
+	// Validate pointers before use
+    if (!all_sensors || !sensors_return) {
+        LOG_ERR("Invalid pointers passed to perform_read_sensors");
+        return;
+    }
 
 	while (1)
 	{

@@ -56,9 +56,6 @@ typedef struct
 #define SENSORS_THREAD_PRIORITY 5 /* preemptible */
 
 extern SensorsReturn sensors_return;
-// Time between measurements
-// TODO: Make it configurable from module that receives commands
-extern int current_sampling_interval;
 
 // Initializes sensors and start reading
 int read_sensors();

@@ -7,7 +7,9 @@
 
 LOG_MODULE_REGISTER(uart_interface, CONFIG_APP_LOG_LEVEL);
 
-int current_uart_interval = CONFIG_TRANSMISSION_INTERVAL;
+// Time between transmission to UART
+// TODO: Make it configurable from module that receives commands
+static int current_uart_interval = CONFIG_TRANSMISSION_INTERVAL;
 
 static K_THREAD_STACK_DEFINE(uart_thread_stack_area, UART_THREAD_STACK_SIZE);
 
