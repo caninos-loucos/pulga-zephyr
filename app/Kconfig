@@ -13,3 +13,12 @@ endmenu
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
+
+config SAMPLING_INTERVAL
+	int "Sampling Interval in Milliseconds"
+	default 1000
+	depends on SENSOR
+
+config TRANSMISSION_INTERVAL
+	int "Transmission Interval in Milliseconds"
+	default 0
