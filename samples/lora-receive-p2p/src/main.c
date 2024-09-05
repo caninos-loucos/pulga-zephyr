@@ -15,30 +15,33 @@
 
 LOG_MODULE_REGISTER(lora_receive, CONFIG_APP_LOG_LEVEL);
 
+// Get the devicetree node for the LoRa hardware.
+// It should have an alias declared as lora0 to be properly found!
 #define DEFAULT_RADIO_NODE DT_ALIAS(lora0)
 BUILD_ASSERT(DT_NODE_HAS_STATUS(DEFAULT_RADIO_NODE, okay),
 	     "No default LoRa radio specified in DT");
 
+// Get the devicetree node for the LED, that must be aliased as led0.
 #define LED0_NODE DT_ALIAS(led0)
 
 #define MAX_DATA_LEN 255
 
-#define LOG_LEVEL CONFIG_LOG_DEFAULT_LEVEL
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(lora_receive);
+// The LED will be treated as a GPIO
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE);
 
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-
+// Receive callback, called everytime there is a packet reception.
+// Will print the packet and reception parameters in the log and then blink the LED
 void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
 	                 int16_t rssi, int8_t snr)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(size);
 
+	// RSSI: Received Signal Strength Indicator
+	// SNR: Signal-noise ratio
 	LOG_INF("Received data: %s (RSSI:%ddBm, SNR:%ddBm)",
 		data, rssi, snr);
 
-	/* Toggle the LED for 200ms to indicate a reception */
 	gpio_pin_set_dt(&led, 1);
 	k_msleep(200);
 	gpio_pin_set_dt(&led, 0);
@@ -48,10 +51,17 @@ void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
 
 int main(void)
 {
+	// It is most important to get the device struct from the devicetree node
+	// they are not the same thing!
 	const struct device *lora_dev = DEVICE_DT_GET(DEFAULT_RADIO_NODE);
+
+	// Declare the remaining variables since the C11 convention 
+	// does not allow mixed declarations and statements
 	struct lora_modem_config config;
 	int ret;
 
+
+	// Check, configure and initialize the LED with 0, respectively
 	if (!gpio_is_ready_dt(&led)) {
 		return 0;
 	}
@@ -64,11 +74,15 @@ int main(void)
 
 	gpio_pin_set_dt(&led, 0);
 
+	// Check the LoRa device
 	if (!device_is_ready(lora_dev)) {
 		LOG_ERR("%s Device not ready", lora_dev->name);
 		return 0;
 	}
 
+	// Configure the LoRa transmission parameters.
+	// Such parameters must match between the transmitter and 
+	// receiver for communication to occur.
 	config.frequency = 915000000;
 	config.bandwidth = BW_125_KHZ;
 	config.datarate = SF_7;
@@ -84,7 +98,8 @@ int main(void)
 		return 0;
 	}
 
-	/* Enable asynchronous reception */
+	// Enable asynchronous reception, so that the callback will
+	// execute everytime the LoRa device sends an RX interruption
 	LOG_INF("Starting reception...");
 	lora_recv_async(lora_dev, lora_receive_cb);
 	k_sleep(K_FOREVER);
