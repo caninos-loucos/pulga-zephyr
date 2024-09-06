@@ -46,14 +46,18 @@ static void send_data_uart(void *param0, void *param1, void *param2){
 
     while (1)
 	{
+        k_timeout_t waiting_time = K_MSEC(current_uart_interval);
+        int sampling_interval = get_sampling_interval();
+        // If transmission interval is less than sampling interval,
+        // transmits as soon as there's available data
+        if(current_uart_interval < sampling_interval){
+            waiting_time = K_FOREVER;
+        }
         // Waits to send data
         //TODO: or buffer full
-		k_sleep(K_MSEC(current_uart_interval));
-
-		LOG_DBG("waiting buffer");
-		//Waits indefinitely until buffer has data
-		k_sem_take(&data_in_buffer, K_FOREVER);
-		LOG_DBG("buffer ready");
+        LOG_DBG("Waiting for data in buffer..");
+        while (k_sem_take(&data_in_buffer, waiting_time) != 0) {
+        }
 
 		/* fetch available data */
 		//Start of critical region

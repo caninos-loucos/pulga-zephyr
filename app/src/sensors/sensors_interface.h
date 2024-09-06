@@ -52,10 +52,17 @@ typedef struct
  * Refer to:
  * https://docs.zephyrproject.org/latest/kernel/services/threads/index.html
  */
-#define SENSORS_THREAD_STACK_SIZE 4096
+#define SENSORS_THREAD_STACK_SIZE 1024
 #define SENSORS_THREAD_PRIORITY 5 /* preemptible */
 
 extern SensorsReturn sensors_return;
+
+// TODO: probably will require sync
+// Dynamically sets current sampling interval
+void set_sampling_interval(int new_interval);
+
+// Gets current sampling interval
+int get_sampling_interval();
 
 // Initializes sensors and start reading
 int read_sensors();

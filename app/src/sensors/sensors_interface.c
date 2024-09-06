@@ -114,7 +114,7 @@ int start_reading(){
 }
 
 static void perform_read_sensors(void *param0, void *param1, void *param2){
-	LOG_DBG("Reading thread started");
+	LOG_INF("Reading thread started");
     SensorsType *all_sensors = (SensorsType *)(param0);
     SensorsReturn *sensors_return = (SensorsReturn *)(param1);
 	SensorsData sensors_data;
@@ -161,4 +161,14 @@ static void perform_read_sensors(void *param0, void *param1, void *param2){
 		// Waits to measure again
 		k_sleep(K_MSEC(current_sampling_interval));
 	}
+}
+
+// Dynamically sets current sampling interval
+void set_sampling_interval(int new_interval){
+	current_sampling_interval = new_interval;
+}
+
+// Gets current sampling interval
+int get_sampling_interval(){
+	return current_sampling_interval;
 }

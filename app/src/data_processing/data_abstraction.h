@@ -7,7 +7,7 @@
  * Refer to:
  * https://docs.zephyrproject.org/latest/kernel/services/threads/index.html
  */
-#define BUFFER_THREAD_STACK_SIZE 4096
+#define BUFFER_THREAD_STACK_SIZE 512
 #define BUFFER_THREAD_PRIORITY 5 /* preemptible */
 extern struct k_sem data_in_buffer;
 
