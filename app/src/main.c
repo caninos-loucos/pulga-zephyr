@@ -205,7 +205,7 @@ static void sensors_thread_function(void *param0, void *param1, void *param2)
 		if (!data.scd30.error)
 		{
 			sensor_channel_get(allSensors->scd30, SENSOR_CHAN_CO2,
-							   &data.scd30.temperature);
+							   &data.scd30.co2);
 			sensor_channel_get(allSensors->scd30, SENSOR_CHAN_AMBIENT_TEMP,
 							   &data.scd30.temperature);
 			sensor_channel_get(allSensors->scd30, SENSOR_CHAN_HUMIDITY,
@@ -220,6 +220,7 @@ static void sensors_thread_function(void *param0, void *param1, void *param2)
 
 		//Notify measurements are ready with semaphore
 		k_sem_give(&allSensors->data_ready);
-		k_sleep(K_MSEC(1000));
+		//If scd30 is used, use 5000 msec or above to ensure the data is ready
+		k_sleep(K_MSEC(5000));
 	}
 }

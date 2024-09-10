@@ -48,7 +48,7 @@
 
 // Number of instances of device
 #if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
-#warning "SI1133 driver enabled without any devices"
+#warning "SCD30 driver enabled without any devices"
 #endif
 
 LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
@@ -279,9 +279,6 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
 	data->temp = scd30_bytes_to_float(rx_data.temp_be);
 	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
-
-	// Print temporário. Retirar depois!
-	printk("CO2 (interno/temp): %f\n ppm", data->co2_ppm);
 
 	return 0;
 }
