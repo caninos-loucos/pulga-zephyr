@@ -280,6 +280,9 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	data->temp = scd30_bytes_to_float(rx_data.temp_be);
 	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
 
+	// Print temporário. Retirar depois!
+	printk("CO2 (interno/temp): %f\n ppm", data->co2_ppm);
+
 	return 0;
 }
 
