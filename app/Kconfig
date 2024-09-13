@@ -22,3 +22,7 @@ config SAMPLING_INTERVAL
 config TRANSMISSION_INTERVAL
 	int "Transmission Interval in Milliseconds"
 	default 0
+
+config SEND_UART
+	bool "Print data in buffer in console via UART"
+	default UART_CONSOLE

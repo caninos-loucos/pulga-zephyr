@@ -8,45 +8,53 @@ LOG_MODULE_REGISTER(data_buffer, CONFIG_APP_LOG_LEVEL);
  * DEFINITIONS
  */
 
-static K_THREAD_STACK_DEFINE(buffer_thread_stack_area, BUFFER_THREAD_STACK_SIZE);
-static struct k_thread buffer_thread_data;
-static k_tid_t buffer_thread_id;
-struct k_sem data_in_buffer;
-
-// Functions that bufferizes data in separate thread
-static void perform_insert_in_buffer(void *, void *, void *);
+// Declare and initialize ring buffer
+RING_BUF_ITEM_DECLARE(data_buffer, BUFFER_ITEMS);
+// Gets type of data so appropriate handler can get item from buffer
+int get_data_type();
 
 /**
  * IMPLEMENTATIONS
  */
 
-int insert_in_buffer(){
-    //Thread control block - metadata
-    k_sem_init(&data_in_buffer, 0, 1);
+int get_buffer_data(uint32_t* data_model, enum DataType* data_type){
+    if(!get_data_type(data_type)){
+        LOG_DBG("datatype: %d\n", *data_type);
+        data_apis[*data_type]->parse_buffer_data(data_model);
+        return 0;
+    }
+    return -1;
+}
 
-	/* Create thread and start it immediately. */
-	buffer_thread_id = k_thread_create(&buffer_thread_data, buffer_thread_stack_area,
-							 K_THREAD_STACK_SIZEOF(buffer_thread_stack_area),
-                             perform_insert_in_buffer, NULL, NULL, NULL, 
-                             BUFFER_THREAD_PRIORITY, 0, K_NO_WAIT);
+int get_data_type(uint16_t* data_type){
+    // Size of item type in bytes
+    int type_size = 2;
+    uint8_t type_bytes[type_size];
+    // Peek into the ring buffer to get next item data type
+    int size = ring_buf_peek(&data_buffer, type_bytes, type_size);
+    if(size != type_size){
+        return -1;
+        LOG_ERR("Failed to get item type");
+    }
+    // Combines bytes into data_type
+	*data_type = type_bytes[0] | (type_bytes[1] << 8);
+
+	return 0;
+}
+
+int insert_in_buffer(enum DataType data_type, uint8_t value, 
+                    uint32_t* data_words, uint8_t num_words){
+    while(ring_buf_item_put(&data_buffer, data_type, value, 
+                        data_words, num_words) != 0){
+        LOG_ERR("Failed to insert data in ring buffer.");
+        enum DataType last_item_type = -1;
+        // Removes oldest item
+        get_buffer_data(NULL, &last_item_type);
+    }
     return 0;
 }
 
-static void perform_insert_in_buffer(void *param0, void *param1, void *param2){
-    ARG_UNUSED(param0);
-    ARG_UNUSED(param1);
-	ARG_UNUSED(param2);
-
-    while(1){
-
-        LOG_DBG("waiting data");
-        //Waits indefinitely until sensor measurements are ready
-        k_sem_take(&sensors_return.data_ready, K_FOREVER);
-        LOG_DBG("data ready");
-
-        // TODO: acquires lock and saves data to buffer
-
-        // Notify buffer has data with semaphore
-        k_sem_give(&data_in_buffer);
-    }
+// Verifies if buffer is empty
+int data_buffer_is_empty(){
+	return ring_buf_is_empty(&data_buffer);
 }

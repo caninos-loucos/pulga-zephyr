@@ -1,10 +1,11 @@
 #ifndef UART_INTERFACE_H
 #define UART_INTERFACE_H
+#include <communication/comm_interface.h>
 
 #define UART_THREAD_STACK_SIZE 1024
 #define UART_THREAD_PRIORITY 5 /* preemptible */
 
-// Sends data via UART (terminal)
-int send_data();
+// Register UART callbacks
+ChannelAPI* register_uart_callbacks();
 
 #endif /* UART_INTERFACE_H */

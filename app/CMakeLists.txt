@@ -13,6 +13,10 @@ target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_sources(app PRIVATE 
                     src/main.c
+                    src/communication/comm_interface.c
                     src/communication/uart/uart_interface.c
                     src/data_processing/data_buffer.c
-                    src/sensors/sensors_interface.c)
+                    src/data_processing/data_abstraction.c
+                    src/data_processing/si1133/si1133_model.c
+                    src/sensors/sensors_interface.c
+                    src/sensors/si1133/si1133_service.c)
