@@ -20,8 +20,8 @@ config SAMPLING_INTERVAL
 	depends on SENSOR
 
 config TRANSMISSION_INTERVAL
-	int "Transmission Interval in Milliseconds"
-	default 0
+	int "Transmission Interval in Milliseconds. Mininum value of 1 guarantees correct system operation"
+	default 1
 
 config SEND_UART
 	bool "Print data in buffer in console via UART"

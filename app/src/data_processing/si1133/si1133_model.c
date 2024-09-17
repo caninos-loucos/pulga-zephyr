@@ -33,8 +33,10 @@ void parse_buffer_data(uint32_t* data_model){
             return;
         }
         if (error) {
-            LOG_ERR("fetch sample from \"%s\" failed: %d", "Si1133", error);
+            LOG_ERR("Error reading from \"%s\": %d", "Si1133", error);
         }
+        LOG_DBG("Got item from buffer starting with '0x%X' and ending with '0x%X'", 
+            data_model[0], data_model[size_words - 1]);
     } else {
         LOG_ERR("Failed to get data from ring buffer.");
         data_model = NULL;

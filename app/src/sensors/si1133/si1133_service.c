@@ -13,7 +13,8 @@ LOG_MODULE_REGISTER(si1133_service, CONFIG_APP_LOG_LEVEL);
  */
 
 static const struct device *si1133;
-static SensorAPI si1133_api;
+static SensorAPI si1133_api = {0}; 
+static SensorAPI* si1133_api_ptr = &si1133_api; // Pointer to static instance
 
 /**
  * IMPLEMENTATIONS
@@ -31,6 +32,7 @@ static void init_sensor(){
 	if (!device_is_ready(si1133))
 	{
 		LOG_ERR("device \"%s\" is not ready", si1133->name);
+        si1133_api_ptr = NULL;
 	}
 }
 
@@ -68,5 +70,5 @@ SensorAPI* register_si1133_callbacks(){
     LOG_DBG("Registering Si1133 callbacks");
     si1133_api.init_sensor = init_sensor;
     si1133_api.read_sensor_values = read_sensor_values;
-    return &si1133_api;
+    return si1133_api_ptr;
 }

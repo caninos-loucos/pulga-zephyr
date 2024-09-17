@@ -51,6 +51,8 @@ int insert_in_buffer(enum DataType data_type, uint8_t value,
         // Removes oldest item
         get_buffer_data(NULL, &last_item_type);
     }
+    LOG_DBG("Wrote item to buffer starting with '0x%X' and ending with '0x%X'", 
+        data_words[0], data_words[num_words - 1]);
     return 0;
 }
 

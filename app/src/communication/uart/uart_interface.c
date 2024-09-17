@@ -50,7 +50,7 @@ static void send_data_uart(void *param0, void *param1, void *param2){
         data_apis[data_unit.data_type]->encode_verbose(data_unit.data_model,
                                         encoded_data, sizeof(encoded_data));
 		/* print data */
-        printk("%s", encoded_data);
+        printk("Encoded data: %s", encoded_data);
 
         // Signal back that processing is complete
         k_sem_give(&data_processed);
