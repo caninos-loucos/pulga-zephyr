@@ -18,7 +18,7 @@
 	#define LORAWAN_APP_KEY	*/
 #include "keys.h"
 
-#define LORAWAN_SELECTED_REGION LORAWAN_REGION_AU915
+#define LORAWAN_SELECTED_REGION LORAWAN_REGION_LA915
 
 #define LOG_LEVEL CONFIG_LOG_DEFAULT_LEVEL
 #include <zephyr/logging/log.h>

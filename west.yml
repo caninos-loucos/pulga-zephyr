@@ -14,7 +14,7 @@ manifest:
 
   projects:
     - name: zephyr
-      remote: zephyrproject-rtos
+      remote: caninos
       revision: main
       import:
         # By using name-allowlist we can clone only the modules that are
