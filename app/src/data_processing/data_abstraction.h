@@ -31,6 +31,8 @@ typedef struct{
 	// void* (*encode_minimalist)(uint32_t* data_model, uint8_t* encoded_data);
     // // Splits values of data model into many individual one item sized buffers
 	// void* (*split_values)(uint32_t* data_model, uint8_t** value_list);
+    // Size of data model in 32-bit words
+    uint8_t data_model_words;
 } DataAPI;
 
 extern DataAPI* data_apis[MAX_DATA_TYPE];
@@ -40,7 +42,7 @@ int register_data_callbacks();
 // Gets item from buffer
 int get_buffer_data(uint32_t* data_model, enum DataType* type);
 // Inserts data in buffer
-int insert_in_buffer(enum DataType type, uint8_t value, uint32_t* data_words, uint8_t num_words);
+int insert_in_buffer(enum DataType type, uint8_t value, uint32_t* data_words);
 // Verifies if buffer is empty
 int data_buffer_is_empty();
 

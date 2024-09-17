@@ -38,7 +38,7 @@ static void init_sensor(){
 // Reads sensor values and stores them in buffer
 static void read_sensor_values(){
     SensorModelSi1133 si1133_model;
-    uint32_t si1133_data[SI1133_MODEL_WORDS];
+    uint32_t si1133_data[MAX_32_WORDS];
     int error = 0;
 
     error = sensor_sample_fetch(si1133);
@@ -57,9 +57,9 @@ static void read_sensor_values(){
 					"Si1133", error);
     }
 
-    memcpy(&si1133_data, &si1133_model, SI1133_MODEL_WORDS * sizeof(uint32_t));
+    memcpy(&si1133_data, &si1133_model, sizeof(SensorModelSi1133));
 
-    if(insert_in_buffer(SI1133_MODEL, error, si1133_data, SI1133_MODEL_WORDS) != 0){
+    if(insert_in_buffer(SI1133_MODEL, error, si1133_data) != 0){
         LOG_ERR("Failed to insert data in ring buffer.");
     }
 }

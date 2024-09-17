@@ -39,7 +39,7 @@ static void init_sensor()
 static void read_sensor_values()
 {
     SensorModelBME280 bme280_model;
-    uint32_t bme280_data[BME280_MODEL_WORDS];
+    uint32_t bme280_data[MAX_32_WORDS];
     int error = 0;
 
     error = sensor_sample_fetch(bme280);
@@ -58,9 +58,9 @@ static void read_sensor_values()
                 "BME280", error);
     }
 
-    memcpy(&bme280_data, &bme280_model, BME280_MODEL_WORDS * sizeof(uint32_t));
+    memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
 
-    if (insert_in_buffer(BME280_MODEL, error, bme280_data, BME280_MODEL_WORDS) != 0)
+    if (insert_in_buffer(BME280_MODEL, error, bme280_data) != 0)
     {
         LOG_ERR("Failed to insert data in ring buffer.");
     }

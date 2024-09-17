@@ -14,34 +14,6 @@ static SensorModelSi1133* si1133_data;
  * IMPLEMENTATIONS
  */
 
-// Correctly parses data from buffer
-static void parse_buffer_data(uint32_t* data_model){
-    // LOG_DBG("Parsing data");
-    uint16_t type;
-    uint8_t error = 0, size_words = SI1133_MODEL_WORDS;
-    bool discarding = 0;
-
-    // Discarding oldest data
-    if(data_model == NULL){
-        discarding = 1;
-        LOG_DBG("Discarding data item");
-    }
-
-    if(!ring_buf_item_get(&data_buffer, &type, &error, data_model, &size_words)){
-        if(discarding){
-            return;
-        }
-        if (error) {
-            LOG_ERR("Error reading from \"%s\": %d", "Si1133", error);
-        }
-        LOG_DBG("Got item from buffer starting with '0x%X' and ending with '0x%X'", 
-            data_model[0], data_model[size_words - 1]);
-    } else {
-        LOG_ERR("Failed to get data from ring buffer.");
-        data_model = NULL;
-    }
-}
-
 // Encodes each value of data model into a verbose string
 static void encode_verbose(uint32_t* data_model, uint8_t* encoded_data, size_t encoded_size){
     si1133_data = (SensorModelSi1133 *)data_model;
@@ -58,7 +30,7 @@ static void encode_verbose(uint32_t* data_model, uint8_t* encoded_data, size_t e
 
 // Registers Si1133 model callbacks
 DataAPI* register_si1133_model_callbacks(){
-    si1133_model_api.parse_buffer_data = parse_buffer_data;
+    si1133_model_api.data_model_words = SI1133_MODEL_WORDS;
     si1133_model_api.encode_verbose = encode_verbose;
     // si1133_model_api.encode_minimalist = encode_minimalist;
     // si1133_model_api.split_values = split_values;
