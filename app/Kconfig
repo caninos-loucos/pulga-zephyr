@@ -18,6 +18,11 @@ config SAMPLING_INTERVAL
 	int "Sampling Interval in Milliseconds"
 	default 1000
 	depends on SENSOR
+	
+config BUFFER_WORDS
+	int "Number of 32-bit words the buffers can hold"
+	default 57344 # Using 224 out of 256kB of memory
+	depends on RING_BUFFER
 
 config TRANSMISSION_INTERVAL
 	int "Transmission Interval in Milliseconds. Mininum value of 1 guarantees correct system operation"

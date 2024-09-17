@@ -2,7 +2,7 @@
 #define UART_INTERFACE_H
 #include <communication/comm_interface.h>
 
-#define UART_THREAD_STACK_SIZE 1024
+#define UART_THREAD_STACK_SIZE 5120
 #define UART_THREAD_PRIORITY 5 /* preemptible */
 
 // Register UART callbacks

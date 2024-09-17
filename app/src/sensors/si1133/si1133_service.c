@@ -3,7 +3,6 @@
 #include <zephyr/logging/log.h>
 #include <drivers/si1133.h>
 #include <sensors/si1133/si1133_service.h>
-#include <data_processing/data_abstraction.h>
 #include <data_processing/si1133/si1133_model.h>
 
 LOG_MODULE_REGISTER(si1133_service, CONFIG_APP_LOG_LEVEL);

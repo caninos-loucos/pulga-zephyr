@@ -3,7 +3,6 @@
 
 LOG_MODULE_REGISTER(si1133_model, CONFIG_APP_LOG_LEVEL);
 
-
 /**
  * DEFINITIONS
  */
@@ -16,7 +15,7 @@ static SensorModelSi1133* si1133_data;
  */
 
 // Correctly parses data from buffer
-void parse_buffer_data(uint32_t* data_model){
+static void parse_buffer_data(uint32_t* data_model){
     // LOG_DBG("Parsing data");
     uint16_t type;
     uint8_t error = 0, size_words = SI1133_MODEL_WORDS;
@@ -44,7 +43,7 @@ void parse_buffer_data(uint32_t* data_model){
 }
 
 // Encodes each value of data model into a verbose string
-void encode_verbose(uint32_t* data_model, uint8_t* encoded_data, size_t encoded_size){
+static void encode_verbose(uint32_t* data_model, uint8_t* encoded_data, size_t encoded_size){
     si1133_data = (SensorModelSi1133 *)data_model;
 
     // Format the string safely

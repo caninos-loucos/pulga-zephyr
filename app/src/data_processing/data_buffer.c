@@ -9,7 +9,7 @@ LOG_MODULE_REGISTER(data_buffer, CONFIG_APP_LOG_LEVEL);
  */
 
 // Declare and initialize ring buffer
-RING_BUF_ITEM_DECLARE(data_buffer, BUFFER_ITEMS);
+RING_BUF_ITEM_DECLARE(data_buffer, CONFIG_BUFFER_WORDS);
 // Gets type of data so appropriate handler can get item from buffer
 int get_data_type();
 
@@ -33,8 +33,8 @@ int get_data_type(uint16_t* data_type){
     // Peek into the ring buffer to get next item data type
     int size = ring_buf_peek(&data_buffer, type_bytes, type_size);
     if(size != type_size){
-        return -1;
         LOG_ERR("Failed to get item type");
+        return -1;
     }
     // Combines bytes into data_type
 	*data_type = type_bytes[0] | (type_bytes[1] << 8);

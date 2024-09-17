@@ -40,7 +40,8 @@ static void send_data_uart(void *param0, void *param1, void *param2){
     ARG_UNUSED(param1);
 	ARG_UNUSED(param2);
 
-    uint8_t encoded_data[4 * MAX_32_WORDS];
+    // Max fprintf character output is 4096
+    uint8_t encoded_data[1024];
 
     while (1)
 	{

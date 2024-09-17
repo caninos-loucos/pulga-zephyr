@@ -1,6 +1,7 @@
 #include <zephyr/logging/log.h>
 #include <sensors/sensors_interface.h>
 #include <sensors/si1133/si1133_service.h>
+#include <sensors/bme280/bme280_service.h>
 
 LOG_MODULE_REGISTER(sensors_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -34,12 +35,12 @@ static void perform_read_sensors(void *, void *, void *);
 
 int register_sensors_callbacks(){
 	LOG_DBG("Registering sensors callbacks");
-	// #if defined(CONFIG_BME280)
-	// sensors_apis[BME280] = register_bme280_callbacks;
-	// #endif /* CONFIG_BME280 */
+	#if defined(CONFIG_BME280)
+	sensors_apis[BME280] = register_bme280_callbacks();
+	#endif /* CONFIG_BME280 */
 
 	// #if defined(CONFIG_BMI160)
-	// sensors_apis[BMI160] = register_bmi160_callbacks;
+	// sensors_apis[BMI160] = register_bmi160_callbacks();
 	// #endif /* CONFIG_BMI160 */
 
 	#if defined(CONFIG_SI1133)
@@ -47,7 +48,7 @@ int register_sensors_callbacks(){
 	#endif /* CONFIG_SI1133 */
 
 	// #if defined(CONFIG_SCD30)
-	// sensors_apis[SCD30] = register_scd30_callbacks;
+	// sensors_apis[SCD30] = register_scd30_callbacks();
 	// #endif /* CONFIG_SCD30 */
 
 	return 0;

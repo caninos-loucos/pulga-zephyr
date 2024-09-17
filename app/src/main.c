@@ -2,10 +2,28 @@
 
 #include <sensors/sensors_interface.h>
 #include <data_processing/data_abstraction.h>
-#include <communication/uart/uart_interface.h>
+#include <communication/comm_interface.h>
 
 // change log level in debug.conf
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
+
+// Registers application callbacks
+int register_callbacks();
+
+int main(void)
+{
+	LOG_DBG("Starting application");
+	if(!register_callbacks()){
+		if(init_communication()){
+			LOG_ERR("Couldn't start communication.");
+		}
+		if(read_sensors()){
+			LOG_ERR("Couldn't start sensors.");
+		}
+	}
+	k_sleep(K_FOREVER);
+	return 0;
+}
 
 int register_callbacks(){
 	// register sensors callbacks
@@ -23,20 +41,5 @@ int register_callbacks(){
 		LOG_ERR("Couldn't register data type callbacks.");
 		return -3;
 	}
-	return 0;
-}
-
-int main(void)
-{
-	LOG_DBG("Starting application");
-	if(!register_callbacks()){
-		if(init_communication()){
-			LOG_ERR("Couldn't start communication.");
-		}
-		if(read_sensors()){
-			LOG_ERR("Couldn't start sensors.");
-		}
-	}
-	k_sleep(K_FOREVER);
 	return 0;
 }

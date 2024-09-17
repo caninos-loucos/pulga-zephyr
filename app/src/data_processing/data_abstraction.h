@@ -7,9 +7,6 @@
 // TODO: handle multi-thread access if transmission interval
 // is different for each channel
 extern struct ring_buf data_buffer;
-// Number of 32-bit words the buffers can hold
-// Using 224 out of 256kB of memory
-#define BUFFER_ITEMS 57344
 // Number of maximum 32-bit words an item of buffer can have
 #define MAX_32_WORDS 16
 
