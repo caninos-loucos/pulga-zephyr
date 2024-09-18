@@ -11,6 +11,7 @@
 #define SENSORS_THREAD_PRIORITY 5 /* preemptible */
 
 // Encoding used to map sensors APIs
+// Sensors must be on the same order as in DataType enum
 enum SensorType {
     BME280,
     BMI160,
@@ -25,6 +26,8 @@ typedef struct{
 	void (*init_sensor)();
 	// Reads sensor values and stores them in buffer
 	void (*read_sensor_values)();
+	// Data processing API
+	DataAPI* sensor_model_api;
 } SensorAPI;
 
 extern SensorAPI* sensors_apis[MAX_SENSORS];

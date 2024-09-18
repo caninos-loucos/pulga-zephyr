@@ -3,7 +3,6 @@
 #include <zephyr/logging/log.h>
 #include <drivers/si1133.h>
 #include <sensors/si1133/si1133_service.h>
-#include <data_processing/si1133/si1133_model.h>
 
 LOG_MODULE_REGISTER(si1133_service, CONFIG_APP_LOG_LEVEL);
 
@@ -27,8 +26,9 @@ static void init_sensor(){
     if (!si1133)
 	{
 		LOG_ERR("si1133 not declared at device tree");
+        si1133_api_ptr = NULL;
 	}
-	if (!device_is_ready(si1133))
+	else if (!device_is_ready(si1133))
 	{
 		LOG_ERR("device \"%s\" is not ready", si1133->name);
         si1133_api_ptr = NULL;
@@ -69,5 +69,6 @@ SensorAPI* register_si1133_callbacks(){
     LOG_DBG("Registering Si1133 callbacks");
     si1133_api.init_sensor = init_sensor;
     si1133_api.read_sensor_values = read_sensor_values;
+    si1133_api.sensor_model_api = register_si1133_model_callbacks();
     return si1133_api_ptr;
 }

@@ -1,7 +1,6 @@
 #include <zephyr/logging/log.h>
 #include <data_processing/data_abstraction.h>
-#include <data_processing/si1133/si1133_model.h>
-#include <data_processing/bme280/bme280_model.h>
+#include <sensors/sensors_interface.h>
 
 LOG_MODULE_REGISTER(data_abstraction, CONFIG_APP_LOG_LEVEL);
 
@@ -9,29 +8,37 @@ LOG_MODULE_REGISTER(data_abstraction, CONFIG_APP_LOG_LEVEL);
  * DEFINITIONS
  */
 
-DataAPI* data_apis[MAX_DATA_TYPE] = {0};
+DataAPI *data_apis[SENSOR_TYPE_OFFSET] = {0};
 
 /**
  * IMPLEMENTATIONS
  */
 
-int register_data_callbacks(){
-	LOG_DBG("Registering data abstraction callbacks");
-	#if defined(CONFIG_BME280)
-	data_apis[BME280_MODEL] = register_bme280_model_callbacks();
-	#endif /* CONFIG_BME280 */
-
-	// #if defined(CONFIG_BMI160)
-	// data_apis[BMI160_MODEL] = register_bmi160_model_callbacks();
-	// #endif /* CONFIG_BMI160 */
-
-	#if defined(CONFIG_SI1133)
-	data_apis[SI1133_MODEL] = register_si1133_model_callbacks();
-	#endif /* CONFIG_SI1133 */
-
-	// #if defined(CONFIG_SCD30)
-	// data_apis[SCD30_MODEL] = register_scd30_model_callbacks();
-	// #endif /* CONFIG_SCD30 */
-
+int register_data_callbacks()
+{
 	return 0;
+}
+
+// Encode data to specified format
+void encode_data(enum DataType data_type, enum EncodingLevel encoding,
+				 uint32_t *data_model, uint8_t *encoded_data, size_t encoded_size)
+{
+	switch (encoding)
+	{
+	case VERBOSE:
+		get_data_api(data_type)->encode_verbose(data_model, encoded_data, encoded_size);
+		break;
+	default:
+		LOG_ERR("Invalid encoding level");
+	}
+}
+
+DataAPI *get_data_api(enum DataType data_type)
+{
+	if (data_type >= SENSOR_TYPE_OFFSET)
+	{
+		data_type = data_type - SENSOR_TYPE_OFFSET;
+		return sensors_apis[data_type]->sensor_model_api;
+	}
+	return data_apis[data_type];
 }

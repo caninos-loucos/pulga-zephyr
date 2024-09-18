@@ -1,5 +1,5 @@
 #include <zephyr/logging/log.h>
-#include <data_processing/si1133/si1133_model.h>
+#include <sensors/si1133/si1133_service.h>
 
 LOG_MODULE_REGISTER(si1133_model, CONFIG_APP_LOG_LEVEL);
 

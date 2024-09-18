@@ -2,7 +2,6 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
 #include <sensors/bme280/bme280_service.h>
-#include <data_processing/bme280/bme280_model.h>
 
 LOG_MODULE_REGISTER(bme280_service, CONFIG_APP_LOG_LEVEL);
 
@@ -27,8 +26,9 @@ static void init_sensor()
     if (!bme280)
     {
         LOG_ERR("bme280 not declared at device tree");
+        bme280_api_ptr = NULL;
     }
-    if (!device_is_ready(bme280))
+    else if (!device_is_ready(bme280))
     {
         LOG_ERR("device \"%s\" is not ready", bme280->name);
         bme280_api_ptr = NULL;
@@ -72,5 +72,6 @@ SensorAPI *register_bme280_callbacks()
     LOG_DBG("Registering BME280 callbacks");
     bme280_api.init_sensor = init_sensor;
     bme280_api.read_sensor_values = read_sensor_values;
+    bme280_api.sensor_model_api = register_bme280_model_callbacks();
     return bme280_api_ptr;
 }

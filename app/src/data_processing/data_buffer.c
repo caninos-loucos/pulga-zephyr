@@ -52,7 +52,7 @@ int insert_in_buffer(enum DataType data_type, uint8_t value,
                      uint32_t *data_words)
 {
 
-    uint8_t num_words = data_apis[data_type]->data_model_words;
+    uint8_t num_words = get_data_api(data_type)->data_model_words;
 
     while (ring_buf_item_put(&data_buffer, data_type, value,
                              data_words, num_words) != 0)
@@ -77,7 +77,7 @@ static void parse_buffer_data(uint32_t *data_model, enum DataType data_type)
 {
     // LOG_DBG("Parsing data");
     uint16_t type;
-    uint8_t error = 0, num_words = data_apis[data_type]->data_model_words;
+    uint8_t error = 0, num_words = get_data_api(data_type)->data_model_words;
     bool discarding = 0;
 
     // Discarding oldest data

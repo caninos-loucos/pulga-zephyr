@@ -1,5 +1,5 @@
 #include <zephyr/logging/log.h>
-#include <data_processing/bme280/bme280_model.h>
+#include <sensors/bme280/bme280_service.h>
 
 LOG_MODULE_REGISTER(bme280_model, CONFIG_APP_LOG_LEVEL);
 
