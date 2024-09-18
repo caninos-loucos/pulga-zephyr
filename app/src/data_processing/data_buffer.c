@@ -1,5 +1,5 @@
 #include <zephyr/logging/log.h>
-#include <sensors/sensors_interface.h>
+#include <zephyr/sys/ring_buffer.h>
 #include <data_processing/data_abstraction.h>
 
 LOG_MODULE_REGISTER(data_buffer, CONFIG_APP_LOG_LEVEL);
@@ -8,23 +8,22 @@ LOG_MODULE_REGISTER(data_buffer, CONFIG_APP_LOG_LEVEL);
  * DEFINITIONS
  */
 
-// Declare and initialize ring buffer
+// Declares and initializes ring buffer that will store data until it is read and sent
 RING_BUF_ITEM_DECLARE(data_buffer, CONFIG_BUFFER_WORDS);
-// Gets type of data so appropriate handler can get item from buffer
-int get_data_type();
+// Peeks into buffer to return type of data
+static int get_data_type();
 // Parses data from buffer according to data type
-static void parse_buffer_data(uint32_t *data_model, enum DataType data_type);
+static int parse_buffer_data(uint32_t *data_words, enum DataType data_type);
 
 /**
  * IMPLEMENTATIONS
  */
 
-int get_buffer_data(uint32_t *data_model, enum DataType *data_type)
+int get_from_buffer(uint32_t *data_words, enum DataType *data_type)
 {
-    if (!get_data_type(data_type))
+    if (get_data_type(data_type) == 0 &&
+        parse_buffer_data(data_words, *data_type) == 0)
     {
-        LOG_DBG("datatype: %d\n", *data_type);
-        parse_buffer_data(data_model, *data_type);
         return 0;
     }
     return -1;
@@ -43,24 +42,24 @@ int get_data_type(uint16_t *data_type)
         return -1;
     }
     // Combines bytes into data_type
-    *data_type = type_bytes[0] | (type_bytes[1] << 8);
+    memcpy(data_type, type_bytes, type_size);
 
     return 0;
 }
 
-int insert_in_buffer(enum DataType data_type, uint8_t value,
-                     uint32_t *data_words)
+int insert_in_buffer(uint32_t *data_words, enum DataType data_type, uint8_t custom_value)
 {
+    // Number of 32-bit words in data_words
+    uint8_t num_words = get_data_api(data_type)->num_data_words;
 
-    uint8_t num_words = get_data_api(data_type)->data_model_words;
-
-    while (ring_buf_item_put(&data_buffer, data_type, value,
+    // Removes oldest items from buffer until new item fits
+    while (ring_buf_item_put(&data_buffer, data_type, custom_value,
                              data_words, num_words) != 0)
     {
         LOG_ERR("Failed to insert data in ring buffer.");
         enum DataType last_item_type = -1;
-        // Removes oldest item
-        get_buffer_data(NULL, &last_item_type);
+        // Discards item
+        get_from_buffer(NULL, &last_item_type);
     }
     LOG_DBG("Wrote item to buffer starting with '0x%X' and ending with '0x%X'",
             data_words[0], data_words[num_words - 1]);
@@ -73,32 +72,28 @@ int data_buffer_is_empty()
     return ring_buf_is_empty(&data_buffer);
 }
 
-static void parse_buffer_data(uint32_t *data_model, enum DataType data_type)
+int parse_buffer_data(uint32_t *data_words, enum DataType data_type)
 {
-    // LOG_DBG("Parsing data");
+    // Number of 32-bit words in data_words
+    uint8_t custom_value = 0, num_words = get_data_api(data_type)->num_data_words;
     uint16_t type;
-    uint8_t error = 0, num_words = get_data_api(data_type)->data_model_words;
-    bool discarding = 0;
+    int error = 0;
 
     // Discarding oldest data
-    if (data_model == NULL)
+    if (data_words == NULL)
     {
-        discarding = 1;
         LOG_DBG("Discarding data item");
     }
-
-    if (!ring_buf_item_get(&data_buffer, &type, &error, data_model, &num_words))
-    {
-        if (discarding)
-        {
-            return;
-        }
-        LOG_DBG("Got item from buffer starting with '0x%X' and ending with '0x%X'",
-                data_model[0], data_model[num_words - 1]);
-    }
-    else
+    // Tries to get actual item from buffer
+    error = ring_buf_item_get(&data_buffer, &type, &custom_value, data_words, &num_words);
+    if (error)
     {
         LOG_ERR("Failed to get data from ring buffer.");
-        data_model = NULL;
+        data_words = NULL;
+        return -1;
     }
+    LOG_DBG("Got item from buffer with datatype %d, "
+            "starting with '0x%X' and ending with '0x%X'",
+            data_type, data_words[0], data_words[num_words - 1]);
+    return 0;
 }

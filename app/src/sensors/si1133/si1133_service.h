@@ -3,7 +3,6 @@
 
 #include <zephyr/drivers/sensor.h>
 #include <sensors/sensors_interface.h>
-#include <data_processing/data_abstraction.h>
 
 // Number of 32-bit words in each data item (model)
 // Each sensor_value has 2 words, si1133 has 4 measurements
@@ -17,10 +16,10 @@ typedef struct
     struct sensor_value uv_index;
 } SensorModelSi1133;
 
-// Register Si1133 model callbacks
-DataAPI* register_si1133_model_callbacks();
+// Registers Si1133 model callbacks
+DataAPI *register_si1133_model_callbacks();
 
-// Register Si1133 sensor callbacks
-SensorAPI* register_si1133_callbacks();
+// Registers Si1133 sensor callbacks
+SensorAPI *register_si1133_callbacks();
 
 #endif /* SI1133_SERVICE_H */

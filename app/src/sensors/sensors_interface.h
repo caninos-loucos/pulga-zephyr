@@ -11,35 +11,38 @@
 #define SENSORS_THREAD_PRIORITY 5 /* preemptible */
 
 // Encoding used to map sensors APIs
-// Sensors must be on the same order as in DataType enum
-enum SensorType {
-    BME280,
-    BMI160,
-    SI1133,
-    SCD30,
+// **Sensors must be on the same order as in DataType enum**
+enum SensorType
+{
+	BME280,
+	BMI160,
+	SI1133,
+	SCD30,
 	MAX_SENSORS // Total number of sensors
 };
 
 // Functions exposed for each sensor
-typedef struct{
+typedef struct
+{
 	// Initializes sensor
 	void (*init_sensor)();
 	// Reads sensor values and stores them in buffer
 	void (*read_sensor_values)();
 	// Data processing API
-	DataAPI* sensor_model_api;
+	DataAPI *data_model_api;
 } SensorAPI;
 
-extern SensorAPI* sensors_apis[MAX_SENSORS];
+// List of registered sensor APIs
+extern SensorAPI *sensor_apis[MAX_SENSORS];
 
-// TODO: probably will require sync
+// Registers callbacks for the used sensors
+int register_sensors_callbacks();
+// Initializes sensors and start reading them
+int read_sensors();
+// #TODO: probably will require sync
 // Dynamically sets current sampling interval
 void set_sampling_interval(int new_interval);
 // Gets current sampling interval
 int get_sampling_interval();
-// Registers callbacks for the used sensors
-int register_sensors_callbacks();
-// Initializes sensors and start reading
-int read_sensors();
 
 #endif /* SENSORS_INTERFACE_H */

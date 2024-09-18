@@ -11,18 +11,19 @@ LOG_MODULE_REGISTER(bme280_service, CONFIG_APP_LOG_LEVEL);
 
 static const struct device *bme280;
 static SensorAPI bme280_api = {0};
-static SensorAPI *bme280_api_ptr = &bme280_api; // Pointer to static instance
+static SensorAPI *bme280_api_ptr = &bme280_api; // Pointer to sensor API
 
 /**
  * IMPLEMENTATIONS
  */
 
-// Initializes sensor
+// Gets and initializes device
 static void init_sensor()
 {
     LOG_DBG("Initializing BME280");
     bme280 = DEVICE_DT_GET_ANY(bosch_bme280);
 
+    // Removes sensor API from registered APIs if cannot start sensor
     if (!bme280)
     {
         LOG_ERR("bme280 not declared at device tree");
@@ -35,7 +36,7 @@ static void init_sensor()
     }
 }
 
-// Reads sensor values and stores them in buffer
+// Reads sensor measurements and stores them in buffer
 static void read_sensor_values()
 {
     SensorModelBME280 bme280_model;
@@ -60,7 +61,7 @@ static void read_sensor_values()
 
     memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
 
-    if (insert_in_buffer(BME280_MODEL, error, bme280_data) != 0)
+    if (insert_in_buffer(bme280_data, BME280_MODEL, error) != 0)
     {
         LOG_ERR("Failed to insert data in ring buffer.");
     }
@@ -72,6 +73,6 @@ SensorAPI *register_bme280_callbacks()
     LOG_DBG("Registering BME280 callbacks");
     bme280_api.init_sensor = init_sensor;
     bme280_api.read_sensor_values = read_sensor_values;
-    bme280_api.sensor_model_api = register_bme280_model_callbacks();
+    bme280_api.data_model_api = register_bme280_model_callbacks();
     return bme280_api_ptr;
 }
