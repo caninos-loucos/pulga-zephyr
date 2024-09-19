@@ -2,6 +2,7 @@
 #include <sensors/sensors_interface.h>
 #include <sensors/si1133/si1133_service.h>
 #include <sensors/bme280/bme280_service.h>
+#include <sensors/bmi160/bmi160_service.h>
 
 LOG_MODULE_REGISTER(sensors_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -39,9 +40,9 @@ int register_sensors_callbacks()
 	sensor_apis[BME280] = register_bme280_callbacks();
 #endif /* CONFIG_BME280 */
 
-	// #if defined(CONFIG_BMI160)
-	// sensor_apis[BMI160] = register_bmi160_callbacks();
-	// #endif /* CONFIG_BMI160 */
+#if defined(CONFIG_BMI160)
+	sensor_apis[BMI160] = register_bmi160_callbacks();
+#endif /* CONFIG_BMI160 */
 
 #if defined(CONFIG_SI1133)
 	sensor_apis[SI1133] = register_si1133_callbacks();
@@ -63,13 +64,21 @@ int read_sensors()
 
 void init_sensors()
 {
-	// Calls initialization function for each registered API
 	LOG_DBG("Initializing sensors");
+
+	int error;
+	// Calls initialization function for each registered API
 	for (int i = 0; i < MAX_SENSORS; i++)
 	{
-		if (sensor_apis[i] != NULL)
+		error = 0;
+		if (sensor_apis[i] == NULL)
 		{
-			sensor_apis[i]->init_sensor();
+			continue;
+		}
+		error = sensor_apis[i]->init_sensor();
+		if (error)
+		{
+			sensor_apis[i] = NULL;
 		}
 	}
 }

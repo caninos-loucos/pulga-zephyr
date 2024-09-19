@@ -25,7 +25,7 @@ enum SensorType
 typedef struct
 {
 	// Initializes sensor
-	void (*init_sensor)();
+	int (*init_sensor)();
 	// Reads sensor values and stores them in buffer
 	void (*read_sensor_values)();
 	// Data processing API

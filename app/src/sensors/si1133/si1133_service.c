@@ -12,14 +12,13 @@ LOG_MODULE_REGISTER(si1133_service, CONFIG_APP_LOG_LEVEL);
 
 static const struct device *si1133;
 static SensorAPI si1133_api = {0};
-static SensorAPI *si1133_api_ptr = &si1133_api; // Pointer to sensor API
 
 /**
  * IMPLEMENTATIONS
  */
 
 // Gets and initializes device
-static void init_sensor()
+static int init_sensor()
 {
     LOG_DBG("Initializing Si1133");
     si1133 = DEVICE_DT_GET_ANY(silabs_si1133);
@@ -28,18 +27,21 @@ static void init_sensor()
     if (!si1133)
     {
         LOG_ERR("si1133 not declared at device tree");
-        si1133_api_ptr = NULL;
+        return -1;
     }
     else if (!device_is_ready(si1133))
     {
         LOG_ERR("device \"%s\" is not ready", si1133->name);
-        si1133_api_ptr = NULL;
+        return -2;
     }
+    return 0;
 }
 
 // Reads sensor measurements and stores them in buffer
 static void read_sensor_values()
 {
+    LOG_DBG("Reading Si1133");
+
     SensorModelSi1133 si1133_model;
     uint32_t si1133_data[MAX_32_WORDS];
     int error = 0;
@@ -77,5 +79,5 @@ SensorAPI *register_si1133_callbacks()
     si1133_api.init_sensor = init_sensor;
     si1133_api.read_sensor_values = read_sensor_values;
     si1133_api.data_model_api = register_si1133_model_callbacks();
-    return si1133_api_ptr;
+    return &si1133_api;
 }

@@ -11,14 +11,13 @@ LOG_MODULE_REGISTER(bme280_service, CONFIG_APP_LOG_LEVEL);
 
 static const struct device *bme280;
 static SensorAPI bme280_api = {0};
-static SensorAPI *bme280_api_ptr = &bme280_api; // Pointer to sensor API
 
 /**
  * IMPLEMENTATIONS
  */
 
 // Gets and initializes device
-static void init_sensor()
+static int init_sensor()
 {
     LOG_DBG("Initializing BME280");
     bme280 = DEVICE_DT_GET_ANY(bosch_bme280);
@@ -27,18 +26,21 @@ static void init_sensor()
     if (!bme280)
     {
         LOG_ERR("bme280 not declared at device tree");
-        bme280_api_ptr = NULL;
+        return -1;
     }
     else if (!device_is_ready(bme280))
     {
         LOG_ERR("device \"%s\" is not ready", bme280->name);
-        bme280_api_ptr = NULL;
+        return -2;
     }
+    return 0;
 }
 
 // Reads sensor measurements and stores them in buffer
 static void read_sensor_values()
 {
+    LOG_DBG("Reading BME280");
+
     SensorModelBME280 bme280_model;
     uint32_t bme280_data[MAX_32_WORDS];
     int error = 0;
@@ -74,5 +76,5 @@ SensorAPI *register_bme280_callbacks()
     bme280_api.init_sensor = init_sensor;
     bme280_api.read_sensor_values = read_sensor_values;
     bme280_api.data_model_api = register_bme280_model_callbacks();
-    return bme280_api_ptr;
+    return &bme280_api;
 }
