@@ -23,4 +23,7 @@ target_sources(app PRIVATE
                     src/sensors/bmi160/bmi160_model.c
                     src/sensors/bmi160/bmi160_service.c
                     src/sensors/si1133/si1133_model.c
-                    src/sensors/si1133/si1133_service.c)
+                    src/sensors/si1133/si1133_service.c
+                    src/sensors/scd30/scd30_model.c
+                    src/sensors/scd30/scd30_service.c)
+
