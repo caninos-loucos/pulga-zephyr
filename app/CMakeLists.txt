@@ -9,4 +9,18 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(app LANGUAGES C)
 
-target_sources(app PRIVATE src/main.c)
+target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_sources(app PRIVATE 
+                    src/main.c
+                    src/communication/comm_interface.c
+                    src/communication/uart/uart_interface.c
+                    src/data_processing/data_buffer.c
+                    src/data_processing/data_abstraction.c
+                    src/sensors/sensors_interface.c
+                    src/sensors/bme280/bme280_model.c
+                    src/sensors/bme280/bme280_service.c
+                    src/sensors/bmi160/bmi160_model.c
+                    src/sensors/bmi160/bmi160_service.c
+                    src/sensors/si1133/si1133_model.c
+                    src/sensors/si1133/si1133_service.c)

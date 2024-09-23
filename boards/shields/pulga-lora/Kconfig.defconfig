@@ -1,0 +1,16 @@
+# Copyright (c) 2024 LSI-TEC
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_PULGA_LORA
+
+config SPI
+	default y
+
+config LORA
+	default y
+
+config LORA_SX127X
+	default y
+
+endif # SHIELD_PULGA_LORA
+
