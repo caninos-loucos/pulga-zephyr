@@ -221,6 +221,6 @@ static void sensors_thread_function(void *param0, void *param1, void *param2)
 		//Notify measurements are ready with semaphore
 		k_sem_give(&allSensors->data_ready);
 		//If scd30 is used, use 5000 msec or above to ensure the data is ready
-		k_sleep(K_MSEC(5000));
+		k_sleep(K_MSEC(1000));
 	}
 }

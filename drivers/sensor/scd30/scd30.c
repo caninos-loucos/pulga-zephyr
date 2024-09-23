@@ -53,6 +53,8 @@
 
 LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
 
+// Writes the desired command (cmd) into desired I2C bus 
+// Returns 0 if sucessful or -EIO (General input/output error)
 static int scd30_write_command(const struct device *dev, uint16_t cmd)
 {
 	const struct scd30_config *cfg = dev->config;
@@ -62,11 +64,15 @@ static int scd30_write_command(const struct device *dev, uint16_t cmd)
 	return i2c_write_dt(&cfg->bus, tx_buf, sizeof(tx_buf));
 }
 
+// Computes CRC (Cyclic Redundancy Check) value
+// Return the computed CRC value
 static uint8_t scd30_compute_crc(uint8_t *data, uint8_t data_len)
 {
 	return crc8(data, data_len, SCD30_CRC8_POLYNOMIAL, SCD30_CRC8_INIT, false);
 }
 
+// Compares CRC value with actual value
+// Returns 0 if sucessful or -EIO (General input/output error)
 static int scd30_check_crc(uint8_t *data, uint8_t data_len, uint8_t checksum)
 {
 	uint8_t actual_crc = scd30_compute_crc(data, data_len);
@@ -79,6 +85,8 @@ static int scd30_check_crc(uint8_t *data, uint8_t data_len, uint8_t checksum)
 	return 0;
 }
 
+// Writes the whole data (Command, value, CRC) into desired I2C bus
+// Returns 0 if sucessful or -EIO (General input/output error)
 static int scd30_write_register(const struct device *dev, uint16_t cmd, uint16_t val)
 {
 	const struct scd30_config *cfg = dev->config;
@@ -91,6 +99,9 @@ static int scd30_write_register(const struct device *dev, uint16_t cmd, uint16_t
 	return i2c_write_dt(&cfg->bus, tx_buf, sizeof(tx_buf));
 }
 
+// Reads the data from I2C and returns it into val pointer
+// Reg is the register the data must be read (?)
+// Returns 0 if sucessful or -EIO (General input/output error)
 static int scd30_read_register(const struct device *dev, uint16_t reg, uint16_t *val)
 {
 	const struct scd30_config *cfg = dev->config;
@@ -134,6 +145,8 @@ static int scd30_fill_data_buf(struct scd30_word word, uint8_t *dst)
 	return 0;
 }
 
+// Converts the data from byte type to float
+// Returns the value stored by the region pointed by bytes in float type
 static float scd30_bytes_to_float(const uint8_t *bytes)
 {
 	union {
@@ -145,6 +158,8 @@ static float scd30_bytes_to_float(const uint8_t *bytes)
 	return tmp.float32;
 }
 
+// Gets the sample time and stores it in dev
+// Return 0 if sucessful or rc value
 static int scd30_get_sample_time(const struct device *dev)
 {
 	struct scd30_data *data = dev->data;
@@ -161,6 +176,8 @@ static int scd30_get_sample_time(const struct device *dev)
 	return 0;
 }
 
+// Sets the sample time to dev, if it's not an invalid value
+// Returns 0 if sucessful or an error
 static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 {
 	struct scd30_data *data = dev->data;
@@ -182,14 +199,15 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 
 	data->sample_time = sample_time;
 
-	return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT,
-				    SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
-	;
+	return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, 
+                                SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
 }
 
+// Fetch the readings of the sensor and stores it into dev
+// Returns 0 if sucessful or the corresponding rc error code
 static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
-	uint16_t data_ready;
+	uint16_t data_ready = 0;
 	struct scd30_data *data = dev->data;
 	const struct scd30_config *cfg = dev->config;
 	int rc;
@@ -197,7 +215,7 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	/*
 	 * Struct represensting data as received from the SCD30
 	 * each scd30_word conists of a 16 bit data word followed
-	 * by an 8 bit crc
+	 * by an 8 bit crc.
 	 */
 	struct scd30_rx_data {
 		struct scd30_word co2_msw;
@@ -209,7 +227,7 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	} raw_rx_data;
 
 	/*
-	 * struct representing the received data from the SCD30
+	 * Struct representing the received data from the SCD30
 	 * in big endian order with the CRC's removed.
 	 */
 	struct rx_data {
@@ -222,14 +240,16 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		return -ENOTSUP;
 	}
 
-	rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
-	if (rc != 0) {
-		return rc;
-	}
-
-	if (!data_ready) {
-		return -ENODATA;
-	}
+    while(!data_ready) {
+        rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
+        if (rc != 0) {
+            return rc;
+        }
+        k_sleep(K_MSEC(3));
+    }
+	// if (!data_ready) {
+	// 	return -ENODATA;
+	// }
 
 	rc = scd30_write_command(dev, SCD30_CMD_READ_MEASUREMENT);
 	if (rc != 0) {
@@ -256,7 +276,7 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		return rc;
 	}
 
-	/* temperature data */
+	/* Temperature data */
 	rc = scd30_fill_data_buf(raw_rx_data.temp_msw, &rx_data.temp_be[0]);
 	if (rc != 0) {
 		return rc;
@@ -266,7 +286,7 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		return rc;
 	}
 
-	/* relative humidity */
+	/* Relative humidity */
 	rc = scd30_fill_data_buf(raw_rx_data.humidity_msw, &rx_data.humidity_be[0]);
 	if (rc != 0) {
 		return rc;
@@ -283,6 +303,8 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	return 0;
 }
 
+// Stores the desired value into dev data. The value is chosen by the chan parameter
+// Returns 0 if sucessful or -1 if the channel isn't correct
 static int scd30_channel_get(const struct device *dev, enum sensor_channel chan,
 			     struct sensor_value *val)
 {
@@ -307,6 +329,8 @@ static int scd30_channel_get(const struct device *dev, enum sensor_channel chan,
 	return 0;
 }
 
+// Stores the desided attribute into val, accordingly to attr parameter
+// Returns 0 if sucessful or -ENOTSUP if the channel or attribute is incorrect
 static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 			  enum sensor_attribute attr, struct sensor_value *val)
 {
@@ -336,6 +360,8 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 	}
 }
 
+// Sets the desired attribute into dev, accordingly with attr parameter
+// Returns 0 if sucessful, -ENOTSUP if channel or attr is incorrect or error at setting the attribute
 static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 			  enum sensor_attribute attr, const struct sensor_value *val)
 {
@@ -360,6 +386,7 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 	}
 }
 
+// Struct used to integrate this driver functions into Zephyr sensor's API
 static const struct sensor_driver_api scd30_driver_api = {
 	.sample_fetch = scd30_sample_fetch,
 	.channel_get = scd30_channel_get,
@@ -367,6 +394,7 @@ static const struct sensor_driver_api scd30_driver_api = {
 	.attr_set = scd30_attr_set,
 };
 
+// Initialize the SCD30 sensor
 static int scd30_init(const struct device *dev)
 {
 	LOG_DBG("Initializing SCD30");
