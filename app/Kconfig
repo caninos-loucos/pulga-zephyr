@@ -31,3 +31,7 @@ config TRANSMISSION_INTERVAL
 config SEND_UART
 	bool "Print data in buffer in console via UART"
 	default UART_CONSOLE
+
+config USE_GPS
+	bool "Manually activate when Pulga GPS module is connected to the stack"
+	default n
