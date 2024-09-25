@@ -13,3 +13,21 @@ endmenu
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
+
+config SAMPLING_INTERVAL
+	int "Sampling Interval in Milliseconds"
+	default 1000
+	depends on SENSOR
+	
+config BUFFER_WORDS
+	int "Number of 32-bit words the buffers can hold"
+	default 57344 # Using 224 out of 256kB of memory
+	depends on RING_BUFFER
+
+config TRANSMISSION_INTERVAL
+	int "Transmission Interval in Milliseconds. Mininum value of 1 guarantees correct system operation"
+	default 1
+
+config SEND_UART
+	bool "Print data in buffer in console via UART"
+	default UART_CONSOLE
