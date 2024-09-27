@@ -31,3 +31,8 @@ config TRANSMISSION_INTERVAL
 config SEND_UART
 	bool "Print data in buffer in console via UART"
 	default UART_CONSOLE
+
+
+config SEND_LORAWAN
+	bool "Send data to LoRaWAN"
+	depends on LORAWAN
