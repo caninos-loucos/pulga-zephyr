@@ -45,7 +45,7 @@ typedef struct
     // Encodes data into a verbose string
     void (*encode_verbose)(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size);
     // // Encodes data into strings that occupy low memory
-    // void* (*encode_minimalist)(uint32_t* data_words, uint8_t* encoded_data);
+    void (*encode_minimalist)(uint32_t* data_words, uint8_t* encoded_data, size_t encoded_size);
     // Splits structured data into individual one item sized buffers
     // void* (*split_data)(uint32_t* data_words, uint8_t** value_list);
 } DataAPI;

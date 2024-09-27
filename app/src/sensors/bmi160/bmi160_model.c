@@ -22,7 +22,7 @@ static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t e
 
     // Formats the string
     snprintf(encoded_data, encoded_size,
-             "Acceleration [m/s^2]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z); "
+             "Acceleration [m/s²]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z); "
              "Rotation [radian/s]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z);\n",
              bmi160_model->acceleration[0].val1,
              bmi160_model->acceleration[0].val2 / 10000,
@@ -38,12 +38,34 @@ static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t e
              bmi160_model->rotation[2].val2 / 10000);
 }
 
+// Encodes all values of data model into a minimalist string
+static void encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+{
+    // Converts words into the model
+    bmi160_model = (SensorModelBMI160 *)data_words;
+
+    // Formats the string
+    snprintf(encoded_data, encoded_size,
+             "Ax%d.%02d y%d.%02d z%d.%02d Rx%d.%02d y%d.%02d z%d.%02d\n",
+             bmi160_model->acceleration[0].val1,
+             bmi160_model->acceleration[0].val2 / 10000,
+             bmi160_model->acceleration[1].val1,
+             bmi160_model->acceleration[1].val2 / 10000,
+             bmi160_model->acceleration[2].val1,
+             bmi160_model->acceleration[2].val2 / 10000,
+             bmi160_model->rotation[0].val1,
+             bmi160_model->rotation[0].val2 / 10000,
+             bmi160_model->rotation[1].val1,
+             bmi160_model->rotation[1].val2 / 10000,
+             bmi160_model->rotation[2].val1,
+             bmi160_model->rotation[2].val2 / 10000);
+}
 // Registers BMI160 model callbacks
 DataAPI *register_bmi160_model_callbacks()
 {
     bmi160_model_api.num_data_words = BMI160_MODEL_WORDS;
     bmi160_model_api.encode_verbose = encode_verbose;
-    // bmi160_model_api.encode_minimalist = encode_minimalist;
+    bmi160_model_api.encode_minimalist = encode_minimalist;
     // bmi160_model_api.split_values = split_values;
     return &bmi160_model_api;
 }
