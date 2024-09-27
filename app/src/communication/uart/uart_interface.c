@@ -17,22 +17,22 @@ static struct k_thread uart_thread_data;
 static k_tid_t uart_thread_id;
 
 // Initializes and starts thread to send data via UART
-void init_channel();
+static void uart_init_channel();
 // Functions that prints data to UART in separate thread
-static void send_data_uart(void *, void *, void *);
+static void uart_send_data(void *, void *, void *);
 
 /**
  * IMPLEMENTATIONS
  */
 
-void init_channel()
+static void uart_init_channel()
 {
     LOG_DBG("Initializing send via UART thread");
     int error = 0;
     // Create thread and starts it immediately
     uart_thread_id = k_thread_create(&uart_thread_data, uart_thread_stack_area,
                                      K_THREAD_STACK_SIZEOF(uart_thread_stack_area),
-                                     send_data_uart, NULL, NULL, NULL,
+                                     uart_send_data, NULL, NULL, NULL,
                                      UART_THREAD_PRIORITY, 0, K_NO_WAIT);
     error = k_thread_name_set(uart_thread_id, "send_uart");
     if (error)
@@ -41,7 +41,7 @@ void init_channel()
     }
 }
 
-static void send_data_uart(void *param0, void *param1, void *param2)
+static void uart_send_data(void *param0, void *param1, void *param2)
 {
     LOG_DBG("Sending via UART started");
     ARG_UNUSED(param0);
@@ -73,6 +73,6 @@ static void send_data_uart(void *param0, void *param1, void *param2)
 ChannelAPI *register_uart_callbacks()
 {
     LOG_DBG("Initializing UART callbacks");
-    uart_api.init_channel = init_channel;
+    uart_api.init_channel = uart_init_channel;
     return &uart_api;
 }
