@@ -7,6 +7,8 @@
 // Number of 32-bit words in each data item (model)
 // Each sensor_value has 2 words, SCD30 has 3 measurements
 #define SCD30_MODEL_WORDS 2 * 3
+// This define is temporary. Must be adjusted to final code!
+#define SAMPLE_PERIOD 3
 
 typedef struct
 {

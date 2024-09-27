@@ -11,6 +11,8 @@ LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
 static const struct device *scd30;
 static SensorAPI scd30_api = {0};
+int sample_period = SAMPLE_PERIOD; 
+struct sensor_value *period;
 
 /**
  * IMPLEMENTATIONS
@@ -33,6 +35,13 @@ static int init_sensor()
         LOG_ERR("device \"%s\" is not ready", scd30->name);
         return -2;
     }
+
+    period->val1 = sample_period;
+
+    // Will set a new sample period from here
+    // SENSOR_ATTR_PRIV_START is a provisory solution!
+    sensor_attr_set(scd30, SENSOR_CHAN_ALL, SENSOR_ATTR_PRIV_START, period);
+    
     return 0;
 }
 
