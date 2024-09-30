@@ -23,13 +23,4 @@
 	};
 };
 
-&i2c1 {
-	/* CO2 sensor */
-	scd30@61 {
-		compatible = "sensirion,scd30";
-		reg = <0x61>;   /* Address of sensor */
-		status = "okay";
-		sample-period = <5>;
-	};
-};
 

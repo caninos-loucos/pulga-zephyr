@@ -49,7 +49,7 @@ int register_sensors_callbacks()
 	sensor_apis[SI1133] = register_si1133_callbacks();
 #endif /* CONFIG_SI1133 */
 
-#if defined(CONFIG_SCD30)
+#if defined(CONFIG_SHIELD_SCD30)
 	sensor_apis[SCD30] = register_scd30_callbacks();
 #endif /* CONFIG_SCD30 */
 

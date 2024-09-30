@@ -11,8 +11,7 @@ LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
 static const struct device *scd30;
 static SensorAPI scd30_api = {0};
-int sample_period = SAMPLE_PERIOD; 
-struct sensor_value *period;
+
 
 /**
  * IMPLEMENTATIONS
@@ -36,7 +35,9 @@ static int init_sensor()
         return -2;
     }
 
-    period->val1 = sample_period;
+    struct sensor_value *period = {0};
+
+    period->val1 = get_sampling_interval();
 
     // Will set a new sample period from here
     // SENSOR_ATTR_PRIV_START is a provisory solution!
