@@ -32,8 +32,8 @@
  * SPDX-License-Identifier: BSD-3-CLAUSE
  */
 
-#ifndef _SCD30_H_
-#define _SCD30_H_
+#ifndef _SCD30_PRIV_H_
+#define _SCD30_PRIV_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,15 +74,6 @@ extern "C" {
 #define SCD30_MAX_BUFFER_WORDS 24U
 #define SCD30_CMD_SINGLE_WORD_BUF_LEN (SCD30_COMMAND_SIZE + SCD30_WORD_SIZE + SCD30_CRC8_LEN)
 
-/* Additional custom attributes */
-enum scd30_attribute {
-	/**
-	 * Sensor sampling period, i.e. how many seconds there are between
-	 * two subsequent measurements.
-	 */
-	SCD30_SENSOR_ATTR_SAMPLING_PERIOD = SENSOR_ATTR_PRIV_START,
-};
-
 struct scd30_config {
 	const struct i2c_dt_spec bus;
 };
@@ -105,4 +96,4 @@ struct scd30_word {
 }
 #endif
 
-#endif /* _SCD30_H_ */
+#endif /* _SCD30_PRIV_H_ */

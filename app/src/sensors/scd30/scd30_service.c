@@ -1,6 +1,7 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
+#include <drivers/scd30.h>
 #include <sensors/scd30/scd30_service.h>
 
 LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
@@ -40,8 +41,7 @@ static int init_sensor()
     period->val1 = get_sampling_interval();
 
     // Will set a new sample period from here
-    // SENSOR_ATTR_PRIV_START is a provisory solution!
-    sensor_attr_set(scd30, SENSOR_CHAN_ALL, SENSOR_ATTR_PRIV_START, period);
+    sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, period);
     
     return 0;
 }
