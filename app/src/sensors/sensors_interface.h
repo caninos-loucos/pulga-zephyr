@@ -18,6 +18,7 @@ enum SensorType
 	BMI160,
 	SI1133,
 	SCD30,
+	L86_M33, // GNSS Sensor
 	MAX_SENSORS // Total number of sensors
 };
 

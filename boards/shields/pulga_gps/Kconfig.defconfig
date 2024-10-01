@@ -1,0 +1,37 @@
+# Copyright (c) 2024 LSI-TEC - Matheus de Almeida Orsi e Silva
+# SPDX-License-Identifier: Apache-2.0
+
+# Activates logging configurations
+if SHIELD_PULGA_GPS
+
+config PM_DEVICE
+	default n
+
+config GNSS_DUMP_TO_LOG
+	default y
+
+config GNSS_DUMP_TO_LOG_BUF_SIZE
+	default 512
+
+if APP_LOG_LEVEL_DBG
+
+config GNSS_LOG_LEVEL_DBG
+	bool
+CONFIG_GNSS_LOG_LEVEL_DBG=y
+
+# Modem are HW and SW necessary for radio (RF) communication
+config MODEM_MODULES_LOG_LEVEL_DBG
+	bool
+CONFIG_MODEM_MODULES_LOG_LEVEL_DBG=y
+
+config MODEM_CHAT_LOG_LEVEL_DBG
+	bool
+CONFIG_MODEM_CHAT_LOG_LEVEL_DBG=y
+
+config MODEM_CHAT_LOG_BUFFER_SIZE
+	default 512
+
+endif #APP_LOG_LEVEL_DBG
+
+endif # SHIELD_PULGA_GPS
+

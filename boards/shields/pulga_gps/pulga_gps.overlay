@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2024 LSI-TEC
+ * Copyright (c) 2024 LSI-TEC - Matheus de Almeida Orsi e Silva
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 / {
 	aliases {
-		gnss = &uart1;
+		gnss = &quectel_l86;
 	};
 };
 
@@ -27,12 +27,11 @@
 	};
 };
 
-
 &uart1 {
 	compatible = "nordic,nrf-uarte";
 	status = "okay";
 	
-	current-speed = <115200>;
+	current-speed = <9600>;
 	parity = "none";
 	stop-bits = "1";
 	data-bits = <8>;
@@ -41,11 +40,10 @@
 	pinctrl-1 = <&uart1_sleep>;
 	pinctrl-names = "default", "sleep";
 	
-	// Compatible with L86
-	quectel_lc86g: quectel,lc86g {
+	quectel_l86: quectel_l86 {
 		status = "okay";
-		compatible = "quectel,lc86g";
-		// GNSS_PPS_MODE_DISABLED
-		pps-mode = <0>;
+		compatible = "quectel,l86";
+		pps-mode = "GNSS_PPS_MODE_DISABLED";
+		zephyr,deferred-init;
 	};
 };
