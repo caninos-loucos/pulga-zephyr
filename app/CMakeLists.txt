@@ -6,8 +6,6 @@
 
 cmake_minimum_required(VERSION 3.13.1)
 
-# set(SHIELD pulga-gps)
-
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(app LANGUAGES C)
@@ -23,9 +21,13 @@ target_sources(app PRIVATE
                     src/sensors/sensors_interface.c
                     src/sensors/bme280/bme280_model.c
                     src/sensors/bme280/bme280_service.c
-                    src/sensors/l86_m33/gnss_model.c
-                    src/sensors/l86_m33/l86_m33_service.c
                     src/sensors/bmi160/bmi160_model.c
                     src/sensors/bmi160/bmi160_service.c
                     src/sensors/si1133/si1133_model.c
                     src/sensors/si1133/si1133_service.c)
+
+if(CONFIG_SHIELD_PULGA_GPS)
+    target_sources(app PRIVATE  
+                        src/sensors/l86_m33/gnss_model.c
+                        src/sensors/l86_m33/l86_m33_service.c)
+endif()

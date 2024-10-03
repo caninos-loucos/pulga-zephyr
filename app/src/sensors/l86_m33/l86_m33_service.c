@@ -9,9 +9,8 @@ LOG_MODULE_REGISTER(l86_m33_service, CONFIG_APP_LOG_LEVEL);
 /**
  * DEFINITIONS
  */
-// Getting the device as a constant to later register the callbacks
-#define L86_M33_MODEM DEVICE_DT_GET(DT_ALIAS(gnss))
-static const struct device *l86_m33;
+
+static const struct device *const l86_m33 = DEVICE_DT_GET(DT_ALIAS(gnss));
 // API that concentrates the methods to deal with GNSS (GPS) module
 static SensorAPI l86_m33_api = {0};
 // Semaphore that allows for the received data to be inserted in the buffer
@@ -21,7 +20,6 @@ static struct k_sem process_fix_data;
 // buffer according to overall sampling time
 static void receive_fix_callback(const struct device *gnss_device,
                                  const struct gnss_data *gnss_data);
-GNSS_DATA_CALLBACK_DEFINE(L86_M33_MODEM, receive_fix_callback);
 // Sets the fix interval of GNSS model to a valid number according to device's restrictions
 static int set_valid_fix_interval(int raw_fix_interval);
 // Rounds the value to the closest multiple of 1000
@@ -35,9 +33,7 @@ static int round_closest_1000_multiple(int number);
 static int init_sensor()
 {
     LOG_DBG("Initializing L86-M33 GNSS module");
-
     int error = 0;
-    l86_m33 = L86_M33_MODEM;
     // Removes sensor API from registered APIs if cannot start sensor
     if (!l86_m33)
     {
@@ -61,6 +57,7 @@ static int init_sensor()
         LOG_ERR("Failed to initialize GNSS semaphore: %d", error);
         return error;
     }
+    GNSS_DATA_CALLBACK_DEFINE(l86_m33, receive_fix_callback);
 
     return 0;
 }
