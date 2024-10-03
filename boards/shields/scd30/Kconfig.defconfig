@@ -5,6 +5,6 @@ if SHIELD_SCD30
 
 config I2C
 	default y
+   
 
 endif # SHIELD_SCD30
-

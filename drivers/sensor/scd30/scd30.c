@@ -401,7 +401,7 @@ static int scd30_init(const struct device *dev)
 	LOG_DBG("Initializing SCD30");
 	const struct scd30_config *cfg = dev->config;
 	struct scd30_data *data = dev->data;
-	int rc;
+	int rc = 0;
 
 	if (!device_is_ready(cfg->bus.bus)) {
 		LOG_ERR("Failed to get pointer to %s device!", cfg->bus.bus->name);
@@ -419,7 +419,6 @@ static int scd30_init(const struct device *dev)
 	if (rc != 0) {
 		return rc;
 	}
-
 
 	LOG_DBG("Starting periodic measurements");
 	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT,

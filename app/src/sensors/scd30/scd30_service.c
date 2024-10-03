@@ -24,6 +24,8 @@ static int init_sensor()
     LOG_DBG("Initializing SCD30");
     scd30 = DEVICE_DT_GET_ANY(sensirion_scd30);
 
+    int error = 0;
+
     // Removes sensor API from registered APIs if cannot start sensor
     if (!scd30)
     {
@@ -36,13 +38,20 @@ static int init_sensor()
         return -2;
     }
 
-    struct sensor_value *period = {0};
+    LOG_DBG("Sampling period atual: %d", get_sampling_interval());
 
-    period->val1 = get_sampling_interval();
+    // Will set application sampling period
+    struct sensor_value period;
+    // Sampling period of scd30 is set in seconds
+    period.val1 = (int32_t) get_sampling_interval() / 1000;
 
-    // Will set a new sample period from here
-    sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, period);
-    
+    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
+    if (error)
+    {
+        LOG_ERR("Could not set application sample time. Error code: %d", error);
+        return error;
+    }
+
     return 0;
 }
 

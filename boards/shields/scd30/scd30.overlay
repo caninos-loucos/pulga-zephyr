@@ -36,7 +36,8 @@
 		compatible = "sensirion,scd30";
 		reg = <0x61>;   /* Address of sensor */
 		status = "okay";
-		/* sample-period = <5>; */
+		sample-period = <2>; 
+		//zephyr,deferred-init;
 	};
 };
 
