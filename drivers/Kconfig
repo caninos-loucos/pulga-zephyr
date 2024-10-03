@@ -3,4 +3,5 @@
 
 menu "Drivers"
 rsource "sensor/Kconfig"
+rsource "gnss/Kconfig"
 endmenu
