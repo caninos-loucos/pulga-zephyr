@@ -14,6 +14,22 @@
 */
 #include <lorawan_keys.h>
 
+#if (CONFIG_LORAWAN_DR == 5)
+    #define LORAWAN_DR LORAWAN_DR_5
+#elif (CONFIG_LORAWAN_DR == 4)
+    #define LORAWAN_DR LORAWAN_DR_4
+#elif (CONFIG_LORAWAN_DR == 3)
+    #define LORAWAN_DR LORAWAN_DR_3
+#elif (CONFIG_LORAWAN_DR == 2)
+    #define LORAWAN_DR LORAWAN_DR_2
+#elif (CONFIG_LORAWAN_DR == 1)
+    #define LORAWAN_DR LORAWAN_DR_1
+#elif (CONFIG_LORAWAN_DR == 0)
+    #define LORAWAN_DR LORAWAN_DR_0
+#else
+    #error "Datarate between 0 and 5 must be chosen"
+#endif
+
 // This is the region for American Tower's gateways, that's totally subject to change in the near future...
 #define LORAWAN_SELECTED_REGION LORAWAN_REGION_LA915
 
@@ -59,8 +75,6 @@ static void lorawan_init_channel()
 {
 	const struct device *lora_dev;
 	struct lorawan_join_config join_cfg;
-
-    //create internal buffer
 
     int ret = 0;
 
@@ -116,6 +130,9 @@ static void lorawan_init_channel()
 		return ;
 	}
 
+    // Set the initial or fixed datarate according to the config
+    lorawan_set_datarate(LORAWAN_DR);
+
     // After joining successfully, create the send thread.
     lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
                                      K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
@@ -127,31 +144,27 @@ static void lorawan_init_channel()
         LOG_ERR("Failed to set read buffer thread name: %d", ret);
     }
 
-    // create a workqueue that wakes every X seconds to send all packets inside the lorawan buffer
-
-        /* 
-        ret = lorawan_send(2, encoded_data, sizeof(encoded_data),
-                LORAWAN_MSG_CONFIRMED); */
+    // TODO: create a workqueue that wakes every X seconds to send all packets inside the lorawan buffer
 }
 
 static void lorawan_send_data(void *param0, void *param1, void *param2)
 {
-    LOG_DBG("Sending via lorawan started");
+    LOG_INF("Sending via lorawan started");
     ARG_UNUSED(param0);
     ARG_UNUSED(param1);
     ARG_UNUSED(param2);
     uint8_t max_size;
     uint8_t unused;
 
-    // lorawan payload is 51 bytes if we stick to minimum datarate/max range, but it can vary based on datarate
-	lorawan_get_payload_sizes(&unused, &max_size);
-    uint8_t encoded_data[51];
     int ret = 0;
 
     while (1)
     {
         // Waits for data to be ready
         k_sem_take(&data_ready_sem[LORAWAN], K_FOREVER);
+
+        lorawan_get_payload_sizes(&unused, &max_size);
+        uint8_t encoded_data[max_size];
 
         // Encoding data to minimal string
         ret = encode_data(data_unit.data_words, data_unit.data_type, MINIMALIST,
@@ -162,15 +175,15 @@ static void lorawan_send_data(void *param0, void *param1, void *param2)
             ret = lorawan_send(2, encoded_data, sizeof(encoded_data),
                     LORAWAN_MSG_UNCONFIRMED);
 
-            // In case of transmission errors, retransmit after DELAY.
-            if (ret == -EAGAIN || ret == -ETIMEDOUT) {
+            if (ret)
                 LOG_ERR("lorawan_send failed with code %d.", ret);
-            }
+            else 
+                LOG_INF("lorawan_send successful");
         }
 
         // TODO: send the MINIMAL ENCODED DATA to internal buf
 
-        // Signals back that lorawan sending is complete (it is not)
+        // Signals back that lorawan sending is complete
         k_sem_give(&data_processed);
     }
 }

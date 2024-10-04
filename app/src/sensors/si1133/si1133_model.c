@@ -30,7 +30,7 @@ static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t e
              si1133_model->uv_index.val2 / 10000);
 }
 
-// Encodes all values of data model into a verbose string
+// Encodes all values of data model into a minimalist string
 static void encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model

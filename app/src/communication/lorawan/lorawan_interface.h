@@ -10,8 +10,8 @@
 #define LORAWAN_THREAD_STACK_SIZE 8192
 #define LORAWAN_THREAD_PRIORITY 5 /* preemptible */
 
-//TODO try to lower this as much as possible
-#define LORAWAN_BUFFER_SIZE 2048
+// TODO create an internal buffer to be able to send multiple data readings in one packet
+// #define LORAWAN_BUFFER_SIZE 2048
 
 // Register lorawan callbacks
 ChannelAPI *register_lorawan_callbacks();
