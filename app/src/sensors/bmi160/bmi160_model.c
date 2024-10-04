@@ -15,15 +15,15 @@ static SensorModelBMI160 *bmi160_model;
  */
 
 // Encodes all values of data model into a verbose string
-static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     bmi160_model = (SensorModelBMI160 *)data_words;
 
     // Formats the string
-    snprintf(encoded_data, encoded_size,
+    return snprintf(encoded_data, encoded_size,
              "Acceleration [m/s²]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z); "
-             "Rotation [radian/s]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z);\n",
+             "Rotation [radian/s]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z);",
              bmi160_model->acceleration[0].val1,
              bmi160_model->acceleration[0].val2 / 10000,
              bmi160_model->acceleration[1].val1,
@@ -39,14 +39,14 @@ static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t e
 }
 
 // Encodes all values of data model into a minimalist string
-static void encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     bmi160_model = (SensorModelBMI160 *)data_words;
 
     // Formats the string
-    snprintf(encoded_data, encoded_size,
-             "Ax%d.%02d y%d.%02d z%d.%02d Rx%d.%02d y%d.%02d z%d.%02d\n",
+    return snprintf(encoded_data, encoded_size,
+             "Ax%d.%02d y%d.%02d z%d.%02d Rx%d.%02d y%d.%02d z%d.%02d ",
              bmi160_model->acceleration[0].val1,
              bmi160_model->acceleration[0].val2 / 10000,
              bmi160_model->acceleration[1].val1,

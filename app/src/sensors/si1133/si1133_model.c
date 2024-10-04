@@ -15,14 +15,14 @@ static SensorModelSi1133 *si1133_model;
  */
 
 // Encodes all values of data model into a verbose string
-static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     si1133_model = (SensorModelSi1133 *)data_words;
 
     // Formats the string
-    snprintf(encoded_data, encoded_size,
-             "Light: %d lux; Infrared: %d lux; UV: %d; UVIndex: %d.%02d;\n",
+    return snprintf(encoded_data, encoded_size,
+             "Light: %d lux; Infrared: %d lux; UV: %d; UVIndex: %d.%02d;",
              si1133_model->light.val1,
              si1133_model->infrared.val1,
              si1133_model->uv.val1,
@@ -31,14 +31,14 @@ static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t e
 }
 
 // Encodes all values of data model into a minimalist string
-static void encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     si1133_model = (SensorModelSi1133 *)data_words;
 
     // Formats the string
-    snprintf(encoded_data, encoded_size,
-             "L%d IR%d UV%d I%d.%02d\n",
+    return snprintf(encoded_data, encoded_size,
+             "L%d IR%d UV%d I%d.%02d ",
              si1133_model->light.val1,
              si1133_model->infrared.val1,
              si1133_model->uv.val1,

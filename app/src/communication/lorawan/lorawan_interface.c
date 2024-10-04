@@ -47,7 +47,8 @@ static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_THREAD_STACK_SIZ
 static struct k_thread lorawan_thread_data;
 static k_tid_t lorawan_thread_id;
 
-uint8_t lorawan_priv_buffer[LORAWAN_BUFFER_SIZE];
+//TODO implement buffer
+//uint8_t lorawan_priv_buffer[LORAWAN_BUFFER_SIZE];
 
 // Initializes and starts thread to send data via lorawan
 static void lorawan_init_channel();
@@ -116,7 +117,7 @@ static void lorawan_init_channel()
 	lorawan_register_downlink_callback(&downlink_cb);
 
 	// Configure the authentication parameters and join the network
-	join_cfg.mode = LORAWAN_ACT_ABP;
+	join_cfg.mode           = LORAWAN_ACT_ABP;
 	join_cfg.dev_eui 		= dev_eui;
 	join_cfg.abp.app_skey 	= app_key;
 	join_cfg.abp.nwk_skey 	= nwk_key;
@@ -156,7 +157,7 @@ static void lorawan_send_data(void *param0, void *param1, void *param2)
     uint8_t max_size;
     uint8_t unused;
 
-    int ret = 0;
+    int size, ret;
 
     while (1)
     {
@@ -167,19 +168,21 @@ static void lorawan_send_data(void *param0, void *param1, void *param2)
         uint8_t encoded_data[max_size];
 
         // Encoding data to minimal string
-        ret = encode_data(data_unit.data_words, data_unit.data_type, MINIMALIST,
+        size = encode_data(data_unit.data_words, data_unit.data_type, MINIMALIST,
                             encoded_data, sizeof(encoded_data));
-        if (!ret)
+        if (size >= 0)
         {
-            LOG_DBG("Encoded data: %s", encoded_data);
-            ret = lorawan_send(2, encoded_data, sizeof(encoded_data),
-                    LORAWAN_MSG_UNCONFIRMED);
+            LOG_DBG("Encoded data: \"%s\", size %d bytes", encoded_data, size);
+
+            ret = lorawan_send(0, encoded_data, size, LORAWAN_MSG_UNCONFIRMED);
 
             if (ret)
-                LOG_ERR("lorawan_send failed with code %d.", ret);
+                LOG_ERR("lorawan_send failed: %d.", ret);
             else 
                 LOG_INF("lorawan_send successful");
-        }
+        } 
+        else
+            LOG_ERR("Could not encode data");
 
         // TODO: send the MINIMAL ENCODED DATA to internal buf
 

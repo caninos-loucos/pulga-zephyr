@@ -15,7 +15,7 @@ module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
 
 ###
-Application Configs
+# Application Configs
 ###
 
 config SAMPLING_INTERVAL
@@ -29,7 +29,7 @@ config TRANSMISSION_INTERVAL
 
 config BUFFER_WORDS
 	int "Number of 32-bit words the buffers can hold"
-	default 57344 # Using 224 out of 256kB of memory
+	default 45000 # Using 180 out of 256kB of memory
 	depends on RING_BUFFER
 
 

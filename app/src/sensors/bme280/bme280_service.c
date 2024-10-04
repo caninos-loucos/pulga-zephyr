@@ -26,12 +26,12 @@ static int init_sensor()
     if (!bme280)
     {
         LOG_ERR("bme280 not declared at device tree");
-        return -1;
+        return -ENODEV;
     }
     else if (!device_is_ready(bme280))
     {
         LOG_ERR("device \"%s\" is not ready", bme280->name);
-        return -2;
+        return -EAGAIN;
     }
     return 0;
 }
