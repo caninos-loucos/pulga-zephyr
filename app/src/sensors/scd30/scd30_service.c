@@ -13,6 +13,9 @@ LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 static const struct device *scd30;
 static SensorAPI scd30_api = {0};
 
+// Sets the sample time of the aplication into the SCD30 device.
+// Corrects to a valid number according to device's restrictions if necessary.
+static int set_valid_sample_time(int raw_sample_time);
 
 /**
  * IMPLEMENTATIONS
@@ -23,8 +26,6 @@ static int init_sensor()
 {
     LOG_DBG("Initializing SCD30");
     scd30 = DEVICE_DT_GET_ANY(sensirion_scd30);
-
-    int error = 0;
 
     // Removes sensor API from registered APIs if cannot start sensor
     if (!scd30)
@@ -40,18 +41,10 @@ static int init_sensor()
 
     LOG_DBG("Sampling period atual: %d", get_sampling_interval());
 
-    // Will set application sampling period
-    struct sensor_value period;
-    // Sampling period of scd30 is set in seconds
-    period.val1 = (int32_t) get_sampling_interval() / 1000;
-
-    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
-    if (error)
-    {
-        LOG_ERR("Could not set application sample time. Error code: %d", error);
-        return error;
-    }
-
+    // Trying to set the application sampling time
+    int sample_time = get_sampling_interval();
+    set_valid_sample_time(sample_time);
+    
     return 0;
 }
 
@@ -86,6 +79,37 @@ static void read_sensor_values()
     {
         LOG_ERR("Failed to insert data in ring buffer.");
     }
+}
+
+int set_valid_sample_time(int raw_sample_time)
+{
+    int error = 0;
+
+    // Device only allows 2 s to 1800 s update rate. 
+    // raw_sample_time is given in ms
+    raw_sample_time /= 1000;
+
+    if (raw_sample_time < 2)
+    {
+        raw_sample_time = 2;
+    }
+    else if (raw_sample_time > 180)
+    {
+        raw_sample_time = 180;
+    }
+    
+    // Will set application sampling period
+    struct sensor_value period;
+    period.val1 = raw_sample_time;
+
+    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
+    if (error)
+    {
+        LOG_ERR("Could not set application sample time. Error code: %d", error);
+        return error;
+    }
+
+    return 0;
 }
 
 // Register SCD30 sensor callbacks
