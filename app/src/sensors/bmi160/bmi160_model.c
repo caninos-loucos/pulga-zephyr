@@ -22,20 +22,20 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-             "Acceleration [m/s²]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z); "
-             "Rotation [radian/s]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z);",
-             bmi160_model->acceleration[0].val1,
-             bmi160_model->acceleration[0].val2 / 10000,
-             bmi160_model->acceleration[1].val1,
-             bmi160_model->acceleration[1].val2 / 10000,
-             bmi160_model->acceleration[2].val1,
-             bmi160_model->acceleration[2].val2 / 10000,
-             bmi160_model->rotation[0].val1,
-             bmi160_model->rotation[0].val2 / 10000,
-             bmi160_model->rotation[1].val1,
-             bmi160_model->rotation[1].val2 / 10000,
-             bmi160_model->rotation[2].val1,
-             bmi160_model->rotation[2].val2 / 10000);
+                    "Acceleration [m/s²]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z); "
+                    "Rotation [radian/s]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z);",
+                    bmi160_model->acceleration[0].val1,
+                    bmi160_model->acceleration[0].val2 / 10000,
+                    bmi160_model->acceleration[1].val1,
+                    bmi160_model->acceleration[1].val2 / 10000,
+                    bmi160_model->acceleration[2].val1,
+                    bmi160_model->acceleration[2].val2 / 10000,
+                    bmi160_model->rotation[0].val1,
+                    bmi160_model->rotation[0].val2 / 10000,
+                    bmi160_model->rotation[1].val1,
+                    bmi160_model->rotation[1].val2 / 10000,
+                    bmi160_model->rotation[2].val1,
+                    bmi160_model->rotation[2].val2 / 10000);
 }
 
 // Encodes all values of data model into a minimalist string
@@ -46,19 +46,19 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-             "Ax%d.%02d y%d.%02d z%d.%02d Rx%d.%02d y%d.%02d z%d.%02d ",
-             bmi160_model->acceleration[0].val1,
-             bmi160_model->acceleration[0].val2 / 10000,
-             bmi160_model->acceleration[1].val1,
-             bmi160_model->acceleration[1].val2 / 10000,
-             bmi160_model->acceleration[2].val1,
-             bmi160_model->acceleration[2].val2 / 10000,
-             bmi160_model->rotation[0].val1,
-             bmi160_model->rotation[0].val2 / 10000,
-             bmi160_model->rotation[1].val1,
-             bmi160_model->rotation[1].val2 / 10000,
-             bmi160_model->rotation[2].val1,
-             bmi160_model->rotation[2].val2 / 10000);
+                    "A%d.%02d %d.%02d %d.%02dR%d.%02d %d.%02d %d.%02d",
+                    bmi160_model->acceleration[0].val1,
+                    bmi160_model->acceleration[0].val2 / 10000,
+                    bmi160_model->acceleration[1].val1,
+                    bmi160_model->acceleration[1].val2 / 10000,
+                    bmi160_model->acceleration[2].val1,
+                    bmi160_model->acceleration[2].val2 / 10000,
+                    bmi160_model->rotation[0].val1,
+                    bmi160_model->rotation[0].val2 / 10000,
+                    bmi160_model->rotation[1].val1,
+                    bmi160_model->rotation[1].val2 / 10000,
+                    bmi160_model->rotation[2].val1,
+                    bmi160_model->rotation[2].val2 / 10000);
 }
 // Registers BMI160 model callbacks
 DataAPI *register_bmi160_model_callbacks()

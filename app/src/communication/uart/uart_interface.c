@@ -59,7 +59,7 @@ static void uart_send_data(void *param0, void *param1, void *param2)
 
         // Encoding data to verbose string
         size = encode_data(data_unit.data_words, data_unit.data_type, VERBOSE,
-                            encoded_data, sizeof(encoded_data));
+                           encoded_data, sizeof(encoded_data));
         if (size >= 0)
             printk("%s\n", encoded_data);
         else

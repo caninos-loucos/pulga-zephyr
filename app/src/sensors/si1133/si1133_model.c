@@ -22,12 +22,12 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-             "Light: %d lux; Infrared: %d lux; UV: %d; UVIndex: %d.%02d;",
-             si1133_model->light.val1,
-             si1133_model->infrared.val1,
-             si1133_model->uv.val1,
-             si1133_model->uv_index.val1,
-             si1133_model->uv_index.val2 / 10000);
+                    "Light: %d lux; Infrared: %d lux; UV: %d; UVIndex: %d.%02d;",
+                    si1133_model->light.val1,
+                    si1133_model->infrared.val1,
+                    si1133_model->uv.val1,
+                    si1133_model->uv_index.val1,
+                    si1133_model->uv_index.val2 / 10000);
 }
 
 // Encodes all values of data model into a minimalist string
@@ -38,14 +38,13 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-             "L%d IR%d UV%d I%d.%02d ",
-             si1133_model->light.val1,
-             si1133_model->infrared.val1,
-             si1133_model->uv.val1,
-             si1133_model->uv_index.val1,
-             si1133_model->uv_index.val2 / 10000);
+                    "L%dIR%dUV%dI%d.%02d",
+                    si1133_model->light.val1,
+                    si1133_model->infrared.val1,
+                    si1133_model->uv.val1,
+                    si1133_model->uv_index.val1,
+                    si1133_model->uv_index.val2 / 10000);
 }
-
 
 // Registers Si1133 model callbacks
 DataAPI *register_si1133_model_callbacks()
