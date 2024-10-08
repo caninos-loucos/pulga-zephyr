@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <zephyr/logging/log.h>
 #include <sensors/l86_m33/l86_m33_service.h>
 
@@ -22,13 +23,13 @@ static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t e
 
     // Formats the string
     snprintf(encoded_data, encoded_size,
-             "Latitude: %lld.%02lld o; Longitude: %lld.%02lld o; Bearing angle: %d.%02d o; "
-             "Speed: %d.%02d m/s; Altitude: %d.%02d m;\n\t"
-             "Timestamp: %02dh %02dmin %02d.%02ds - %02d/%02d/20%02d\n",
+             "Latitude: %lld.%lld o; Longitude: %lld.%lld o; Bearing angle: %d.%d o; "
+             "Speed: %d.%d m/s; Altitude: %d.%d m;\n\t"
+             "Timestamp: %02dh %02dmin %02d.%ds - %02d/%02d/20%02d\n",
              gnss_model->navigation.latitude / 1000000000,
-             gnss_model->navigation.latitude % 1000000000,
+             llabs(gnss_model->navigation.latitude % 1000000000) / 100, // Gets 7 digits
              gnss_model->navigation.longitude / 1000000000,
-             gnss_model->navigation.longitude % 1000000000,
+             llabs(gnss_model->navigation.longitude % 1000000000) / 100, // Gets 7 digits
              gnss_model->navigation.bearing / 1000,
              gnss_model->navigation.bearing % 1000,
              gnss_model->navigation.speed / 1000,
