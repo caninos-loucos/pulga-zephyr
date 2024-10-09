@@ -24,13 +24,13 @@ The order in which everything happens is the following:
 
 */
 
+#include <math.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/lorawan/lorawan.h>
 #include <zephyr/sys/ring_buffer.h>
-#include <math.h>
-#include "lorawan_interface.h"
+#include <communication/lorawan/lorawan_interface.h>
 
 /* 	Get the LoraWAN keys from file in main directory, in the following format:
 
@@ -40,7 +40,7 @@ The order in which everything happens is the following:
 	#define LORAWAN_NET_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
 	#define LORAWAN_APP_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
 */
-#include <lorawan_keys.h>
+#include <communication/lorawan/lorawan_keys.h>
 
 #if (CONFIG_LORAWAN_DR == 5)
 #define LORAWAN_DR LORAWAN_DR_5

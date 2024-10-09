@@ -32,7 +32,6 @@ config BUFFER_WORDS
 	default 45000 # Using 180 out of 256kB of memory
 	depends on RING_BUFFER
 
-
 ###
 # Transmission Configs
 ###
@@ -41,12 +40,12 @@ config SEND_UART
 	bool "Print data in buffer in console via UART"
 	default UART_CONSOLE
 
-
 # LoRaWAN configs
 
 config SEND_LORAWAN
-	bool "Send data to LoRaWAN"
-	depends on LORAWAN
+	bool "Send data using LoRaWAN, given Pulga-LoRa shield is attached"
+	depends on SHIELD_PULGA_LORA
+	select LORAWAN
 
 config LORAWAN_DR
 	int "Fixed data rate to be used"
