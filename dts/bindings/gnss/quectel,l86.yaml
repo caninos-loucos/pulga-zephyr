@@ -1,0 +1,10 @@
+# Copyright (c) 2024 LSI-TEC - Matheus de Almeida Orsi e Silva
+# SPDX-License-Identifier: Apache-2.0
+
+description: Quectel L86 GNSS modem
+
+compatible: "quectel,l86"
+
+include:
+  - uart-device.yaml
+  - gnss-pps.yaml

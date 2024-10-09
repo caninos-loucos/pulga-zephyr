@@ -3,6 +3,7 @@
 #include <sensors/si1133/si1133_service.h>
 #include <sensors/bme280/bme280_service.h>
 #include <sensors/bmi160/bmi160_service.h>
+#include <sensors/l86_m33/l86_m33_service.h>
 
 LOG_MODULE_REGISTER(sensors_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -51,6 +52,10 @@ int register_sensors_callbacks()
 	// #if defined(CONFIG_SCD30)
 	// sensor_apis[SCD30] = register_scd30_callbacks();
 	// #endif /* CONFIG_SCD30 */
+
+#if defined(CONFIG_SHIELD_PULGA_GPS)
+	sensor_apis[L86_M33] = register_l86_m33_callbacks();
+#endif /* CONFIG_SHIELD_PULGA_GPS */
 
 	return 0;
 }

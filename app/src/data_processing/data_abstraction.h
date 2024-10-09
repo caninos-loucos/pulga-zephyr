@@ -21,6 +21,7 @@ enum DataType
     BMI160_MODEL,
     SI1133_MODEL,
     SCD30_MODEL,
+    GNSS_MODEL,
     MAX_DATA_TYPE // Total number of data types
 };
 
