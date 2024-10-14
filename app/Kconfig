@@ -52,3 +52,27 @@ config LORAWAN_DR
 	int "Fixed data rate to be used"
 	depends on SEND_LORAWAN && !LORAWAN_ADR
 	default 0
+
+# LORA P2P
+config SEND_LORA_P2P
+	bool "LoRa Peer-to-Peer sending"
+	depends on !SEND_LORAWAN
+
+config RECEIVE_LORA_P2P
+	bool "LoRa Peer-to-Peer receiving"
+	depends on !SEND_LORAWAN
+	
+config LORA_P2P_SF
+	int "LoRa Peer-to-Peer Spreading Factor"
+	default 7
+	depends on SEND_LORA_P2P || RECEIVE_LORA_P2P
+
+config LORA_P2P_CR
+	int "LoRa Peer-to-Peer Coding Rate"
+	default 5
+	depends on SEND_LORA_P2P || RECEIVE_LORA_P2P
+
+config LORA_P2P_BW
+	int "LoRa Peer-to-Peer Bandwidth"
+	default 125
+	depends on SEND_LORA_P2P || RECEIVE_LORA_P2P

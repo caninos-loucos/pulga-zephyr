@@ -7,10 +7,10 @@
 cmake_minimum_required(VERSION 3.13.1)
 
 # Uncomment to activate GPS shield, when Pulga-GPS module is attached to the stack
-set(SHIELD pulga_gps)
+# set(SHIELD pulga_gps)
 
-# Uncommen to activate LoRa shield
-set(SHIELD pulga-lora)
+# Uncomment to activate LoRa shield
+set(SHIELD pulga_lora)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
@@ -24,7 +24,6 @@ target_sources(app PRIVATE
                     src/main.c
                     src/communication/comm_interface.c
                     src/communication/uart/uart_interface.c
-                    src/communication/lorawan/lorawan_interface.c
                     src/data_processing/data_buffer.c
                     src/data_processing/data_abstraction.c
                     src/sensors/sensors_interface.c
@@ -34,6 +33,12 @@ target_sources(app PRIVATE
                     src/sensors/bmi160/bmi160_service.c
                     src/sensors/si1133/si1133_model.c
                     src/sensors/si1133/si1133_service.c)
+
+if(CONFIG_SHIELD_PULGA_LORA)
+    target_sources(app PRIVATE  
+                        src/communication/lorawan/lorawan_interface.c
+                        src/communication/lora_p2p/lora_p2p_interface.c)
+endif()
 
 if(CONFIG_SHIELD_PULGA_GPS)
     target_sources(app PRIVATE  

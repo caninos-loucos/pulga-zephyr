@@ -2,4 +2,4 @@
 # SPDX-License-Identifier: Apache-2.0
 
 config SHIELD_PULGA_LORA
-	def_bool $(shields_list_contains,pulga-lora)
+	def_bool $(shields_list_contains,pulga_lora)
