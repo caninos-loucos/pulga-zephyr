@@ -45,7 +45,7 @@ static void encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t e
              gnss_model->real_time.century_year);
 }
 
-// Registers Si1133 model callbacks
+// Registers GNSS model callbacks
 DataAPI *register_gnss_model_callbacks()
 {
     gnss_model_api.num_data_words = GNSS_MODEL_WORDS;

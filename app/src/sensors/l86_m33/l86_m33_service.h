@@ -18,10 +18,10 @@ typedef struct
 
 } SensorModelGNSS;
 
-// Registers Si1133 model callbacks
+// Registers gnss model callbacks
 DataAPI *register_gnss_model_callbacks();
 
-// Registers Si1133 sensor callbacks
+// Registers gnss sensor callbacks
 SensorAPI *register_l86_m33_callbacks();
 
 #endif /* L86_M33_SERVICE_H */
