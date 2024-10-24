@@ -1,0 +1,49 @@
+/*
+ * Copyright (c) 2024 LSI-TEC - Matheus de Almeida Orsi e Silva
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		gnss = &quectel_l86;
+	};
+};
+
+&pinctrl {
+	uart1_default: uart1_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 5)>,
+			        <NRF_PSEL(UART_RX, 0, 7)>;
+		};
+	};
+
+	uart1_sleep: uart1_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 5)>,
+			        <NRF_PSEL(UART_RX, 0, 7)>;
+			low-power-enable;
+		};
+	};
+};
+
+&uart1 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	
+	current-speed = <9600>;
+	parity = "none";
+	stop-bits = "1";
+	data-bits = <8>;
+	
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-1 = <&uart1_sleep>;
+	pinctrl-names = "default", "sleep";
+	
+	quectel_l86: quectel_l86 {
+		status = "okay";
+		compatible = "quectel,l86";
+		pps-mode = "GNSS_PPS_MODE_DISABLED";
+		zephyr,deferred-init;
+	};
+};

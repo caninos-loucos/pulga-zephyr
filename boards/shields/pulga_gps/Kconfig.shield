@@ -1,0 +1,9 @@
+# Copyright (c) 2024 LSI-TEC - Matheus de Almeida Orsi e Silva
+# SPDX-License-Identifier: Apache-2.0
+
+# Activates SHIELD_PULGA_GPS config if pulga_gps is on shield list
+config SHIELD_PULGA_GPS
+	def_bool $(shields_list_contains,pulga_gps)
+	select GNSS
+	# Uncomment to activate data on connected satellites
+	# select GNSS_SATELLITES

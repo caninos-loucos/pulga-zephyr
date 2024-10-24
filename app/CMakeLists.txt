@@ -5,6 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.13.1)
+# Uncomment to activate GPS shield, when Pulga-GPS module is attached to the stack
+# set(SHIELD pulga_gps)
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(app LANGUAGES C)
@@ -27,3 +30,8 @@ target_sources(app PRIVATE
                     src/sensors/scd30/scd30_model.c
                     src/sensors/scd30/scd30_service.c)
 
+if(CONFIG_SHIELD_PULGA_GPS)
+    target_sources(app PRIVATE  
+                        src/sensors/l86_m33/gnss_model.c
+                        src/sensors/l86_m33/l86_m33_service.c)
+endif()

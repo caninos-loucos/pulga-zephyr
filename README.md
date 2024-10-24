@@ -20,12 +20,13 @@ repository, based on Zephyr's own [example-application][example_app] on West T2 
 is to serve as a reference on how to structure Zephyr-based applications 
 on Pulga. It's recommended to consult the example application before 
 developing new features on Pulga to understand how Zephyr works. The 
-following features are to be demonstrated in this example are:
+following features are to be demonstrated in this example:
 
 - Si1133 sensor (luminosity, UV)
 - BME280 sensor (umidity, temperature, pressure)
 - BMI160 sensor (accelerometer, gyroscope)
 - SCD30 sensor - external to the board (CO2)
+- Pulga GPS - Pulga shield containing L86 GNSS modem
 - LoRaWAN and LoRaWAN peer-to-peer
 - Bluetooth
 - Using a ring buffer to store sensor data
@@ -37,7 +38,7 @@ following features are to be demonstrated in this example are:
 Before getting started, make sure you have a proper Zephyr development
 environment. Follow the official
 [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/getting_started/index.html)
-until just before getting Zephyr source code (before ``west init`` command).
+until just before getting Zephyr source code (before ``west init`` command, on Step 4 of ``Get Zephyr and install Python dependencies`` section).
 
 ### Initialization
 
@@ -53,6 +54,8 @@ cd my-workspace
 west update
 ```
 
+After running this commands, you can continue the guide until the end of ``Install the Zephyr SDK`` section.
+
 ### Building and running
 
 To build the application, run the following command:
@@ -63,7 +66,7 @@ west build -b $BOARD app
 ```
 
 where `$BOARD` is the target board, `pulga`.
-If you have problems building the application, try running a pristine build 
+If you have problems building the application - and specially after changing application or compilation configuration options -, try running a pristine build 
 by appending `-p` to the last command. There are also other examples in the
 `samples` folder, that can be built providing by the proper directories instead
 of `app`.
@@ -75,11 +78,23 @@ command:
 west build -b $BOARD app -- -DOVERLAY_CONFIG=debug.conf
 ```
 
-Once you have built the application, run the following command to flash it:
+Once you have built the application, run the following command to flash it or use J-Flash Lite.
 
 ```shell
 west flash
 ```
+
+### Additional features
+
+Features that are external to the Pulga Core board, such as SCD30 sensor, GPS sampling and LoraWAN, need to activated by uncommenting the respective pieces of code in ``app/CMakeLists.txt``. For example, if you want to activate GNSS (GPS) sensoring, the following line needs to be uncommented:
+
+```
+set(SHIELD pulga_gps)
+```
+
+### Configuring the application
+
+To deactivate sensors internal to Pulga Core, you simply need to change their status from "okay" to "disabled" in ``app/boards/pulga.overlay``. The sensors sampling interval, the transmission interval of the communication channels, the size of the ring buffer and the use of UART communication to terminal are to be configured in ``app/prj.conf`` and the description of those options can be found in ``app/Kconfig``.
 
 <!-- ### Testing
 
