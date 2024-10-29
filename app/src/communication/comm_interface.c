@@ -142,3 +142,39 @@ static void read_and_notify(void *param0, void *param1, void *param2)
         }
     }
 }
+
+void set_transmision_interval(int interval)
+{
+    current_transmission_interval = interval;
+}
+
+int get_transmission_interval()
+{
+    return current_transmission_interval;
+}
+
+#ifdef CONFIG_SHELL
+
+static int set_transmission_interval_cmd_handler(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc > 1)
+        set_transmission_interval((int)strtol(argv[1], NULL, 10));
+
+    return 0;
+}
+
+static int get_transmission_interval_cmd_handler(const struct shell *sh, size_t argc, char **argv)
+{
+    shell_print(sh, "Transmission interval is %d milliseconds", get_transmission_interval());
+
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(transmission_interval_subcmds,
+                               SHELL_CMD(set, NULL, "Set transmission interval", set_transmission_interval_cmd_handler),
+                               SHELL_CMD(get, NULL, "Get transmission interval", get_transmission_interval_cmd_handler),
+                               SHELL_SUBCMD_SET_END);
+
+SHELL_CMD_REGISTER(transmission_interval, &transmission_interval_subcmds, "Get or set communication interface's transmission interval", NULL);
+
+#endif
