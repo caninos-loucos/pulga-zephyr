@@ -51,3 +51,17 @@ config LORAWAN_DR
 	int "Fixed data rate to be used"
 	depends on SEND_LORAWAN && !LORAWAN_ADR
 	default 0
+
+choice LORAWAN_ACTIVATION
+	prompt "LoRaWAN activation mode used to join network"
+	depends on SEND_LORAWAN
+	default LORAWAN_ABP
+
+# TODO: Missing storing and updating nonce in no nvolatile memory
+config LORAWAN_OTAA
+	bool "OTAA - more secure - dynamic key generation"
+
+config LORAWAN_ABP
+	bool "ABP - less secure - no key renewal"
+
+endchoice
