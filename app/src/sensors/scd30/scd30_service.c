@@ -3,6 +3,7 @@
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 #include <sensors/scd30/scd30_service.h>
+#include <math.h>
 
 LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
@@ -13,9 +14,34 @@ LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 static const struct device *scd30;
 static SensorAPI scd30_api = {0};
 
-// Sets the sample time of the aplication into the SCD30 device.
-// Corrects to a valid number according to device's restrictions if necessary.
-static int set_valid_sample_time(int raw_sample_time);
+// Sets the sample time of the aplication into the SCD30 device,
+// clipping it since it only allows measurement time from 2s to 1800s.
+// raw_sample_time is given in ms
+int set_valid_sample_time(int raw_sample_time)
+{
+    int error = 0;
+    struct sensor_value period;
+
+    raw_sample_time /= 1000;
+
+    // Clip the value using mathemagical properties
+    period.val1 = (int)fmax(2, fmin(raw_sample_time, 180));
+    if (period.val1 != raw_sample_time)
+    {
+        LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",
+                period.val1);
+    }
+
+    // Send the chosen period to the driver
+    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
+    if (error)
+    {
+        LOG_ERR("Could not set application sample time. Error code: %d", error);
+        return error;
+    }
+
+    return 0;
+}
 
 /**
  * IMPLEMENTATIONS
@@ -39,12 +65,9 @@ static int init_sensor()
         return -2;
     }
 
-    LOG_DBG("Sampling period atual: %d", get_sampling_interval());
+    // Try to set the application sampling time
+    set_valid_sample_time(get_sampling_interval());
 
-    // Trying to set the application sampling time
-    int sample_time = get_sampling_interval();
-    set_valid_sample_time(sample_time);
-    
     return 0;
 }
 
@@ -61,55 +84,20 @@ static void read_sensor_values()
     if (!error)
     {
         sensor_channel_get(scd30, SENSOR_CHAN_CO2,
-						   &scd30_model.co2);
-		sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP,
-						   &scd30_model.temperature);
-		sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
-						   &scd30_model.humidity);
+                           &scd30_model.co2);
+        sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP,
+                           &scd30_model.temperature);
+        sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
+                           &scd30_model.humidity);
+        memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
+
+        if (insert_in_buffer(scd30_data, SCD30_MODEL, error) != 0)
+        {
+            LOG_ERR("Failed to insert data in ring buffer.");
+        }
     }
     else
-    {
-        LOG_ERR("fetch sample from \"%s\" failed: %d",
-                "SCD30", error);
-    }
-
-    memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
-
-    if (insert_in_buffer(scd30_data, SCD30_MODEL, error) != 0)
-    {
-        LOG_ERR("Failed to insert data in ring buffer.");
-    }
-}
-
-int set_valid_sample_time(int raw_sample_time)
-{
-    int error = 0;
-
-    // Device only allows 2 s to 1800 s update rate. 
-    // raw_sample_time is given in ms
-    raw_sample_time /= 1000;
-
-    if (raw_sample_time < 2)
-    {
-        raw_sample_time = 2;
-    }
-    else if (raw_sample_time > 180)
-    {
-        raw_sample_time = 180;
-    }
-    
-    // Will set application sampling period
-    struct sensor_value period;
-    period.val1 = raw_sample_time;
-
-    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
-    if (error)
-    {
-        LOG_ERR("Could not set application sample time. Error code: %d", error);
-        return error;
-    }
-
-    return 0;
+        LOG_ERR("fetch_sample failed: %d", error);
 }
 
 // Register SCD30 sensor callbacks

@@ -38,14 +38,12 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/byteorder.h>
-#include <zephyr/sys/crc.h>
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 
 #define DT_DRV_COMPAT sensirion_scd30
 
 #include "scd30_priv.h"
-
 
 // Number of instances of device
 #if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
@@ -54,7 +52,7 @@
 
 LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
 
-// Writes the desired command (cmd) into desired I2C bus 
+// Writes the desired command (cmd) into desired I2C bus
 // Returns 0 if sucessful or -EIO (General input/output error)
 static int scd30_write_command(const struct device *dev, uint16_t cmd)
 {
@@ -78,7 +76,8 @@ static int scd30_check_crc(uint8_t *data, uint8_t data_len, uint8_t checksum)
 {
 	uint8_t actual_crc = scd30_compute_crc(data, data_len);
 
-	if (checksum != actual_crc) {
+	if (checksum != actual_crc)
+	{
 		LOG_ERR("CRC check failed. Expected: %x, got %x", checksum, actual_crc);
 		return -EIO;
 	}
@@ -110,16 +109,19 @@ static int scd30_read_register(const struct device *dev, uint16_t reg, uint16_t 
 	int rc;
 
 	rc = scd30_write_command(dev, reg);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
 	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&rx_word, sizeof(rx_word));
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
-	if (scd30_check_crc(rx_word.word, sizeof(rx_word.word), rx_word.crc) != 0) {
+	if (scd30_check_crc(rx_word.word, sizeof(rx_word.word), rx_word.crc) != 0)
+	{
 		return -EIO;
 	}
 
@@ -136,7 +138,8 @@ static int scd30_read_register(const struct device *dev, uint16_t reg, uint16_t 
  */
 static int scd30_fill_data_buf(struct scd30_word word, uint8_t *dst)
 {
-	if (scd30_check_crc(word.word, SCD30_WORD_SIZE, word.crc)) {
+	if (scd30_check_crc(word.word, SCD30_WORD_SIZE, word.crc))
+	{
 		return -EIO;
 	}
 
@@ -150,7 +153,8 @@ static int scd30_fill_data_buf(struct scd30_word word, uint8_t *dst)
 // Returns the value stored by the region pointed by bytes in float type
 static float scd30_bytes_to_float(const uint8_t *bytes)
 {
-	union {
+	union
+	{
 		uint32_t u32_value;
 		float float32;
 	} tmp;
@@ -168,7 +172,8 @@ static int scd30_get_sample_time(const struct device *dev)
 	int rc;
 
 	rc = scd30_read_register(dev, SCD30_CMD_SET_MEASUREMENT_INTERVAL, &sample_time);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
@@ -184,24 +189,27 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 	struct scd30_data *data = dev->data;
 	int rc;
 
-	if (sample_time < SCD30_MIN_SAMPLE_TIME || sample_time > SCD30_MAX_SAMPLE_TIME) {
+	if (sample_time < SCD30_MIN_SAMPLE_TIME || sample_time > SCD30_MAX_SAMPLE_TIME)
+	{
 		return -EINVAL;
 	}
 
 	rc = scd30_write_command(dev, SCD30_CMD_STOP_PERIODIC_MEASUREMENT);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
 	rc = scd30_write_register(dev, SCD30_CMD_SET_MEASUREMENT_INTERVAL, sample_time);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
 	data->sample_time = sample_time;
 
-	return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, 
-                                SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
+	return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT,
+								SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
 }
 
 // Fetch the readings of the sensor and stores it into dev
@@ -218,7 +226,8 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	 * each scd30_word conists of a 16 bit data word followed
 	 * by an 8 bit crc.
 	 */
-	struct scd30_rx_data {
+	struct scd30_rx_data
+	{
 		struct scd30_word co2_msw;
 		struct scd30_word co2_lsw;
 		struct scd30_word temp_msw;
@@ -231,29 +240,34 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	 * Struct representing the received data from the SCD30
 	 * in big endian order with the CRC's removed.
 	 */
-	struct rx_data {
+	struct rx_data
+	{
 		uint8_t co2_be[sizeof(float)];
 		uint8_t temp_be[sizeof(float)];
 		uint8_t humidity_be[sizeof(float)];
 	} rx_data;
 
-	if (chan != SENSOR_CHAN_ALL) {
+	if (chan != SENSOR_CHAN_ALL)
+	{
 		return -ENOTSUP;
 	}
 
-    while(!data_ready) {
-        rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
-        if (rc != 0) {
-            return rc;
-        }
-        k_sleep(K_MSEC(3));
-    }
+	while (!data_ready)
+	{
+		rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
+		if (rc != 0)
+		{
+			return rc;
+		}
+		k_sleep(K_MSEC(3));
+	}
 	// if (!data_ready) {
 	// 	return -ENODATA;
 	// }
 
 	rc = scd30_write_command(dev, SCD30_CMD_READ_MEASUREMENT);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		LOG_DBG("Failed to send command. (rc = %d)", rc);
 		return rc;
 	}
@@ -262,38 +276,45 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	k_sleep(K_MSEC(3));
 
 	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&raw_rx_data, sizeof(raw_rx_data));
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		LOG_DBG("Failed to read data. (rc = %d)", rc);
 		return rc;
 	}
 
 	/* C02 data */
 	rc = scd30_fill_data_buf(raw_rx_data.co2_msw, &rx_data.co2_be[0]);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.co2_lsw, &rx_data.co2_be[SCD30_WORD_SIZE]);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
 	/* Temperature data */
 	rc = scd30_fill_data_buf(raw_rx_data.temp_msw, &rx_data.temp_be[0]);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.temp_lsw, &rx_data.temp_be[SCD30_WORD_SIZE]);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
 	/* Relative humidity */
 	rc = scd30_fill_data_buf(raw_rx_data.humidity_msw, &rx_data.humidity_be[0]);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.humidity_lsw, &rx_data.humidity_be[SCD30_WORD_SIZE]);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
@@ -307,11 +328,12 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 // Stores the desired value into dev data. The value is chosen by the chan parameter
 // Returns 0 if sucessful or -1 if the channel isn't correct
 static int scd30_channel_get(const struct device *dev, enum sensor_channel chan,
-			     struct sensor_value *val)
+							 struct sensor_value *val)
 {
 	struct scd30_data *data = dev->data;
 
-	switch (chan) {
+	switch (chan)
+	{
 	case SENSOR_CHAN_CO2:
 		sensor_value_from_double(val, data->co2_ppm);
 		break;
@@ -333,15 +355,17 @@ static int scd30_channel_get(const struct device *dev, enum sensor_channel chan,
 // Stores the desided attribute into val, accordingly to attr parameter
 // Returns 0 if sucessful or -ENOTSUP if the channel or attribute is incorrect
 static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
-			  enum sensor_attribute attr, struct sensor_value *val)
+						  enum sensor_attribute attr, struct sensor_value *val)
 {
 	struct scd30_data *data = dev->data;
 
-	if (chan != SENSOR_CHAN_ALL) {
+	if (chan != SENSOR_CHAN_ALL)
+	{
 		return -ENOTSUP;
 	}
 
-	switch (attr) {
+	switch (attr)
+	{
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 	{
 		float frequency = 1.0 / data->sample_time;
@@ -364,17 +388,19 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 // Sets the desired attribute into dev, accordingly with attr parameter
 // Returns 0 if sucessful, -ENOTSUP if channel or attr is incorrect or error at setting the attribute
 static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
-			  enum sensor_attribute attr, const struct sensor_value *val)
+						  enum sensor_attribute attr, const struct sensor_value *val)
 {
-	if (chan != SENSOR_CHAN_ALL) {
+	if (chan != SENSOR_CHAN_ALL)
+	{
 		return -ENOTSUP;
 	}
 
-	switch (attr) {
+	switch (attr)
+	{
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 	{
 		double frequency = sensor_value_to_double(val);
-		double sample_time = 1.0 /  frequency;
+		double sample_time = 1.0 / frequency;
 
 		return scd30_set_sample_time(dev, (uint16_t)sample_time);
 	}
@@ -403,39 +429,44 @@ static int scd30_init(const struct device *dev)
 	struct scd30_data *data = dev->data;
 	int rc = 0;
 
-	if (!device_is_ready(cfg->bus.bus)) {
+	if (!device_is_ready(cfg->bus.bus))
+	{
 		LOG_ERR("Failed to get pointer to %s device!", cfg->bus.bus->name);
 		return -ENODEV;
 	}
 
+	// really ugly workaround to make I2C1 work at 50KHz
+	((NRF_TWIM_Type *)NRF_TWIM1_BASE)->FREQUENCY = 0x00550000UL;
+
 	rc = scd30_set_sample_time(dev, data->sample_time);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		LOG_WRN("Failed to set sample period. Using period stored of device");
 		/* Try to read sample time from sensor to reflect actual sample period */
 		rc = scd30_get_sample_time(dev);
 	}
 
 	LOG_DBG("Sample time: %d", data->sample_time);
-	if (rc != 0) {
+	if (rc != 0)
+	{
 		return rc;
 	}
 
 	LOG_DBG("Starting periodic measurements");
 	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT,
-				  SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
+							  SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
 
 	return rc;
 }
 
-#define SCD30_DEFINE(inst)									\
-	static struct scd30_data scd30_data_##inst = {						\
-		.sample_time = DT_INST_PROP(inst, sample_period)				\
-	};											\
-	static const struct scd30_config scd30_config_##inst = {				\
-		.bus = I2C_DT_SPEC_INST_GET(inst),						\
-	};											\
-												\
-	DEVICE_DT_INST_DEFINE(inst, scd30_init, NULL, &scd30_data_##inst, &scd30_config_##inst,	\
-			      POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &scd30_driver_api);
+#define SCD30_DEFINE(inst)                                                                  \
+	static struct scd30_data scd30_data_##inst = {                                          \
+		.sample_time = DT_INST_PROP(inst, sample_period)};                                  \
+	static const struct scd30_config scd30_config_##inst = {                                \
+		.bus = I2C_DT_SPEC_INST_GET(inst),                                                  \
+	};                                                                                      \
+                                                                                            \
+	DEVICE_DT_INST_DEFINE(inst, scd30_init, NULL, &scd30_data_##inst, &scd30_config_##inst, \
+						  POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &scd30_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(SCD30_DEFINE);
