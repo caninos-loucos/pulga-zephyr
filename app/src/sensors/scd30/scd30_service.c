@@ -17,31 +17,7 @@ static SensorAPI scd30_api = {0};
 // Sets the sample time of the aplication into the SCD30 device,
 // clipping it since it only allows measurement time from 2s to 1800s.
 // raw_sample_time is given in ms
-int set_valid_sample_time(int raw_sample_time)
-{
-    int error = 0;
-    struct sensor_value period;
-
-    raw_sample_time /= 1000;
-
-    // Clip the value using mathemagical properties
-    period.val1 = (int)fmax(2, fmin(raw_sample_time, 180));
-    if (period.val1 != raw_sample_time)
-    {
-        LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",
-                period.val1);
-    }
-
-    // Send the chosen period to the driver
-    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
-    if (error)
-    {
-        LOG_ERR("Could not set application sample time. Error code: %d", error);
-        return error;
-    }
-
-    return 0;
-}
+int set_valid_sample_time(int raw_sample_time);
 
 /**
  * IMPLEMENTATIONS
@@ -108,4 +84,30 @@ SensorAPI *register_scd30_callbacks()
     scd30_api.read_sensor_values = read_sensor_values;
     scd30_api.data_model_api = register_scd30_model_callbacks();
     return &scd30_api;
+}
+
+int set_valid_sample_time(int raw_sample_time)
+{
+    int error = 0;
+    struct sensor_value period;
+
+    raw_sample_time /= 1000;
+
+    // Clip the value using mathemagical properties
+    period.val1 = (int)fmax(2, fmin(raw_sample_time, 180));
+    if (period.val1 != raw_sample_time)
+    {
+        LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",
+                period.val1);
+    }
+
+    // Send the chosen period to the driver
+    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
+    if (error)
+    {
+        LOG_ERR("Could not set application sample time. Error code: %d", error);
+        return error;
+    }
+
+    return 0;
 }
