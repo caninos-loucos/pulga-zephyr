@@ -3,6 +3,7 @@
 #include <zephyr/logging/log.h>
 #include <communication/comm_interface.h>
 #include <communication/uart/uart_interface.h>
+#include <communication/lorawan/lorawan_interface.h>
 
 LOG_MODULE_REGISTER(comm_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -43,6 +44,10 @@ int register_comm_callbacks()
 #if defined(CONFIG_SEND_UART)
     channel_apis[UART] = register_uart_callbacks();
 #endif /* CONFIG_SEND_UART */
+
+#if defined(CONFIG_SEND_LORAWAN)
+    channel_apis[LORAWAN] = register_lorawan_callbacks();
+#endif /* CONFIG_SEND_LORAWAN */
 
     return 0;
 }

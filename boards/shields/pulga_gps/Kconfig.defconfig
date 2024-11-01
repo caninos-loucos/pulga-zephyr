@@ -27,5 +27,12 @@ config MODEM_CHAT_LOG_BUFFER_SIZE
 
 endif #APP_LOG_LEVEL_DBG
 
+if SEND_LORAWAN && !LORAWAN_ADR
+
+config LORAWAN_DR
+	default 3
+
+endif #SEND_LORAWAN
+
 endif # SHIELD_PULGA_GPS
 

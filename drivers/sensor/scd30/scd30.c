@@ -40,6 +40,7 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
+#include <zephyr/sys/crc.h>
 
 #define DT_DRV_COMPAT sensirion_scd30
 

@@ -1,4 +1,4 @@
-.. zephyr:code-sample:: lora-send
+.. zephyr:code-sample:: lora-send-p2p
    :name: LoRa send
    :relevant-api: lora_api
 
@@ -11,19 +11,19 @@ This sample demonstrates how to use the LoRa radio driver to configure
 the encoding settings and send data over the radio.
 
 Transmitted messages can be received by building and flashing the accompanying
-LoRa receive sample :zephyr:code-sample:`lora-receive` on another board within
+LoRa receive sample :zephyr:code-sample:`lora-receive-p2p` on another board within
 range.
 
 Building and Running
 ********************
 
-Build and flash the sample as follows, changing ``b_l072z_lrwan1`` for
+Build and flash the sample as follows, changing ``pulga`` for
 your board, where your board has a ``lora0`` alias in the devicetree.
 
 .. zephyr-app-commands::
-   :zephyr-app: zephyr/samples/drivers/lora/send
+   :zephyr-app: pulga-zephyr/samples/lora-send-p2p
    :host-os: unix
-   :board: b_l072z_lrwan1
+   :board:pulga
    :goals: build flash
    :compact:
 
@@ -35,3 +35,4 @@ Sample Output
     [00:00:00.531,000] <inf> lora_send: Data sent!
     [00:00:01.828,000] <inf> lora_send: Data sent!
     [00:00:03.125,000] <inf> lora_send: Data sent!
+    ...

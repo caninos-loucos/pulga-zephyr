@@ -111,7 +111,7 @@
 };
 
 &spi0 {
-	compatible = "nordic,nrf-spi";
+	compatible = "nordic,nrf-spim";
 	status = "disabled";
 };
 

@@ -27,12 +27,12 @@ static int init_sensor()
     if (!si1133)
     {
         LOG_ERR("si1133 not declared at device tree");
-        return -1;
+        return -ENODEV;
     }
     else if (!device_is_ready(si1133))
     {
         LOG_ERR("device \"%s\" is not ready", si1133->name);
-        return -2;
+        return -EAGAIN;
     }
     return 0;
 }
