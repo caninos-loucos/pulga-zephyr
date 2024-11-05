@@ -22,12 +22,12 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-             "CO2: %d ppm; Temperature: %d.%02d oC; Humidity: %d.%02d %% RH;",
-             scd30_model->co2.val1,
-             scd30_model->temperature.val1,
-             scd30_model->temperature.val2 / 10000,
-             scd30_model->humidity.val1,
-             scd30_model->humidity.val2 / 10000);
+                    "CO2: %d ppm; Temperature: %d.%02d oC; Humidity: %d.%02d %% RH;",
+                    scd30_model->co2.val1,
+                    scd30_model->temperature.val1,
+                    scd30_model->temperature.val2 / 10000,
+                    scd30_model->humidity.val1,
+                    scd30_model->humidity.val2 / 10000);
 }
 
 // Encodes all values of data model into a mininal string
@@ -38,12 +38,20 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-             "CO2%dT%d.%02dH%d.%02d",
-             scd30_model->co2.val1,
-             scd30_model->temperature.val1,
-             scd30_model->temperature.val2 / 10000,
-             scd30_model->humidity.val1,
-             scd30_model->humidity.val2 / 10000);
+                    "CO2%dT%d.%02dH%d.%02d",
+                    scd30_model->co2.val1,
+                    scd30_model->temperature.val1,
+                    scd30_model->temperature.val2 / 10000,
+                    scd30_model->humidity.val1,
+                    scd30_model->humidity.val2 / 10000);
+}
+
+static int encode_compressed(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+{
+    // Converts words into the model
+    scd30_model = (SensorModelSCD30 *)data_words;
+
+    return LZ4_compress_default((char *)scd30_model, (char *)encoded_data, SCD30_MODEL_WORDS * 4, encoded_size);
 }
 
 // Registers SCD30 model callbacks
@@ -52,6 +60,7 @@ DataAPI *register_scd30_model_callbacks()
     scd30_model_api.num_data_words = SCD30_MODEL_WORDS;
     scd30_model_api.encode_verbose = encode_verbose;
     scd30_model_api.encode_minimalist = encode_minimalist;
+    scd30_model_api.encode_compressed = encode_compressed;
     //  scd30_model_api.split_values = split_values;
     return &scd30_model_api;
 }

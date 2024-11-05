@@ -67,12 +67,21 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     gnss_model->real_time.century_year);
 }
 
+static int encode_compressed(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+{
+    // Converts words into the model
+    gnss_model = (SensorModelGNSS *)data_words;
+
+    return LZ4_compress_default((char *)gnss_model, (char *)encoded_data, GNSS_MODEL_WORDS * 4, encoded_size);
+}
+
 // Registers Si1133 model callbacks
 DataAPI *register_gnss_model_callbacks()
 {
     gnss_model_api.num_data_words = GNSS_MODEL_WORDS;
     gnss_model_api.encode_verbose = encode_verbose;
     gnss_model_api.encode_minimalist = encode_minimalist;
+    gnss_model_api.encode_compressed = encode_compressed;
     // gnss_model_api.split_values = split_values;
     return &gnss_model_api;
 }

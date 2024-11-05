@@ -46,12 +46,21 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     si1133_model->uv_index.val2 / 10000);
 }
 
+static int encode_compressed(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+{
+    // Converts words into the model
+    si1133_model = (SensorModelSi1133 *)data_words;
+
+    return LZ4_compress_default((char *)si1133_model, (char *)encoded_data, SI1133_MODEL_WORDS * 4, encoded_size);
+}
+
 // Registers Si1133 model callbacks
 DataAPI *register_si1133_model_callbacks()
 {
     si1133_model_api.num_data_words = SI1133_MODEL_WORDS;
     si1133_model_api.encode_verbose = encode_verbose;
     si1133_model_api.encode_minimalist = encode_minimalist;
+    si1133_model_api.encode_compressed = encode_compressed;
     // si1133_model_api.split_values = split_values;
     return &si1133_model_api;
 }

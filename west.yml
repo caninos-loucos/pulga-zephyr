@@ -27,3 +27,8 @@ manifest:
       remote: caninos
       revision: master
       path: modules/lib/loramac-node
+
+    - name: lz4
+      remote: zephyrproject-rtos
+      revision: zephyr
+      path: modules/lib/lz4

@@ -17,8 +17,8 @@ The order in which everything happens is the following:
 
 	2 - Immediately after being created, the Send Thread is started. It will check for the signal that a data
 		item was read on the data module buffer. When data is available, the thread will encode it minimally,
-		using few characters. The encoded data is stored on the Internal Buffer for later transmission, so the 
-		LoRaWAN thread doesn't delay other transmissions because of its synchronous communication. Then, 
+		using few characters. The encoded data is stored on the Internal Buffer for later transmission, so the
+		LoRaWAN thread doesn't delay other transmissions because of its synchronous communication. Then,
 		the thread signals for the data module that the data was processed so it can continue reading other items.
 
 	3 - The Send Thread enqueues one instance of the Work Handler to the Workqueue, which will asynchronously
@@ -185,11 +185,11 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		uint8_t encoded_data[max_payload_size];
 
 		// Encoding data to minimal string
-		size = encode_data(data_unit.data_words, data_unit.data_type, MINIMALIST,
+		size = encode_data(data_unit.data_words, data_unit.data_type, COMPRESSED,
 						   encoded_data, sizeof(encoded_data));
 
 		if (size >= 0)
-			LOG_DBG("Encoded data: \"%s\", size %d bytes", encoded_data, size);
+			LOG_DBG("Encoded data: \"%x\", size %d bytes", encoded_data, size);
 		else
 			LOG_ERR("Could not encode data");
 
@@ -206,7 +206,6 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		k_work_submit_to_queue(&lorawan_workqueue, &lorawan_send_work);
 	}
 }
-
 
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
@@ -266,10 +265,9 @@ void lorawan_send_work_handler(struct k_work *work)
 		// Get the last message from the internal buffer
 		error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
 
-
 		if (!error)
 		{
-			LOG_DBG("Sending encoded data: \"%s\", with %d bytes", (char *)encoded_data, size * 4);
+			LOG_DBG("Sending encoded data: \"%x\", with %d bytes", encoded_data, size * 4);
 
 			// Send using Zephyr's subsystem and check if the transmission was successful
 			error = lorawan_send(1, (uint8_t *)encoded_data, size * 4, LORAWAN_MSG_UNCONFIRMED);
