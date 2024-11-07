@@ -8,7 +8,6 @@ LOG_MODULE_REGISTER(scd30_model, CONFIG_APP_LOG_LEVEL);
  */
 
 static DataAPI scd30_model_api;
-static SensorModelSCD30 *scd30_model;
 
 /**
  * IMPLEMENTATIONS
@@ -18,7 +17,7 @@ static SensorModelSCD30 *scd30_model;
 static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
-    scd30_model = (SensorModelSCD30 *)data_words;
+    SensorModelSCD30 *scd30_model = (SensorModelSCD30 *)data_words;
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
@@ -34,7 +33,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
-    scd30_model = (SensorModelSCD30 *)data_words;
+    SensorModelSCD30 *scd30_model = (SensorModelSCD30 *)data_words;
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
@@ -46,12 +45,12 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     scd30_model->humidity.val2 / 10000);
 }
 
-static int encode_compressed(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
-    // Converts words into the model
-    scd30_model = (SensorModelSCD30 *)data_words;
+    // Converts words into bytes
+    bytecpy(encoded_data, data_words, encoded_size);
 
-    return LZ4_compress_default((char *)scd30_model, (char *)encoded_data, SCD30_MODEL_WORDS * 4, encoded_size);
+    return sizeof(SensorModelSCD30);
 }
 
 // Registers SCD30 model callbacks
@@ -60,7 +59,7 @@ DataAPI *register_scd30_model_callbacks()
     scd30_model_api.num_data_words = SCD30_MODEL_WORDS;
     scd30_model_api.encode_verbose = encode_verbose;
     scd30_model_api.encode_minimalist = encode_minimalist;
-    scd30_model_api.encode_compressed = encode_compressed;
+    scd30_model_api.encode_raw_bytes = encode_raw_bytes;
     //  scd30_model_api.split_values = split_values;
     return &scd30_model_api;
 }

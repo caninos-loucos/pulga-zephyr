@@ -4,16 +4,16 @@
 #include <zephyr/drivers/sensor.h>
 #include <sensors/sensors_interface.h>
 
-// Number of 32-bit words in each data item (model)
-// Each sensor_value has 2 words, SCD30 has 3 measurements
-#define SCD30_MODEL_WORDS 2 * 3
-
 typedef struct
 {
 	struct sensor_value co2;
 	struct sensor_value temperature;
 	struct sensor_value humidity;
 } SensorModelSCD30;
+
+// Number of 32-bit words in each data item (model)
+// Each sensor_value has 2 words, SCD30 has 3 measurements
+#define SCD30_MODEL_WORDS ((sizeof(SensorModelSCD30) + 3) / 4)
 
 // Registers SCD30 model callbacks
 DataAPI *register_scd30_model_callbacks();

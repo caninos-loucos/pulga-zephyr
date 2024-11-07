@@ -65,3 +65,7 @@ config LORAWAN_ABP
 	bool "ABP - less secure - no key renewal"
 
 endchoice
+
+config LORAWAN_JOIN_COMPRESS
+	bool "Join and compress data in the buffer to make the most of a packet size"
+	default n

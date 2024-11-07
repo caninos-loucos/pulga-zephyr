@@ -34,8 +34,8 @@ int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLeve
 	case MINIMALIST:
 		return data_api->encode_minimalist(data_words, encoded_data, encoded_size);
 		break;
-	case COMPRESSED:
-		return data_api->encode_compressed(data_words, encoded_data, encoded_size);
+	case RAW_BYTES:
+		return data_api->encode_raw_bytes(data_words, encoded_data, encoded_size);
 		break;
 	default:
 		LOG_ERR("Invalid encoding level");

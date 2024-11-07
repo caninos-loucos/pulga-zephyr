@@ -8,7 +8,6 @@ LOG_MODULE_REGISTER(bme280_model, CONFIG_APP_LOG_LEVEL);
  */
 
 static DataAPI bme280_model_api;
-static SensorModelBME280 *bme280_model;
 
 /**
  * IMPLEMENTATIONS
@@ -18,7 +17,7 @@ static SensorModelBME280 *bme280_model;
 static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
-    bme280_model = (SensorModelBME280 *)data_words;
+    SensorModelBME280 *bme280_model = (SensorModelBME280 *)data_words;
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
@@ -36,7 +35,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
-    bme280_model = (SensorModelBME280 *)data_words;
+    SensorModelBME280 * bme280_model = (SensorModelBME280 *)data_words;
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
@@ -49,12 +48,12 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     bme280_model->humidity.val2 / 10000);
 }
 
-static int encode_compressed(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
-    // Converts words into the model
-    bme280_model = (SensorModelBME280 *)data_words;
-    LOG_INF("compressing thing");
-    return LZ4_compress_default((char *)bme280_model, (char *)encoded_data, BME280_MODEL_WORDS * 4, encoded_size);
+    // Converts words into bytes
+    bytecpy(encoded_data, data_words, encoded_size);
+
+    return sizeof(SensorModelBME280);
 }
 
 // Registers BME280 model callbacks
@@ -63,7 +62,7 @@ DataAPI *register_bme280_model_callbacks()
     bme280_model_api.num_data_words = BME280_MODEL_WORDS;
     bme280_model_api.encode_verbose = encode_verbose;
     bme280_model_api.encode_minimalist = encode_minimalist;
-    bme280_model_api.encode_compressed = encode_compressed;
+    bme280_model_api.encode_raw_bytes = encode_raw_bytes;
     // bme280_model_api.split_values = split_values;
     return &bme280_model_api;
 }

@@ -175,6 +175,10 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	uint8_t unused_arg;
 
 	int size, error;
+	int pending_items = 0;
+	int ring_buf_data_size;
+
+	uint8_t encoded_data[256];
 
 	while (1)
 	{
@@ -182,10 +186,11 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		k_sem_take(&data_ready_sem[LORAWAN], K_FOREVER);
 
 		lorawan_get_payload_sizes(&unused_arg, &max_payload_size);
-		uint8_t encoded_data[max_payload_size];
 
-		// Encoding data to minimal string
-		size = encode_data(data_unit.data_words, data_unit.data_type, COMPRESSED,
+		memset(encoded_data, 0, 256);
+
+		// Encoding data to raw bytes
+		size = encode_data(data_unit.data_words, data_unit.data_type, RAW_BYTES,
 						   encoded_data, sizeof(encoded_data));
 
 		if (size >= 0)

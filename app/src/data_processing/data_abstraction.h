@@ -33,8 +33,8 @@ enum EncodingLevel
     // Splits structured data into individual one item sized buffers
     // This translates to characteristics abstraction in Bluetooth stack
     SPLIT_DATA,
-    // Compressed bytes using the LZ4 algorithm
-    COMPRESSED,
+    // Raw bytes
+    RAW_BYTES,
     // Encodes data into strings that occupy low memory
     MINIMALIST,
     // Encodes data into a verbose string
@@ -51,21 +51,25 @@ typedef struct
     // Encodes data into small strings that can be useful for debugging or offload complexity
     // from the end user program
     int (*encode_minimalist)(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size);
-    // Encodes data using the LZ4 algorithm to achieve ~2x compression
-    int (*encode_compressed)(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size);
+    // Prints raw bytes to the buffer
+    int (*encode_raw_bytes)(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size);
     // Splits structured data into individual one item sized buffers
     // void* (*split_data)(uint32_t* data_words, uint8_t** value_list);
 } DataAPI;
 
 // Registers callbacks for data types not corresponding to sensor data
 int register_data_callbacks();
+
 // Gets item from buffer
 int get_from_buffer(uint32_t *data_words, enum DataType *type);
+
 // Inserts data in buffer
 int insert_in_buffer(uint32_t *data_words, enum DataType data_type, uint8_t custom_value);
+
 // Verifies if buffer is empty
 int data_buffer_is_empty();
-// Encodes data to verbose presentation format
+
+// Encodes data to chosen presentation format
 int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLevel encoding,
                 uint8_t *encoded_data, size_t encoded_size);
 // Processes data type and returns correspondent data API

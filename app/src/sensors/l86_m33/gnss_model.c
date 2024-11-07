@@ -9,7 +9,6 @@ LOG_MODULE_REGISTER(gnss_model, CONFIG_APP_LOG_LEVEL);
  */
 
 static DataAPI gnss_model_api;
-static SensorModelGNSS *gnss_model;
 
 /**
  * IMPLEMENTATIONS
@@ -19,7 +18,7 @@ static SensorModelGNSS *gnss_model;
 static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
-    gnss_model = (SensorModelGNSS *)data_words;
+    SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
@@ -49,7 +48,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
-    gnss_model = (SensorModelGNSS *)data_words;
+    SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
@@ -67,12 +66,12 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     gnss_model->real_time.century_year);
 }
 
-static int encode_compressed(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
-    // Converts words into the model
-    gnss_model = (SensorModelGNSS *)data_words;
+    // Converts words into bytes
+    bytecpy(encoded_data, data_words, encoded_size);
 
-    return LZ4_compress_default((char *)gnss_model, (char *)encoded_data, GNSS_MODEL_WORDS * 4, encoded_size);
+    return sizeof(SensorModelGNSS);
 }
 
 // Registers Si1133 model callbacks
@@ -81,7 +80,7 @@ DataAPI *register_gnss_model_callbacks()
     gnss_model_api.num_data_words = GNSS_MODEL_WORDS;
     gnss_model_api.encode_verbose = encode_verbose;
     gnss_model_api.encode_minimalist = encode_minimalist;
-    gnss_model_api.encode_compressed = encode_compressed;
+    gnss_model_api.encode_raw_bytes = encode_raw_bytes;
     // gnss_model_api.split_values = split_values;
     return &gnss_model_api;
 }
