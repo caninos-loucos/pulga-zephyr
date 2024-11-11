@@ -89,7 +89,7 @@ west flash
 Features that are external to the Pulga Core board, such as SCD30 sensor, GPS sampling and LoraWAN, need to activated by uncommenting the respective pieces of code in ``app/CMakeLists.txt``. For example, if you want to activate GNSS (GPS) sensoring, the following line needs to be uncommented:
 
 ```
-set(SHIELD pulga_gps)
+list(APPEND SHIELD pulga_gps)
 ```
 
 ### Configuring the application
