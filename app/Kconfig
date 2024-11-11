@@ -49,7 +49,7 @@ config SEND_LORAWAN
 
 config LORAWAN_DR
 	int "Fixed data rate to be used"
-	depends on SEND_LORAWAN && !LORAWAN_ADR
+	depends on SEND_LORAWAN
 	default 0
 
 choice LORAWAN_ACTIVATION
@@ -68,4 +68,5 @@ endchoice
 
 config LORAWAN_JOIN_COMPRESS
 	bool "Join and compress data in the buffer to make the most of a packet size"
+	select LZ4
 	default n
