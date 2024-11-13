@@ -94,7 +94,7 @@ int set_valid_sample_time(int raw_sample_time)
     raw_sample_time /= 1000;
 
     // Clip the value using mathemagical properties
-    period.val1 = (int)fmax(2, fmin(raw_sample_time, 180));
+    period.val1 = (int)fmax(2, fmin(raw_sample_time, 1800));
     if (period.val1 != raw_sample_time)
     {
         LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",

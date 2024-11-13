@@ -47,7 +47,9 @@
 		spi-max-frequency = <10000000>;
 		reset-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>; /* P1.15 */
 		dio-gpios = <&gpio0 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>; /* P0.12 */
-		power-amplifier-output = "pa-boost";
+		// Power amplifier output pin. Depends on the type of Pulga Lora.
+		// Pulga Lora types C and D use PA boost, types A and B use RFO pin
+		power-amplifier-output = "rfo"; // or "pa-boost"
 		rfi-enable-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>; /* P0.2 */
 		
 		status = "okay";

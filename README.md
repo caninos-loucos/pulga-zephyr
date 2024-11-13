@@ -115,6 +115,7 @@ To deactivate sensors internal to Pulga Core, you simply need to change their st
 - LORAWAN_ACTIVATION: Whether joining the LoRaWAN network will be via OTAA (more secure, renews encryption keys during communication) or ABP (less secure, configures keys to be used during all communication).
 - LORAWAN_SELECTED_REGION (lorawan_interface.c): The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc.
 - Lorawan keys (lorawan_keys_example.h): Security parameters that allow LoRaWAN communication. In production environment, configured in a lorawan_keys.h file, which will be properly ignored by git, being necessary to update the import in lorawan_interface.c.
+- Power amplifier output pin (boards/shields/pulga-lora.overlay): depends on the type of Pulga Lora board used. Types A and B don't have PA boost so "rfo" pin is used, while types C and D use "pa-boost" pin.
 
 <!-- ### Testing
 
