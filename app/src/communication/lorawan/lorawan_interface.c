@@ -17,8 +17,8 @@ The order in which everything happens is the following:
 
 	2 - Immediately after being created, the Send Thread is started. It will check for the signal that a data
 		item was read on the data module buffer. When data is available, the thread will encode it minimally,
-		using few characters. The encoded data is stored on the Internal Buffer for later transmission, so the 
-		LoRaWAN thread doesn't delay other transmissions because of its synchronous communication. Then, 
+		using few characters. The encoded data is stored on the Internal Buffer for later transmission, so the
+		LoRaWAN thread doesn't delay other transmissions because of its synchronous communication. Then,
 		the thread signals for the data module that the data was processed so it can continue reading other items.
 
 	3 - The Send Thread enqueues one instance of the Work Handler to the Workqueue, which will asynchronously
@@ -64,7 +64,6 @@ static struct k_thread lorawan_thread_data;
 static k_tid_t lorawan_thread_id;
 
 // Workqueue declarations
-struct k_work lorawan_send_work;
 struct k_work_q lorawan_workqueue;
 
 // Initializes and starts thread to send data via LoRaWAN
@@ -158,7 +157,6 @@ static void lorawan_init_channel()
 	k_work_queue_start(&lorawan_workqueue, lorawan_workqueue_thread_stack_area,
 					   K_THREAD_STACK_SIZEOF(lorawan_workqueue_thread_stack_area),
 					   LORAWAN_THREAD_PRIORITY, NULL);
-	k_work_init(&lorawan_send_work, lorawan_send_work_handler);
 
 return_clause:
 	return;
@@ -203,10 +201,15 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		k_sem_give(&data_processed);
 
 		// Signals for async transmission
-		k_work_submit_to_queue(&lorawan_workqueue, &lorawan_send_work);
+		struct k_work lorawan_send_work;
+		k_work_init(&lorawan_send_work, lorawan_send_work_handler);
+		error = k_work_submit_to_queue(&lorawan_workqueue, &lorawan_send_work);
+		if (error < 0)
+		{
+			LOG_ERR("Couldn't submit send work: %d.", error);
+		}
 	}
 }
-
 
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
@@ -257,15 +260,12 @@ void lorawan_send_work_handler(struct k_work *work)
 	uint16_t type;
 	uint8_t value, size = 64;
 	uint32_t encoded_data[64];
-
 	error = ring_buf_is_empty(&lorawan_internal_buffer);
 
 	if (!error)
 	{
-
 		// Get the last message from the internal buffer
 		error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
-
 
 		if (!error)
 		{
