@@ -76,6 +76,7 @@ extern "C" {
 
 struct scd30_config {
 	const struct i2c_dt_spec bus;
+	const struct gpio_dt_spec rdy_gpios;
 };
 
 struct scd30_data {
@@ -85,6 +86,7 @@ struct scd30_data {
 	float co2_ppm;
 	float temp;
 	float rel_hum;
+	struct k_sem lock;
 };
 
 struct scd30_word {

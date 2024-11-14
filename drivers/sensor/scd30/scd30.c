@@ -53,6 +53,22 @@
 
 LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
 
+static void scd30_data_ready_callback(const struct device *dev);
+
+static void scd30_lock(const struct device *dev)
+{
+	struct scd30_data *data = dev->data;
+
+	(void)k_sem_take(&data->lock, K_FOREVER);
+}
+
+static void scd30_unlock(const struct device *dev)
+{
+	struct scd30_data *data = dev->data;
+
+	k_sem_give(&data->lock);
+}
+
 // Writes the desired command (cmd) into desired I2C bus
 // Returns 0 if sucessful or -EIO (General input/output error)
 static int scd30_write_command(const struct device *dev, uint16_t cmd)
@@ -213,11 +229,51 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 								SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
 }
 
+static int scd30_data_ready_init(const struct device *dev)
+{
+    const struct scd30_config *cfg = dev->config;
+    int rc;
+
+    // Verifique se o pino `data_ready` está disponível
+    if (!device_is_ready(cfg->rdy_gpios.port)) {
+        return -ENODEV;
+    }
+
+    // Configura a interrupção no pino `data_ready`
+    rc = gpio_pin_configure_dt(&cfg->rdy_gpios, GPIO_INPUT | GPIO_INT_EDGE_TO_ACTIVE);
+    if (rc != 0) {
+        return rc;
+    }
+
+    // Registra a função de callback para o pino `data_ready`
+    rc = gpio_pin_interrupt_configure_dt(&cfg->rdy_gpios, GPIO_INT_EDGE_TO_ACTIVE);
+    if (rc != 0) {
+        return rc;
+    }
+
+    // Agora, registra o callback para ser chamado quando o evento ocorrer
+    gpio_add_callback(cfg->rdy_gpios.port, &scd30_data_ready_callback);
+
+    return 0;
+}
+
+// Callback to be called when data from sensor is available
+static void scd30_data_ready_callback(const struct device *dev)
+{
+    struct scd30_data *data = dev->data;
+    int rc;
+
+    // Fetching data ...
+    rc = scd30_sample_fetch(dev, SENSOR_CHAN_ALL);  
+    if (rc != 0) {
+        LOG_ERR("Failed to fetch data: %d", rc);
+    } 
+}
+
 // Fetch the readings of the sensor and stores it into dev
 // Returns 0 if sucessful or the corresponding rc error code
 static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
-	uint16_t data_ready = 0;
 	struct scd30_data *data = dev->data;
 	const struct scd30_config *cfg = dev->config;
 	int rc;
@@ -248,83 +304,172 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		uint8_t humidity_be[sizeof(float)];
 	} rx_data;
 
+	// Checks if selected channel is valid
 	if (chan != SENSOR_CHAN_ALL)
 	{
 		return -ENOTSUP;
 	}
 
-	while (!data_ready)
-	{
-		rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
-		if (rc != 0)
-		{
-			return rc;
-		}
-		k_sleep(K_MSEC(3));
-	}
-	// if (!data_ready) {
-	// 	return -ENODATA;
-	// }
+	scd30_lock(dev);
 
 	rc = scd30_write_command(dev, SCD30_CMD_READ_MEASUREMENT);
 	if (rc != 0)
 	{
 		LOG_DBG("Failed to send command. (rc = %d)", rc);
-		return rc;
+		scd30_unlock(dev);
+		goto unlock_return;
 	}
-
-	/* delay for 3 msec as per datasheet. */
-	k_sleep(K_MSEC(3));
 
 	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&raw_rx_data, sizeof(raw_rx_data));
 	if (rc != 0)
 	{
 		LOG_DBG("Failed to read data. (rc = %d)", rc);
-		return rc;
+		goto unlock_return;
 	}
 
 	/* C02 data */
 	rc = scd30_fill_data_buf(raw_rx_data.co2_msw, &rx_data.co2_be[0]);
 	if (rc != 0)
 	{
-		return rc;
+		goto unlock_return;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.co2_lsw, &rx_data.co2_be[SCD30_WORD_SIZE]);
 	if (rc != 0)
 	{
-		return rc;
+		goto unlock_return;
 	}
 
 	/* Temperature data */
 	rc = scd30_fill_data_buf(raw_rx_data.temp_msw, &rx_data.temp_be[0]);
 	if (rc != 0)
 	{
-		return rc;
+		goto unlock_return;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.temp_lsw, &rx_data.temp_be[SCD30_WORD_SIZE]);
 	if (rc != 0)
 	{
-		return rc;
+		goto unlock_return;
 	}
 
 	/* Relative humidity */
 	rc = scd30_fill_data_buf(raw_rx_data.humidity_msw, &rx_data.humidity_be[0]);
 	if (rc != 0)
 	{
-		return rc;
+		goto unlock_return;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.humidity_lsw, &rx_data.humidity_be[SCD30_WORD_SIZE]);
 	if (rc != 0)
 	{
-		return rc;
+		goto unlock_return;
 	}
 
 	data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
 	data->temp = scd30_bytes_to_float(rx_data.temp_be);
 	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
 
-	return 0;
+	goto unlock_return;
+
+// Libera o bloqueio e retorna
+unlock_return:
+	scd30_unlock(dev);
+	return rc;
 }
+
+/*
+	 * Struct represensting data as received from the SCD30
+	 * each scd30_word conists of a 16 bit data word followed
+	 * by an 8 bit crc.
+	 */
+	// struct scd30_rx_data
+	// {
+	// 	struct scd30_word co2_msw;
+	// 	struct scd30_word co2_lsw;
+	// 	struct scd30_word temp_msw;
+	// 	struct scd30_word temp_lsw;
+	// 	struct scd30_word humidity_msw;
+	// 	struct scd30_word humidity_lsw;
+	// } raw_rx_data;
+
+	// /*
+	//  * Struct representing the received data from the SCD30
+	//  * in big endian order with the CRC's removed.
+	//  */
+	// struct rx_data
+	// {
+	// 	uint8_t co2_be[sizeof(float)];
+	// 	uint8_t temp_be[sizeof(float)];
+	// 	uint8_t humidity_be[sizeof(float)];
+	// } rx_data;
+
+	// // Espera pino data ready ser 1
+	// while (!data_ready) {
+	// 	data_ready = gpio_pin_get_dt(&cfg->rdy_gpios);
+	// }	
+
+	// while (!data_ready)
+	// {
+	// 	rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
+	// 	if (rc != 0)
+	// 	{
+	// 		return rc;
+	// 	}
+	// 	k_sleep(K_MSEC(3));
+	// }
+
+	// if (!data_ready) {
+	// 	return -ENODATA;
+	// }
+
+	// /* delay for 3 msec as per datasheet. */
+	// k_sleep(K_MSEC(3));
+
+	// rc = i2c_read_dt(&cfg->bus, (uint8_t *)&raw_rx_data, sizeof(raw_rx_data));
+	// if (rc != 0)
+	// {
+	// 	LOG_DBG("Failed to read data. (rc = %d)", rc);
+	// 	return rc;
+	// }
+
+	// /* C02 data */
+	// rc = scd30_fill_data_buf(raw_rx_data.co2_msw, &rx_data.co2_be[0]);
+	// if (rc != 0)
+	// {
+	// 	return rc;
+	// }
+	// rc = scd30_fill_data_buf(raw_rx_data.co2_lsw, &rx_data.co2_be[SCD30_WORD_SIZE]);
+	// if (rc != 0)
+	// {
+	// 	return rc;
+	// }
+
+	// /* Temperature data */
+	// rc = scd30_fill_data_buf(raw_rx_data.temp_msw, &rx_data.temp_be[0]);
+	// if (rc != 0)
+	// {
+	// 	return rc;
+	// }
+	// rc = scd30_fill_data_buf(raw_rx_data.temp_lsw, &rx_data.temp_be[SCD30_WORD_SIZE]);
+	// if (rc != 0)
+	// {
+	// 	return rc;
+	// }
+
+	// /* Relative humidity */
+	// rc = scd30_fill_data_buf(raw_rx_data.humidity_msw, &rx_data.humidity_be[0]);
+	// if (rc != 0)
+	// {
+	// 	return rc;
+	// }
+	// rc = scd30_fill_data_buf(raw_rx_data.humidity_lsw, &rx_data.humidity_be[SCD30_WORD_SIZE]);
+	// if (rc != 0)
+	// {
+	// 	return rc;
+	// }
+
+	// data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
+	// data->temp = scd30_bytes_to_float(rx_data.temp_be);
+	// data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
+
 
 // Stores the desired value into dev data. The value is chosen by the chan parameter
 // Returns 0 if sucessful or -1 if the channel isn't correct
@@ -436,6 +581,13 @@ static int scd30_init(const struct device *dev)
 		return -ENODEV;
 	}
 
+	// Initialize and configures the interrup pin and its callback
+	rc = scd30_data_ready_init(dev);
+	if (rc != 0)
+	{
+		LOG_ERR("Failed to initialize gpio pin!");
+	}
+
 	// really ugly workaround to make I2C1 work at 50KHz
 	((NRF_TWIM_Type *)NRF_TWIM1_BASE)->FREQUENCY = 0x00550000UL;
 
@@ -465,6 +617,7 @@ static int scd30_init(const struct device *dev)
 		.sample_time = DT_INST_PROP(inst, sample_period)};                                  \
 	static const struct scd30_config scd30_config_##inst = {                                \
 		.bus = I2C_DT_SPEC_INST_GET(inst),                                                  \
+		.rdy_gpios = GPIO_DT_SPEC_INST_GET(inst, rdy_gpios),                       			\
 	};                                                                                      \
                                                                                             \
 	DEVICE_DT_INST_DEFINE(inst, scd30_init, NULL, &scd30_data_##inst, &scd30_config_##inst, \
