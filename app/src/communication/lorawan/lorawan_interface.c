@@ -55,16 +55,17 @@ static ChannelAPI lorawan_api;
 // Defines the internal buffer for sending
 RING_BUF_ITEM_DECLARE(lorawan_internal_buffer, LORAWAN_BUFFER_SIZE);
 
-// Stack of lorawan communication thread
+// Stack of the thread that takes data read from general buffer and prepares them to send
 static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_THREAD_STACK_SIZE);
-// Stack allocated to the internal workqueue
-static K_THREAD_STACK_DEFINE(lorawan_workqueue_thread_stack_area, LORAWAN_WORKQUEUE_THREAD_STACK_SIZE);
 // Thread control block - metadata
 static struct k_thread lorawan_thread_data;
 static k_tid_t lorawan_thread_id;
-
-// Workqueue declarations
-struct k_work_q lorawan_workqueue;
+// Stack of the thread that actually sends the data via LoRaWAN
+static K_THREAD_STACK_DEFINE(lorawan_send_thread_stack_area, LORAWAN_SEND_THREAD_STACK_SIZE);
+static struct k_thread lorawan_send_thread_data;
+static k_tid_t lorawan_send_thread_id;
+// Semaphore to wake send data thread
+static struct k_sem data_available;
 
 // Initializes and starts thread to send data via LoRaWAN
 static void lorawan_init_channel();
@@ -77,9 +78,14 @@ void downlink_callback(uint8_t port, bool data_pending, int16_t rssi, int8_t snr
 void lorawan_config_activation(struct lorawan_join_config *join_config);
 // Functions that receives data from application buffer and
 // inserts it in LoRaWAN internal buffer
-static void lorawan_send_data(void *, void *, void *);
+static void lorawan_process_data(void *, void *, void *);
 // This is the function that actually sends the data
-void lorawan_send_work_handler(struct k_work *work);
+static void lorawan_send_data(void *, void *, void *);
+
+// Initialize the callback
+static struct lorawan_downlink_cb downlink_cb = {
+		.port = LW_RECV_PORT_ANY,
+		.cb = downlink_callback};;
 
 /**
  * Definitions
@@ -107,10 +113,6 @@ static void lorawan_init_channel()
 		goto return_clause;
 	}
 
-	// Initialize the callback
-	struct lorawan_downlink_cb downlink_cb = {
-		.port = LW_RECV_PORT_ANY,
-		.cb = downlink_callback};
 	// Register the callbacks before joining the network
 	lorawan_register_downlink_callback(&downlink_cb);
 
@@ -140,32 +142,47 @@ static void lorawan_init_channel()
 		goto return_clause;
 	}
 
-	LOG_DBG("Initializing send via LoRaWAN thread");
+	LOG_DBG("Initializing LoRaWAN processing data thread");
 	// After joining successfully, create the send thread.
 	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
 										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
-										lorawan_send_data, NULL, NULL, NULL,
+										lorawan_process_data, NULL, NULL, NULL,
 										LORAWAN_THREAD_PRIORITY, 0, K_NO_WAIT);
-	error = k_thread_name_set(lorawan_thread_id, "send_lorawan");
+	error = k_thread_name_set(lorawan_thread_id, "lorawan_process_data");
+	if (error)
+	{
+		LOG_ERR("Failed to set LoRaWAN processing data thread name: %d", error);
+		goto return_clause;
+	}
+
+	LOG_DBG("Initializing send via LoRaWAN thread");
+	// After joining successfully, create the send thread.
+	lorawan_send_thread_id = k_thread_create(&lorawan_send_thread_data, lorawan_send_thread_stack_area,
+											 K_THREAD_STACK_SIZEOF(lorawan_send_thread_stack_area),
+											 lorawan_send_data, NULL, NULL, NULL,
+											 LORAWAN_SEND_THREAD_PRIORITY, 0, K_NO_WAIT);
+	error = k_thread_name_set(lorawan_thread_id, "lorawan_send_data");
 	if (error)
 	{
 		LOG_ERR("Failed to set send via LoRaWAN thread name: %d", error);
+		goto return_clause;
 	}
 
-	// Initialize the Workqueue and handler
-	k_work_queue_init(&lorawan_workqueue);
-	k_work_queue_start(&lorawan_workqueue, lorawan_workqueue_thread_stack_area,
-					   K_THREAD_STACK_SIZEOF(lorawan_workqueue_thread_stack_area),
-					   LORAWAN_THREAD_PRIORITY, NULL);
+	error = k_sem_init(&data_available, 0, 100);
+	if (error)
+	{
+		LOG_ERR("Failed to initialize data available semaphore: %d", error);
+		goto return_clause;
+	}
 
 return_clause:
 	return;
 }
 
-// Send Data thread
-void lorawan_send_data(void *param0, void *param1, void *param2)
+// Encoding and buffering Data thread
+void lorawan_process_data(void *param0, void *param1, void *param2)
 {
-	LOG_INF("Sending via lorawan started");
+	LOG_INF("Processing LoRaWAN data started");
 	ARG_UNUSED(param0);
 	ARG_UNUSED(param1);
 	ARG_UNUSED(param2);
@@ -197,16 +214,53 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		if (error == -EMSGSIZE)
 			LOG_INF("lorawan internal buff full");
 
-		// Signals back that lorawan sending is complete
-		k_sem_give(&data_processed);
+		k_sem_give(&data_available);
 
-		// Signals for async transmission
-		struct k_work lorawan_send_work;
-		k_work_init(&lorawan_send_work, lorawan_send_work_handler);
-		error = k_work_submit_to_queue(&lorawan_workqueue, &lorawan_send_work);
-		if (error < 0)
+		// Signals back that lorawan processing is complete
+		k_sem_give(&data_processed);
+	}
+}
+
+// This is the function that actually sends the data
+void lorawan_send_data(void *param0, void *param1, void *param2)
+{
+	LOG_INF("Sending via lorawan started");
+	ARG_UNUSED(param0);
+	ARG_UNUSED(param1);
+	ARG_UNUSED(param2);
+	int error;
+	uint16_t type;
+	uint8_t value, size = 64;
+	uint32_t encoded_data[64];
+
+	while (1)
+	{
+		// Waits for data to be available in internal buffer
+		k_sem_take(&data_available, K_FOREVER);
+		error = 0;
+		LOG_DBG("COOMMUNICATINNNG");
+		// After waking up, transmits until buffer is empty
+		if (ring_buf_is_empty(&lorawan_internal_buffer) == false)
 		{
-			LOG_ERR("Couldn't submit send work: %d.", error);
+			// Get the last message from the internal buffer
+			error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
+
+			if (!error)
+			{
+				LOG_DBG("Sending encoded data: \"%s\", with %d bytes", (char *)encoded_data, size * 4);
+
+				// Send using Zephyr's subsystem and check if the transmission was successful
+				error = lorawan_send(1, (uint8_t *)encoded_data, size * 4, LORAWAN_MSG_UNCONFIRMED);
+				LOG_DBG("returned");
+				if (error)
+					LOG_ERR("lorawan_send failed: %d.", error);
+				else
+					LOG_INF("lorawan_send successful");
+			}
+			else
+			{
+				LOG_ERR("read from ring buf failed: %d. size %d", error);
+			}
 		}
 	}
 }
@@ -251,38 +305,6 @@ void lorawan_config_activation(struct lorawan_join_config *join_config)
 	join_config->abp.dev_addr = device_address;
 	LOG_DBG("Joining network over ABP");
 #endif
-}
-
-// This is the function that actually sends the data
-void lorawan_send_work_handler(struct k_work *work)
-{
-	int error;
-	uint16_t type;
-	uint8_t value, size = 64;
-	uint32_t encoded_data[64];
-	error = ring_buf_is_empty(&lorawan_internal_buffer);
-
-	if (!error)
-	{
-		// Get the last message from the internal buffer
-		error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
-
-		if (!error)
-		{
-			LOG_DBG("Sending encoded data: \"%s\", with %d bytes", (char *)encoded_data, size * 4);
-
-			// Send using Zephyr's subsystem and check if the transmission was successful
-			error = lorawan_send(1, (uint8_t *)encoded_data, size * 4, LORAWAN_MSG_UNCONFIRMED);
-			if (error)
-				LOG_ERR("lorawan_send failed: %d.", error);
-			else
-				LOG_INF("lorawan_send successful");
-		}
-		else
-		{
-			LOG_ERR("read from ring buf failed: %d.", error);
-		}
-	}
 }
 
 // Register channels to the Communication Module
