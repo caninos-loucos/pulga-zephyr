@@ -64,8 +64,6 @@ static k_tid_t lorawan_thread_id;
 static K_THREAD_STACK_DEFINE(lorawan_send_thread_stack_area, LORAWAN_SEND_THREAD_STACK_SIZE);
 static struct k_thread lorawan_send_thread_data;
 static k_tid_t lorawan_send_thread_id;
-// Semaphore to wake send data thread
-static struct k_sem data_available;
 
 // Initializes and starts thread to send data via LoRaWAN
 static void lorawan_init_channel();
@@ -124,6 +122,14 @@ static void lorawan_init_channel()
 		goto return_clause;
 	}
 
+	// Set the initial or fixed datarate according to the config
+	error = lorawan_set_datarate(LORAWAN_DR);
+	if (error)
+	{
+		LOG_ERR("lorawan_set_datarate failed: %d", error);
+		goto return_clause;
+	}
+
 	// Configuration structure to join network
 	struct lorawan_join_config join_config;
 	lorawan_config_activation(&join_config);
@@ -134,13 +140,6 @@ static void lorawan_init_channel()
 		goto return_clause;
 	}
 
-	// Set the initial or fixed datarate according to the config
-	error = lorawan_set_datarate(LORAWAN_DR);
-	if (error)
-	{
-		LOG_ERR("lorawan_set_datarate failed: %d", error);
-		goto return_clause;
-	}
 
 	LOG_DBG("Initializing LoRaWAN processing data thread");
 	// After joining successfully, create the send thread.
@@ -165,13 +164,6 @@ static void lorawan_init_channel()
 	if (error)
 	{
 		LOG_ERR("Failed to set send via LoRaWAN thread name: %d", error);
-		goto return_clause;
-	}
-
-	error = k_sem_init(&data_available, 0, 100);
-	if (error)
-	{
-		LOG_ERR("Failed to initialize data available semaphore: %d", error);
 		goto return_clause;
 	}
 
@@ -209,13 +201,12 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 			LOG_ERR("Could not encode data");
 
 		// put string in internal buffer, casting it to 32-bit words
-		error = ring_buf_item_put(&lorawan_internal_buffer, 0, 0, (uint32_t *)encoded_data, ceil(size / 4.0));
+		error = ring_buf_item_put(&lorawan_internal_buffer, 0, 0, (uint32_t *)encoded_data, ((size + 3)/ 4));
 
 		if (error == -EMSGSIZE)
 			LOG_INF("lorawan internal buff full");
 
-		k_sem_give(&data_available);
-
+		k_wakeup(lorawan_send_thread_id);
 		// Signals back that lorawan processing is complete
 		k_sem_give(&data_processed);
 	}
@@ -230,18 +221,16 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	ARG_UNUSED(param2);
 	int error;
 	uint16_t type;
-	uint8_t value, size = 64;
+	uint8_t value, size;
 	uint32_t encoded_data[64];
 
 	while (1)
 	{
-		// Waits for data to be available in internal buffer
-		k_sem_take(&data_available, K_FOREVER);
-		error = 0;
-		LOG_DBG("COOMMUNICATINNNG");
 		// After waking up, transmits until buffer is empty
-		if (ring_buf_is_empty(&lorawan_internal_buffer) == false)
+		while (!ring_buf_is_empty(&lorawan_internal_buffer))
 		{
+			error = 0;
+			size = 64;
 			// Get the last message from the internal buffer
 			error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
 
@@ -259,9 +248,10 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			}
 			else
 			{
-				LOG_ERR("read from ring buf failed: %d. size %d", error);
+				LOG_ERR("read from ring buf failed: %d.", error);
 			}
 		}
+		k_sleep(K_FOREVER);
 	}
 }
 
