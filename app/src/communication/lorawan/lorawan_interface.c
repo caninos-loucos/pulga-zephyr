@@ -5,23 +5,23 @@ Authors: Ana Clara Forcelli <ana.forcelli@lsitec.org.br>
 This module is composed of four main elements:
 
 	- Internal Buffer
-	- Workqueue
 	- Initialization
+	- Process Data Thread
 	- Send Thread
 
 The order in which everything happens is the following:
 
 	1 - The Initialization will set the lorawan parameters such as region, datarate and security configuration.
 		It will also get the internal structures ready for use, such as the thread that process data from
-		data module buffer and the workqueue that will effectively send the data via LoRaWAN.
+		data module buffer and the thread that will effectively send the data via LoRaWAN.
 
-	2 - Immediately after being created, the Send Thread is started. It will check for the signal that a data
+	2 - Immediately after being created, the Process Data Thread is started. It will check for the signal that a data
 		item was read on the data module buffer. When data is available, the thread will encode it minimally,
 		using few characters. The encoded data is stored on the Internal Buffer for later transmission, so the
 		LoRaWAN thread doesn't delay other transmissions because of its synchronous communication. Then,
 		the thread signals for the data module that the data was processed so it can continue reading other items.
 
-	3 - The Send Thread enqueues one instance of the Work Handler to the Workqueue, which will asynchronously
+	3 - The Send Data Thread is wakened up by the Process Data Thread, and will asynchronously
 		execute the actual transmission via Zephyr's send_lorawan() function.
 
 */
@@ -79,7 +79,6 @@ void lorawan_config_activation(struct lorawan_join_config *join_config);
 static void lorawan_process_data(void *, void *, void *);
 // This is the function that actually sends the data
 static void lorawan_send_data(void *, void *, void *);
-
 // Initialize the callback
 static struct lorawan_downlink_cb downlink_cb = {
 		.port = LW_RECV_PORT_ANY,
@@ -233,14 +232,12 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			size = 64;
 			// Get the last message from the internal buffer
 			error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
-
 			if (!error)
 			{
 				LOG_DBG("Sending encoded data: \"%s\", with %d bytes", (char *)encoded_data, size * 4);
 
 				// Send using Zephyr's subsystem and check if the transmission was successful
 				error = lorawan_send(1, (uint8_t *)encoded_data, size * 4, LORAWAN_MSG_UNCONFIRMED);
-				LOG_DBG("returned");
 				if (error)
 					LOG_ERR("lorawan_send failed: %d.", error);
 				else
