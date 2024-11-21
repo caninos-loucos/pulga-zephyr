@@ -69,4 +69,5 @@ endchoice
 config LORAWAN_JOIN_COMPRESS
 	bool "Join and compress data in the buffer to make the most of a packet size"
 	select LZ4
+	select LZ4_FRAME_SUPPORT
 	default n

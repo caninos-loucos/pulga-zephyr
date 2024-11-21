@@ -22,11 +22,13 @@ The order in which everything happens is the following:
 		the thread signals for the data module that the data was processed so it can continue reading other items.
 
 	3 - The Send Thread enqueues one instance of the Work Handler to the Workqueue, which will asynchronously
-		execute the actual transmission via Zephyr's send_lorawan() function. 
+		execute the actual transmission via Zephyr's send_lorawan() function.
 
 */
 
 #ifdef CONFIG_LORAWAN_JOIN_COMPRESS
+#include "lz4frame.h"
+#include "lz4hc.h"
 #include "lz4.h"
 #endif
 
@@ -74,7 +76,7 @@ struct k_work_q lorawan_workqueue;
 struct k_mutex buf_read_mutex;
 
 #ifdef CONFIG_LORAWAN_JOIN_COMPRESS
-float compression_factor;
+double compression_factor;
 #endif
 
 // Initializes and starts thread to send data via LoRaWAN
@@ -85,7 +87,7 @@ static void lorawan_init_channel();
 void downlink_callback(uint8_t port, bool data_pending, int16_t rssi, int8_t snr,
 					   uint8_t length, const uint8_t *hex_data);
 // Callback to be used whenever datarate changes. When CONFIG_LORAWAN_JOIN_COMPRESS is set, adjusts the expected compression level.
-static void dr_changed_callback(enum lorawan_datarate dr);			   
+static void dr_changed_callback(enum lorawan_datarate dr);
 // Set security configuration parameters for joining network
 void lorawan_config_activation(struct lorawan_join_config *join_config);
 // Functions that receives data from application buffer and
@@ -282,22 +284,22 @@ void dr_changed_callback(enum lorawan_datarate new_dr)
 	LOG_INF("Datarate changed to DR_%d", (int)new_dr);
 #ifdef CONFIG_LORAWAN_JOIN_COMPRESS
 	// Exponential fitting based on empirical data
-	switch(new_dr)
+	switch (new_dr)
 	{
-		case LORAWAN_DR_0:
-		case LORAWAN_DR_1:
-		case LORAWAN_DR_2:
-		case LORAWAN_DR_3:
-			compression_factor = 1.5;
-			break;
-		case LORAWAN_DR_4:
-		case LORAWAN_DR_5:
-			compression_factor = 2;
-			break;
-		default:
-			compression_factor = 1;
+	case LORAWAN_DR_0:
+	case LORAWAN_DR_1:
+	case LORAWAN_DR_2:
+	case LORAWAN_DR_3:
+		compression_factor = 1.3;
+		break;
+	case LORAWAN_DR_4:
+	case LORAWAN_DR_5:
+		compression_factor = 2;
+		break;
+	default:
+		compression_factor = 1;
 	}
-	LOG_INF("Compression factor changed to %.3f", compression_factor);
+	LOG_INF("Compression factor changed to %d", (int)(compression_factor * 10));
 #endif
 }
 
@@ -319,7 +321,7 @@ void lorawan_send_work_handler(struct k_work *work)
 
 	uint8_t joined_data[512];
 	uint8_t compressed_data[256];
-	uint8_t separator[2] = { 0xca, 0xfe };
+	uint8_t separator[2] = {0xca, 0xfe};
 	int index = 0;
 
 	memset(joined_data, 0, sizeof(joined_data));
@@ -373,20 +375,27 @@ void lorawan_send_work_handler(struct k_work *work)
 	}
 	k_mutex_unlock(&buf_read_mutex);
 
-	// Compress the whole joined data
-	int compressed_size = LZ4_compress_default(joined_data, compressed_data, index, max_payload_size);
+	LZ4F_preferences_t prefs = LZ4F_INIT_PREFERENCES;
 
+	int compress_frame_bound = LZ4F_compressFrameBound(index, &prefs);
+	LOG_DBG("compressFrameBound is %d", compress_frame_bound);
+	if (compress_frame_bound > max_payload_size * compression_factor * 1.1)
+	{
+		LOG_ERR("Frame too big");
+		return;
+	}
+
+	// Compress the whole joined data
+	int compressed_size = LZ4F_compressFrame(compressed_data, (int)(max_payload_size * compression_factor * 1.1), joined_data, index, &prefs);
+	LOG_DBG("Compressed size: %d", compressed_size);
 	// If the compressed size exceeds the payload size, abort send
-	if (!compressed_size)
+	if (compressed_size <= 0)
 	{
 		LOG_ERR("Compression failed!");
 		return;
 	}
 
-	hexsize = bin2hex(compressed_data, compressed_size, hex, sizeof(hex));
-	LOG_DBG("\nCompressed data: \"%s\", with %d bytes", hex, compressed_size);
-
-	error = lorawan_send(0, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
+	error = lorawan_send(2, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
 
 #else
 
