@@ -2,7 +2,6 @@
 #define DATA_ABSTRACTION_H
 
 #include <zephyr/kernel.h>
-#include "lz4.h"
 
 // Maximum number of 32-bit words an item of buffer can have
 #define MAX_32_WORDS 16

@@ -318,6 +318,7 @@ void lorawan_send_work_handler(struct k_work *work)
 #ifdef CONFIG_LORAWAN_JOIN_COMPRESS
 
 	uint8_t joined_data[512];
+	char hex[512];
 	uint8_t compressed_data[256];
 	uint8_t separator[2] = { 0xca, 0xfe };
 	int index = 0;
@@ -383,13 +384,15 @@ void lorawan_send_work_handler(struct k_work *work)
 		return;
 	}
 
-	hexsize = bin2hex(compressed_data, compressed_size, hex, sizeof(hex));
+	int hexsize = bin2hex(compressed_data, compressed_size, hex, sizeof(hex));
 	LOG_DBG("\nCompressed data: \"%s\", with %d bytes", hex, compressed_size);
 
-	error = lorawan_send(0, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
+	error = lorawan_send(2, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
 
 #else
 
+	encoded_data_size = 64;
+	
 	error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &encoded_data_size);
 	if (error)
 		goto buf_err;
@@ -403,7 +406,7 @@ void lorawan_send_work_handler(struct k_work *work)
 	LOG_DBG("Sending binary data: \"%s\", with %d bytes", hex, encoded_data_size);
 
 	// Send using Zephyr's subsystem and check if the transmission was successful
-	error = lorawan_send(0, (uint8_t *)encoded_data, encoded_data_size, LORAWAN_MSG_UNCONFIRMED);
+	error = lorawan_send(2, (uint8_t *)encoded_data, encoded_data_size, LORAWAN_MSG_UNCONFIRMED);
 
 #endif
 
