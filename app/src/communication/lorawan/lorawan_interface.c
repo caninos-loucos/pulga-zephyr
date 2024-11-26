@@ -213,6 +213,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		if (size < 0)
 		{
 			LOG_ERR("Could not encode data");
+			k_sem_give(&data_processed);
 			continue;
 		}
 
@@ -223,6 +224,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 #endif
 		{
 			LOG_ERR("Resulting size too big for lorawan packet");
+			k_sem_give(&data_processed);
 			continue;
 		}
 
@@ -376,6 +378,7 @@ void lorawan_send_work_handler(struct k_work *work)
 	k_mutex_unlock(&buf_read_mutex);
 
 	LZ4F_preferences_t prefs = LZ4F_INIT_PREFERENCES;
+	prefs.compressionLevel = LZ4HC_CLEVEL_MIN - 1;
 
 	int compress_frame_bound = LZ4F_compressFrameBound(index, &prefs);
 	LOG_DBG("compressFrameBound is %d", compress_frame_bound);
@@ -387,15 +390,23 @@ void lorawan_send_work_handler(struct k_work *work)
 
 	// Compress the whole joined data
 	int compressed_size = LZ4F_compressFrame(compressed_data, (int)(max_payload_size * compression_factor * 1.1), joined_data, index, &prefs);
-	LOG_DBG("Compressed size: %d", compressed_size);
 	// If the compressed size exceeds the payload size, abort send
 	if (compressed_size <= 0)
 	{
-		LOG_ERR("Compression failed!");
+		LOG_ERR("Compression failed with error %d!", compressed_size);
 		return;
 	}
+	else if (compressed_size > max_payload_size)
+	{
+		LOG_WRN("Compressed size bigger than payload, discarding...");
+		return;
+	}
+	else
+	{
+		LOG_DBG("Compressed size: %d", compressed_size);
 
-	error = lorawan_send(2, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
+		error = lorawan_send(2, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
+	}
 
 #else
 
