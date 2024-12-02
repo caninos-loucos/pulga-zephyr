@@ -22,11 +22,11 @@ The order in which everything happens is the following:
 		the thread signals for the data module that the data was processed so it can continue reading other items.
 
 	3 - The Send Thread enqueues one instance of the Work Handler to the Workqueue, which will asynchronously
-		execute the actual transmission via Zephyr's send_lorawan() function. 
+		execute the actual transmission via Zephyr's send_lorawan() function.
 
 */
 
-#ifdef CONFIG_LORAWAN_JOIN_COMPRESS
+#ifdef CONFIG_LORAWAN_COMPRESS
 #include "lz4.h"
 #endif
 
@@ -73,8 +73,8 @@ struct k_work_q lorawan_workqueue;
 
 struct k_mutex buf_read_mutex;
 
-#ifdef CONFIG_LORAWAN_JOIN_COMPRESS
-float compression_factor;
+#ifdef CONFIG_LORAWAN_JOIN
+float compression_factor = 1;
 #endif
 
 // Initializes and starts thread to send data via LoRaWAN
@@ -82,10 +82,10 @@ static void lorawan_init_channel();
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
 // SNR: Signal-noise ratio
-void downlink_callback(uint8_t port, bool data_pending, int16_t rssi, int8_t snr,
-					   uint8_t length, const uint8_t *hex_data);
-// Callback to be used whenever datarate changes. When CONFIG_LORAWAN_JOIN_COMPRESS is set, adjusts the expected compression level.
-static void dr_changed_callback(enum lorawan_datarate dr);			   
+void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr, uint8_t length,
+		   const uint8_t *hex_data);
+// Callback to be used whenever datarate changes. When CONFIG_LORAWAN_COMPRESS is set, adjusts the expected compression level.
+static void dr_changed_callback(enum lorawan_datarate dr);
 // Set security configuration parameters for joining network
 void lorawan_config_activation(struct lorawan_join_config *join_config);
 // Functions that receives data from application buffer and
@@ -214,7 +214,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			continue;
 		}
 
-#ifdef CONFIG_LORAWAN_JOIN_COMPRESS
+#ifdef CONFIG_LORAWAN_JOIN
 		else if (size * compression_factor > max_payload_size)
 #else
 		else if (size > max_payload_size)
@@ -232,7 +232,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		else
 			pending_items++;
 
-#ifdef CONFIG_LORAWAN_JOIN_COMPRESS
+#ifdef CONFIG_LORAWAN_JOIN
 
 		k_mutex_lock(&buf_read_mutex, K_FOREVER);
 		// calculate the amount of data bytes inside the data buffer and subtracts 16 bits (2 bytes) for each item.
@@ -266,11 +266,10 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
 // SNR: Signal-noise ratio
-void downlink_callback(uint8_t port, bool data_pending,
-					   int16_t rssi, int8_t snr,
-					   uint8_t length, const uint8_t *hex_data)
+void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr, uint8_t length,
+		   const uint8_t *hex_data)
 {
-	LOG_DBG("Port %d, Pending %d, RSSI %ddBm, SNR %ddB", port, data_pending, rssi, snr);
+	LOG_DBG("Port %d, Flags %x, RSSI %ddBm, SNR %ddB", port, flags, rssi, snr);
 	if (hex_data)
 	{
 		LOG_HEXDUMP_INF(hex_data, length, "Payload: ");
@@ -280,24 +279,24 @@ void downlink_callback(uint8_t port, bool data_pending,
 void dr_changed_callback(enum lorawan_datarate new_dr)
 {
 	LOG_INF("Datarate changed to DR_%d", (int)new_dr);
-#ifdef CONFIG_LORAWAN_JOIN_COMPRESS
+#ifdef CONFIG_LORAWAN_COMPRESS
 	// Exponential fitting based on empirical data
-	switch(new_dr)
+	switch (new_dr)
 	{
-		case LORAWAN_DR_0:
-		case LORAWAN_DR_1:
-		case LORAWAN_DR_2:
-		case LORAWAN_DR_3:
-			compression_factor = 1.5;
-			break;
-		case LORAWAN_DR_4:
-		case LORAWAN_DR_5:
-			compression_factor = 2;
-			break;
-		default:
-			compression_factor = 1;
+	case LORAWAN_DR_0:
+	case LORAWAN_DR_1:
+	case LORAWAN_DR_2:
+	case LORAWAN_DR_3:
+		compression_factor = 1.5;
+		break;
+	case LORAWAN_DR_4:
+	case LORAWAN_DR_5:
+		compression_factor = 2;
+		break;
+	default:
+		compression_factor = 1;
 	}
-	LOG_INF("Compression factor changed to %.3f", compression_factor);
+	LOG_INF("Compression factor changed to %.3f", (double)compression_factor);
 #endif
 }
 
@@ -315,12 +314,10 @@ void lorawan_send_work_handler(struct k_work *work)
 	uint32_t encoded_data[MAX_32_WORDS];
 	uint8_t encoded_data_size;
 
-#ifdef CONFIG_LORAWAN_JOIN_COMPRESS
+#ifdef CONFIG_LORAWAN_JOIN
 
 	uint8_t joined_data[512];
-	char hex[512];
-	uint8_t compressed_data[256];
-	uint8_t separator[2] = { 0xca, 0xfe };
+	uint8_t separator[2] = {0xca, 0xfe};
 	int index = 0;
 
 	memset(joined_data, 0, sizeof(joined_data));
@@ -374,7 +371,9 @@ void lorawan_send_work_handler(struct k_work *work)
 	}
 	k_mutex_unlock(&buf_read_mutex);
 
+#ifdef CONFIG_LORAWAN_COMPRESS
 	// Compress the whole joined data
+	uint8_t compressed_data[256];
 	int compressed_size = LZ4_compress_default(joined_data, compressed_data, index, max_payload_size);
 
 	// If the compressed size exceeds the payload size, abort send
@@ -383,30 +382,40 @@ void lorawan_send_work_handler(struct k_work *work)
 		LOG_ERR("Compression failed!");
 		return;
 	}
-
-	int hexsize = bin2hex(compressed_data, compressed_size, hex, sizeof(hex));
+#ifdef CONFIG_APP_LOG_LEVEL_DBG
+	char hex[512];
+	bin2hex(compressed_data, compressed_size, hex, sizeof(hex));
 	LOG_DBG("\nCompressed data: \"%s\", with %d bytes", hex, compressed_size);
+#endif
 
 	error = lorawan_send(2, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
 
 #else
 
+	error = lorawan_send(2, joined_data, index, LORAWAN_MSG_UNCONFIRMED);
+
+#endif
+
+#else
+
 	encoded_data_size = 64;
-	
+
 	error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &encoded_data_size);
 	if (error)
 		goto buf_err;
 
 	encoded_data_size *= 4;
 
+#ifdef CONFIG_APP_LOG_LEVEL_DBG
 	// Assume that size > 0 since no error happened right?
-	char hex[256];
-	int hexsize = bin2hex((uint8_t *)encoded_data, encoded_data_size, hex, 256);
+	char hex[512];
+	int hexsize = bin2hex(encoded_data, encoded_data_size, hex, 512);
 
 	LOG_DBG("Sending binary data: \"%s\", with %d bytes", hex, encoded_data_size);
+#endif
 
 	// Send using Zephyr's subsystem and check if the transmission was successful
-	error = lorawan_send(2, (uint8_t *)encoded_data, encoded_data_size, LORAWAN_MSG_UNCONFIRMED);
+	error = lorawan_send(2, encoded_data, encoded_data_size, LORAWAN_MSG_UNCONFIRMED);
 
 #endif
 
