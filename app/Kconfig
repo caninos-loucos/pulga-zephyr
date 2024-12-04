@@ -66,11 +66,11 @@ config LORAWAN_ABP
 
 endchoice
 
-config LORAWAN_JOIN
+config LORAWAN_JOIN_PACKET
 	bool "Join data in the buffer to make the most of a packet size"
 	default n
 
-config LORAWAN_COMPRESS
+config LORAWAN_COMPRESS_PACKET
 	bool "Compress data in the buffer to make the most of a packet size"
 	select LZ4
 	default n

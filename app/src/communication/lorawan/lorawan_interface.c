@@ -26,7 +26,7 @@ The order in which everything happens is the following:
 
 */
 
-#ifdef CONFIG_LORAWAN_COMPRESS
+#ifdef CONFIG_LORAWAN_COMPRESS_PACKET
 #include "lz4.h"
 #endif
 
@@ -66,14 +66,12 @@ static K_THREAD_STACK_DEFINE(lorawan_workqueue_thread_stack_area, LORAWAN_WORKQU
 // Thread control block - metadata
 static struct k_thread lorawan_thread_data;
 static k_tid_t lorawan_thread_id;
-
 // Workqueue declarations
 struct k_work lorawan_send_work;
 struct k_work_q lorawan_workqueue;
-
 struct k_mutex buf_read_mutex;
 
-#ifdef CONFIG_LORAWAN_JOIN
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
 float compression_factor = 1;
 #endif
 
@@ -83,8 +81,8 @@ static void lorawan_init_channel();
 // RSSI: Received Signal Strength Indicator
 // SNR: Signal-noise ratio
 void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr, uint8_t length,
-		   const uint8_t *hex_data);
-// Callback to be used whenever datarate changes. When CONFIG_LORAWAN_COMPRESS is set, adjusts the expected compression level.
+					   const uint8_t *hex_data);
+// Callback to be used whenever datarate changes. When CONFIG_LORAWAN_COMPRESS_PACKET is set, adjusts the expected compression level.
 static void dr_changed_callback(enum lorawan_datarate dr);
 // Set security configuration parameters for joining network
 void lorawan_config_activation(struct lorawan_join_config *join_config);
@@ -156,6 +154,7 @@ static void lorawan_init_channel()
 	}
 
 	LOG_DBG("Initializing send via LoRaWAN thread");
+
 	// After joining successfully, create the send thread.
 	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
 										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
@@ -179,7 +178,7 @@ return_clause:
 	return;
 }
 
-// Send Data thread
+// Send data thread will store the items in the internal buffer and unblock the other Communication Interface threads
 void lorawan_send_data(void *param0, void *param1, void *param2)
 {
 	LOG_INF("Sending via lorawan started");
@@ -191,7 +190,6 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 
 	int size, error;
 	int pending_items = 0;
-	int ring_buf_data_size;
 
 	uint8_t encoded_data[256];
 
@@ -214,60 +212,60 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			continue;
 		}
 
-#ifdef CONFIG_LORAWAN_JOIN
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
 		else if (size * compression_factor > max_payload_size)
 #else
 		else if (size > max_payload_size)
 #endif
 		{
-			LOG_ERR("Resulting size too big for lorawan packet");
+			LOG_ERR("Resulting size too big for lorawan packet, discarding...");
 			continue;
 		}
 
-		// put bytes in internal buffer, casting it to 32-bit words
+		// Put bytes in internal buffer, casting it to 32-bit words
 		error = ring_buf_item_put(&lorawan_internal_buffer, data_unit.data_type, 0, (uint32_t *)encoded_data, (size + 3) / 4);
 
 		if (error == -EMSGSIZE)
-			LOG_INF("lorawan internal buff full");
+			LOG_WRN("Lorawan internal buffer is full!");
 		else
 			pending_items++;
 
-#ifdef CONFIG_LORAWAN_JOIN
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
 
 		k_mutex_lock(&buf_read_mutex, K_FOREVER);
-		// calculate the amount of data bytes inside the data buffer and subtracts 16 bits (2 bytes) for each item.
-		// because datatype and value total 24 bits, but we want one byte for later identification and an EOL byte.
-		ring_buf_data_size = ring_buf_size_get(&lorawan_internal_buffer) - 2 * pending_items - 1;
+		// Calculate the amount of data bytes inside the data buffer
+		// It's important to take into account that there are 3 additional bytes for each item because of datatype and value,
+		// however they don't matter a lot since 3 more bytes are added back during the packet joining (data type and separator).
+		// #TODO We may be able to take the separator out if we standardize each data type's size
+		int ring_buf_data_size = ring_buf_size_get(&lorawan_internal_buffer);
 
 		k_mutex_unlock(&buf_read_mutex);
 
-		// expected compression factor is 1.5 in a conservative estimate, since lz4 can do 2.
+		// If the amount of data is enough to fit inside the packet, add it to the buffer, otherwise process it.
 		if (ring_buf_data_size <= max_payload_size * compression_factor)
 		{
-			LOG_DBG("ITEM ADDED");
+			LOG_DBG("Item added to lorawan internal buffer");
 		}
 		else
 		{
 			pending_items = 0;
-			LOG_DBG("SUBMIT QUEUE");
+			LOG_DBG("Submitting work");
 			k_work_submit_to_queue(&lorawan_workqueue, &lorawan_send_work);
 		}
-
 #else
 		// Signals for async transmission
 		k_work_submit_to_queue(&lorawan_workqueue, &lorawan_send_work);
-
 #endif
-
-		// Signals back that lorawan sending is complete
+		// Signals for the Communication Interface that Lorawan sending is complete
 		k_sem_give(&data_processed);
 	}
 }
+
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
 // SNR: Signal-noise ratio
 void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr, uint8_t length,
-		   const uint8_t *hex_data)
+					   const uint8_t *hex_data)
 {
 	LOG_DBG("Port %d, Flags %x, RSSI %ddBm, SNR %ddB", port, flags, rssi, snr);
 	if (hex_data)
@@ -276,11 +274,13 @@ void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr, ui
 	}
 }
 
+// Callback invoked everytime the datarate changes
 void dr_changed_callback(enum lorawan_datarate new_dr)
 {
 	LOG_INF("Datarate changed to DR_%d", (int)new_dr);
-#ifdef CONFIG_LORAWAN_COMPRESS
+#ifdef CONFIG_LORAWAN_COMPRESS_PACKET
 	// Exponential fitting based on empirical data
+	// #TODO actually calculate it based on more empirical data
 	switch (new_dr)
 	{
 	case LORAWAN_DR_0:
@@ -308,13 +308,13 @@ void lorawan_send_work_handler(struct k_work *work)
 	uint16_t type;
 	uint8_t value;
 
-	uint8_t max_payload_size;
-	uint8_t unused_arg;
-
 	uint32_t encoded_data[MAX_32_WORDS];
 	uint8_t encoded_data_size;
 
-#ifdef CONFIG_LORAWAN_JOIN
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
+
+	uint8_t max_payload_size;
+	uint8_t unused_arg;
 
 	uint8_t joined_data[512];
 	uint8_t separator[2] = {0xca, 0xfe};
@@ -332,11 +332,14 @@ void lorawan_send_work_handler(struct k_work *work)
 
 		error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &encoded_data_size);
 
-		// If the buffer is empty, exit the loop
+		// If no more data is avaliable, break the loop and send, or if another error occurred, print error and exit.
 		if (error == -EAGAIN)
 			break;
 		else if (error)
-			goto buf_err;
+		{
+			LOG_ERR("Reading from internal buffer failed: %d.", error);
+			return;
+		}
 
 		// Turn the encoded size to bytes
 		encoded_data_size *= 4;
@@ -349,7 +352,7 @@ void lorawan_send_work_handler(struct k_work *work)
 			break;
 		}
 
-		// Data type is reduced to a byte, big data types aint happening here
+		// Data type is reduced to a byte, since big data types are not happening here (yet?)
 		bytecpy(joined_data + index, &type, 1);
 		index++;
 
@@ -361,7 +364,7 @@ void lorawan_send_work_handler(struct k_work *work)
 		bytecpy(joined_data + index, separator, sizeof(separator));
 		index += sizeof(separator);
 
-		// Anticipate whether the joined_data buffer can take another measurement with
+		// Anticipate whether the joined_data buffer can take another item with
 		// the same size as the last one: if it can't, break the loop and send it
 		if (index + encoded_data_size + 1 > max_payload_size * compression_factor)
 		{
@@ -371,17 +374,18 @@ void lorawan_send_work_handler(struct k_work *work)
 	}
 	k_mutex_unlock(&buf_read_mutex);
 
-#ifdef CONFIG_LORAWAN_COMPRESS
+#ifdef CONFIG_LORAWAN_COMPRESS_PACKET
 	// Compress the whole joined data
 	uint8_t compressed_data[256];
 	int compressed_size = LZ4_compress_default(joined_data, compressed_data, index, max_payload_size);
 
-	// If the compressed size exceeds the payload size, abort send
-	if (!compressed_size)
+	// If the compressed size exceeds the payload size or some other error happens, do not send and discard everything
+	if (compressed_size <= 0)
 	{
-		LOG_ERR("Compression failed!");
+		LOG_ERR("Compression failed with error %d!", compressed_size);
 		return;
 	}
+
 #ifdef CONFIG_APP_LOG_LEVEL_DBG
 	char hex[512];
 	bin2hex(compressed_data, compressed_size, hex, sizeof(hex));
@@ -389,47 +393,44 @@ void lorawan_send_work_handler(struct k_work *work)
 #endif
 
 	error = lorawan_send(2, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
-
 #else
-
 	error = lorawan_send(2, joined_data, index, LORAWAN_MSG_UNCONFIRMED);
 
-#endif
+#endif // CONFIG_LORAWAN_COMPRESS_PACKET
 
 #else
 
 	encoded_data_size = 64;
 
 	error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &encoded_data_size);
-	if (error)
-		goto buf_err;
+
+	if (error == -EAGAIN)
+	{
+		LOG_INF("Internal lorawan buffer is empty!");
+		return;
+	}
+	else if (error)
+	{
+		LOG_ERR("Reading from internal buffer failed: %d.", error);
+		return;
+	}
 
 	encoded_data_size *= 4;
 
 #ifdef CONFIG_APP_LOG_LEVEL_DBG
-	// Assume that size > 0 since no error happened right?
 	char hex[512];
-	int hexsize = bin2hex(encoded_data, encoded_data_size, hex, 512);
+	bin2hex((uint8_t*)encoded_data, encoded_data_size, hex, 512);
 
 	LOG_DBG("Sending binary data: \"%s\", with %d bytes", hex, encoded_data_size);
 #endif
 
 	// Send using Zephyr's subsystem and check if the transmission was successful
-	error = lorawan_send(2, encoded_data, encoded_data_size, LORAWAN_MSG_UNCONFIRMED);
+	error = lorawan_send(2, (uint8_t*)encoded_data, encoded_data_size, LORAWAN_MSG_UNCONFIRMED);
 
-#endif
+#endif // CONFIG_LORAWAN_JOIN_PACKET
 
 	if (error)
-		LOG_ERR("lorawan_send failed: %d.", error);
-	else
-		LOG_INF("lorawan_send successful");
-
-buf_err:
-
-	if (error == -EAGAIN)
-		LOG_INF("Internal lorawan buffer is empty!");
-	else if (error)
-		LOG_ERR("read from ring buf failed: %d.", error);
+		LOG_ERR("lorawan_send failed with error: %d.", error);
 }
 
 // Set security configuration parameters for joining network
