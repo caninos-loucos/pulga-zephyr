@@ -26,7 +26,6 @@ The order in which everything happens is the following:
 
 */
 
-#include <math.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
@@ -81,8 +80,8 @@ static void lorawan_process_data(void *, void *, void *);
 static void lorawan_send_data(void *, void *, void *);
 // Initialize the callback
 static struct lorawan_downlink_cb downlink_cb = {
-		.port = LW_RECV_PORT_ANY,
-		.cb = downlink_callback};;
+	.port = LW_RECV_PORT_ANY,
+	.cb = downlink_callback};
 
 /**
  * Definitions
@@ -138,7 +137,6 @@ static void lorawan_init_channel()
 		LOG_ERR("lorawan_join_network failed: %d", error);
 		goto return_clause;
 	}
-
 
 	LOG_DBG("Initializing LoRaWAN processing data thread");
 	// After joining successfully, create the send thread.
@@ -200,7 +198,8 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 			LOG_ERR("Could not encode data");
 
 		// put string in internal buffer, casting it to 32-bit words
-		error = ring_buf_item_put(&lorawan_internal_buffer, 0, 0, (uint32_t *)encoded_data, ((size + 3)/ 4));
+		error = ring_buf_item_put(&lorawan_internal_buffer, 0, 0, (uint32_t *)encoded_data,
+								  SIZE_BYTES_TO_32_BIT_WORDS(size));
 
 		if (error == -EMSGSIZE)
 			LOG_INF("lorawan internal buff full");
@@ -234,10 +233,12 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
 			if (!error)
 			{
-				LOG_DBG("Sending encoded data: \"%s\", with %d bytes", (char *)encoded_data, size * 4);
+				LOG_DBG("Sending encoded data: \"%s\", with %d bytes",
+						(char *)encoded_data, SIZE_32_BIT_WORDS_TO_BYTES(size));
 
 				// Send using Zephyr's subsystem and check if the transmission was successful
-				error = lorawan_send(1, (uint8_t *)encoded_data, size * 4, LORAWAN_MSG_UNCONFIRMED);
+				error = lorawan_send(1, (uint8_t *)encoded_data,
+									 SIZE_32_BIT_WORDS_TO_BYTES(size), LORAWAN_MSG_UNCONFIRMED);
 				if (error)
 					LOG_ERR("lorawan_send failed: %d.", error);
 				else
