@@ -322,91 +322,99 @@ void lorawan_send_work_handler(struct k_work *work)
 #ifdef CONFIG_LORAWAN_JOIN_COMPRESS
 
 	uint8_t joined_data[512];
-	uint8_t compressed_data[256];
 	uint8_t separator[2] = {0xca, 0xfe};
 	int index = 0;
+
+	LZ4F_preferences_t prefs = LZ4F_INIT_PREFERENCES;
+	prefs.autoFlush = 1;
+	prefs.frameInfo.blockMode = LZ4F_blockIndependent;
+	prefs.compressionLevel = LZ4HC_CLEVEL_MIN-1;
+
+	LZ4F_cctx *cctx;
+	error = LZ4F_createCompressionContext(&cctx, LZ4F_getVersion());
+	if (error){
+		LOG_DBG("Could not create compression context with error %d", error);
+		return;
+	}
 
 	memset(joined_data, 0, sizeof(joined_data));
 
 	lorawan_get_payload_sizes(&unused_arg, &max_payload_size);
 
+	LOG_DBG("Compress_frame_begin");
+	index = LZ4F_compressBegin(cctx, joined_data, max_payload_size, &prefs);
+	if (index < 0) {
+		LOG_ERR("Could not begin compression with error %d", index);
+	}
 	// Joining the data until it reaches the payload size times the expected compression factor
-	k_mutex_lock(&buf_read_mutex, K_FOREVER);
-	while (index < max_payload_size * compression_factor)
+	do
 	{
+		// Clean the buffers from the previous data
 		encoded_data_size = sizeof(encoded_data) / sizeof(uint32_t);
+		memset(encoded_data, 0, sizeof(encoded_data));
+
+		k_mutex_lock(&buf_read_mutex, K_FOREVER);
 
 		error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &encoded_data_size);
 
+		k_mutex_unlock(&buf_read_mutex); // here?
+
 		// If the buffer is empty, exit the loop
 		if (error == -EAGAIN)
-			break;
+			continue; // goto end? restart?
 		else if (error)
 			goto buf_err;
 
-		// Turn the encoded size to bytes
+		// Turn the encoded size from words to bytes
 		encoded_data_size *= 4;
 
+		// Add start of packet byte
+		bytecpy(encoded_data + encoded_data_size, separator, sizeof(separator));
+		encoded_data_size += sizeof(separator);
+
+		// Data type is reduced to a byte, big data types aint happening here
+		bytecpy(encoded_data + encoded_data_size, &type, 1);
+		encoded_data_size += 1;		
+		
 		// Check if the joined_data buffer can take this data item, then if it can't, break the loop and discard this item
-		if (index + encoded_data_size + 1 > max_payload_size * compression_factor)
+		if (LZ4F_compressFrameBound(encoded_data_size, &prefs) > max_payload_size - index)
 		{
 			LOG_WRN("Item does not fit in joined data buffer, Discarding.");
-			k_mutex_unlock(&buf_read_mutex);
 			break;
 		}
 
-		// Data type is reduced to a byte, big data types aint happening here
-		bytecpy(joined_data + index, &type, 1);
-		index++;
-
-		// Copy the data item to the joined_data buffer
-		bytecpy(joined_data + index, encoded_data, encoded_data_size);
-		index += encoded_data_size;
-
-		// Add end of packet byte
-		bytecpy(joined_data + index, separator, sizeof(separator));
-		index += sizeof(separator);
+		// Compress the data item to the joined_data buffer
+		int written_bytes = LZ4F_compressUpdate(cctx, joined_data + index, max_payload_size - index, encoded_data, encoded_data_size, NULL);
+		if (written_bytes < 0)
+		{
+			LOG_ERR("Compression Failed with error %d! Sending whatever's in there", written_bytes);
+			break;
+		} 
+		index += written_bytes;
 
 		// Anticipate whether the joined_data buffer can take another measurement with
 		// the same size as the last one: if it can't, break the loop and send it
-		if (index + encoded_data_size + 1 > max_payload_size * compression_factor)
+		if (LZ4F_compressBound(encoded_data_size, &prefs) > max_payload_size - index)
 		{
-			k_mutex_unlock(&buf_read_mutex);
+			LOG_DBG("Joined_data buffer is full, sending.");
 			break;
 		}
-	}
-	k_mutex_unlock(&buf_read_mutex);
+	
+	} while (LZ4F_compressFrameBound(encoded_data_size, &prefs) < max_payload_size - index);
 
-	LZ4F_preferences_t prefs = LZ4F_INIT_PREFERENCES;
-	prefs.compressionLevel = LZ4HC_CLEVEL_MIN - 1;
+	LZ4F_compressEnd(cctx, joined_data, max_payload_size, NULL);
+	LOG_DBG("Compress frame end");
+	LZ4F_freeCompressionContext(cctx);
 
-	int compress_frame_bound = LZ4F_compressFrameBound(index, &prefs);
-	LOG_DBG("compressFrameBound is %d", compress_frame_bound);
-	if (compress_frame_bound > max_payload_size * compression_factor * 1.1)
-	{
-		LOG_ERR("Frame too big");
-		return;
-	}
+#ifdef CONFIG_LORAWAN_LOG_LEVEL_DBG
+	char hex[512];
+	bin2hex(joined_data, index, hex, 512);
 
-	// Compress the whole joined data
-	int compressed_size = LZ4F_compressFrame(compressed_data, (int)(max_payload_size * compression_factor * 1.1), joined_data, index, &prefs);
-	// If the compressed size exceeds the payload size, abort send
-	if (compressed_size <= 0)
-	{
-		LOG_ERR("Compression failed with error %d!", compressed_size);
-		return;
-	}
-	else if (compressed_size > max_payload_size)
-	{
-		LOG_WRN("Compressed size bigger than payload, discarding...");
-		return;
-	}
-	else
-	{
-		LOG_DBG("Compressed size: %d", compressed_size);
+	LOG_DBG("Sending compressed data: \"%s\", with %d bytes", hex, index);
+#endif
 
-		error = lorawan_send(2, compressed_data, compressed_size, LORAWAN_MSG_UNCONFIRMED);
-	}
+	error = lorawan_send(2, joined_data, index, LORAWAN_MSG_UNCONFIRMED);
+
 
 #else
 
@@ -418,7 +426,7 @@ void lorawan_send_work_handler(struct k_work *work)
 
 	// Assume that size > 0 since no error happened right?
 	char hex[256];
-	int hexsize = bin2hex((uint8_t *)encoded_data, encoded_data_size, hex, 256);
+	bin2hex((uint8_t *)encoded_data, encoded_data_size, hex, 256);
 
 	LOG_DBG("Sending binary data: \"%s\", with %d bytes", hex, encoded_data_size);
 
