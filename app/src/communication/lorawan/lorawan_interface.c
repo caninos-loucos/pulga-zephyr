@@ -55,7 +55,7 @@ static ChannelAPI lorawan_api;
 RING_BUF_ITEM_DECLARE(lorawan_internal_buffer, LORAWAN_BUFFER_SIZE);
 
 // Stack of the thread that takes data read from general buffer and prepares them to send
-static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_THREAD_STACK_SIZE);
+static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_PROCESSING_STACK_SIZE);
 // Thread control block - metadata
 static struct k_thread lorawan_thread_data;
 static k_tid_t lorawan_thread_id;
@@ -143,7 +143,7 @@ static void lorawan_init_channel()
 	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
 										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
 										lorawan_process_data, NULL, NULL, NULL,
-										LORAWAN_THREAD_PRIORITY, 0, K_NO_WAIT);
+										LORAWAN_PROCESSING_PRIORITY, 0, K_NO_WAIT);
 	error = k_thread_name_set(lorawan_thread_id, "lorawan_process_data");
 	if (error)
 	{
