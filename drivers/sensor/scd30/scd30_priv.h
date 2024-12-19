@@ -57,6 +57,7 @@ extern "C" {
 #define SCD30_CMD_READ_SERIAL 0xD033
 #define SCD30_SERIAL_NUM_WORDS 16U
 #define SCD30_WRITE_DELAY_US 20000U
+#define SCD30_WAIT_FOR_SEMAPHORE_TIMEOUT_MS K_MSEC(10U)
 
 #define SCD30_MEASUREMENT_DATA_WORDS 6U
 #define SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE 0x0000
@@ -80,13 +81,16 @@ struct scd30_config {
 };
 
 struct scd30_data {
+	const struct device *dev;
 	uint16_t error;
 	uint16_t sample_time;
 	char serial[SCD30_SERIAL_NUM_WORDS + 1];
 	float co2_ppm;
 	float temp;
 	float rel_hum;
+	struct k_sem data_ready_signal;
 	struct k_sem lock;
+	struct gpio_callback callback_data_ready;
 };
 
 struct scd30_word {
