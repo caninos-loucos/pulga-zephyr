@@ -92,7 +92,7 @@ int set_valid_sample_time(int raw_sample_time)
 
     raw_sample_time /= 1000;
 
-    period.val1 = CLAMP(raw_sample_time, 2, 180);
+    period.val1 = CLAMP(raw_sample_time, 2, 1800);
 
     if (period.val1 != raw_sample_time)
     {

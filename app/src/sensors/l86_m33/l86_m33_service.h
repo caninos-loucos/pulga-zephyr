@@ -16,7 +16,7 @@ typedef struct
 // Number of 32-bit words in each data item (model)
 // Padding added in navigation field to align
 // by largest member (64-bit fields)
-#define GNSS_MODEL_WORDS ((sizeof(SensorModelGNSS) + 3) / 4)
+#define GNSS_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelGNSS))
 
 // Registers Si1133 model callbacks
 DataAPI *register_gnss_model_callbacks();

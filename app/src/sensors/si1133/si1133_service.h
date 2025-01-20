@@ -13,7 +13,7 @@ typedef struct
 
 // Number of 32-bit words in each data item (model)
 // Each sensor_value has 2 words, si1133 has 4 measurements
-#define SI1133_MODEL_WORDS ((sizeof(SensorModelSi1133) + 3) / 4)
+#define SI1133_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelSi1133))
 
 // Registers Si1133 model callbacks
 DataAPI *register_si1133_model_callbacks();

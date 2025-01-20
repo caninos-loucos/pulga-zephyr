@@ -13,7 +13,7 @@ typedef struct
 
 // Number of 32-bit words in each data item (model)
 // Each sensor_value has 2 words, SCD30 has 3 measurements
-#define SCD30_MODEL_WORDS ((sizeof(SensorModelSCD30) + 3) / 4)
+#define SCD30_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelSCD30))
 
 // Registers SCD30 model callbacks
 DataAPI *register_scd30_model_callbacks();

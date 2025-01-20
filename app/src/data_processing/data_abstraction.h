@@ -3,7 +3,10 @@
 
 #include <zephyr/kernel.h>
 
-// Maximum number of 32-bit words an item of buffer can have
+#define SIZE_BYTES_TO_32_BIT_WORDS(expr) DIV_ROUND_UP(expr, sizeof(uint32_t))
+#define SIZE_32_BIT_WORDS_TO_BYTES(expr) (expr * 4)
+
+// Maximum number of 32-bit words an item of the application buffer can have
 #define MAX_32_WORDS 16
 // Offset in DataType enum. Values equal or greater than this
 // mean the data came from a sensor. Other types of data will

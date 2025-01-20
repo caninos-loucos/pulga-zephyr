@@ -11,7 +11,7 @@ LOG_MODULE_REGISTER(data_buffer, CONFIG_APP_LOG_LEVEL);
 // Declares and initializes ring buffer that will store data until it is read and sent
 RING_BUF_ITEM_DECLARE(data_buffer, CONFIG_BUFFER_WORDS);
 // Peeks into buffer to return type of data
-static int get_data_type();
+static int get_data_type(enum DataType *data_type);
 // Parses data from buffer according to data type
 static int parse_buffer_data(uint32_t *data_words, enum DataType data_type);
 
@@ -29,7 +29,7 @@ int get_from_buffer(uint32_t *data_words, enum DataType *data_type)
     return -1;
 }
 
-int get_data_type(uint16_t *data_type)
+int get_data_type(enum DataType *data_type)
 {
     // Size of item type in bytes
     int type_size = 2;
