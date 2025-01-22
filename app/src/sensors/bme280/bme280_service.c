@@ -43,8 +43,9 @@ static void read_sensor_values()
 
     SensorModelBME280 bme280_model;
     uint32_t bme280_data[MAX_32_WORDS];
-    int error = 0;
+    int error;
 
+sample_fetch:
     error = sensor_sample_fetch(bme280);
     if (!error)
     {
@@ -54,6 +55,17 @@ static void read_sensor_values()
                            &bme280_model.pressure);
         sensor_channel_get(bme280, SENSOR_CHAN_HUMIDITY,
                            &bme280_model.humidity);
+                           
+        memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
+
+        if (insert_in_buffer(bme280_data, BME280_MODEL, error) != 0)
+        {
+            LOG_ERR("Failed to insert data in ring buffer.");
+        }
+    }
+    else if (error == -EAGAIN)
+    {
+        goto sample_fetch;
     }
     else
     {
@@ -61,12 +73,6 @@ static void read_sensor_values()
                 "BME280", error);
     }
 
-    memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
-
-    if (insert_in_buffer(bme280_data, BME280_MODEL, error) != 0)
-    {
-        LOG_ERR("Failed to insert data in ring buffer.");
-    }
 }
 
 // Register BME280 sensor callbacks

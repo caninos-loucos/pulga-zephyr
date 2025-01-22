@@ -56,6 +56,7 @@ static void read_sensor_values()
     uint32_t scd30_data[MAX_32_WORDS];
     int error = 0;
 
+sample_fetch:
     error = sensor_sample_fetch(scd30);
     if (!error)
     {
@@ -65,6 +66,7 @@ static void read_sensor_values()
                            &scd30_model.temperature);
         sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
                            &scd30_model.humidity);
+
         memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
 
         if (insert_in_buffer(scd30_data, SCD30_MODEL, error) != 0)
@@ -72,8 +74,13 @@ static void read_sensor_values()
             LOG_ERR("Failed to insert data in ring buffer.");
         }
     }
+    else if (error == -EAGAIN)
+    {
+        goto sample_fetch;
+    }
     else
-        LOG_ERR("fetch_sample failed: %d", error);
+        LOG_ERR("fetch sample from \"%s\" failed: %d",
+                "SCD30", error);
 }
 
 // Register SCD30 sensor callbacks

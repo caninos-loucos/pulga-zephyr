@@ -46,6 +46,7 @@ static void read_sensor_values()
     uint32_t si1133_data[MAX_32_WORDS];
     int error = 0;
 
+sample_fetch:
     error = sensor_sample_fetch(si1133);
     if (!error)
     {
@@ -57,19 +58,24 @@ static void read_sensor_values()
                            &si1133_model.uv);
         sensor_channel_get(si1133, SENSOR_CHAN_UVI,
                            &si1133_model.uv_index);
+                           
+        memcpy(&si1133_data, &si1133_model, sizeof(SensorModelSi1133));
+
+        if (insert_in_buffer(si1133_data, SI1133_MODEL, error) != 0)
+        {
+            LOG_ERR("Failed to insert data in ring buffer.");
+        }
+    }
+    else if (error == -EAGAIN)
+    {
+        goto sample_fetch;
     }
     else
     {
         LOG_ERR("fetch sample from \"%s\" failed: %d",
-                "Si1133", error);
+                "SI1133", error);
     }
 
-    memcpy(&si1133_data, &si1133_model, sizeof(SensorModelSi1133));
-
-    if (insert_in_buffer(si1133_data, SI1133_MODEL, error) != 0)
-    {
-        LOG_ERR("Failed to insert data in ring buffer.");
-    }
 }
 
 // Register Si1133 sensor callbacks
