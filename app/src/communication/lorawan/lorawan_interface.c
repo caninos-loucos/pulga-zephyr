@@ -167,7 +167,7 @@ static void lorawan_init_channel()
 											 K_THREAD_STACK_SIZEOF(lorawan_send_thread_stack_area),
 											 lorawan_send_data, NULL, NULL, NULL,
 											 LORAWAN_SEND_THREAD_PRIORITY, 0, K_NO_WAIT);
-	error = k_thread_name_set(lorawan_thread_id, "lorawan_send_data");
+	error = k_thread_name_set(lorawan_send_thread_id, "lorawan_send_data");
 	if (error)
 	{
 		LOG_ERR("Failed to set send via LoRaWAN thread name: %d", error);
@@ -315,7 +315,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			// Adds packet to package
 			LOG_DBG("Adding item with size %d B to package with %d available bytes",
 					encoded_data_size, available_package_size);
-			insert_index = max_payload_size - available_package_size - 1;
+			insert_index = max_payload_size - available_package_size;
 			bytecpy(joined_data + insert_index, encoded_data, encoded_data_size);
 			available_package_size -= encoded_data_size;
 			continue;
@@ -331,6 +331,7 @@ int get_item_word_size(uint8_t *item_size)
 	// Size of item header in bytes
 	int header_size = 4;
 	uint8_t header_bytes[header_size];
+	memset(header_bytes, 0, sizeof(header_bytes));
 	// Peek into the ring buffer to get next item size
 	int peeked_size = ring_buf_peek(&lorawan_internal_buffer, header_bytes, header_size);
 	if (peeked_size != header_size)
@@ -339,7 +340,7 @@ int get_item_word_size(uint8_t *item_size)
 		return -1;
 	}
 	// Copies size byte into item_size
-	memcpy(item_size, &header_bytes[2], 1);
+	*item_size = header_bytes[2];
 
 	return 0;
 }
