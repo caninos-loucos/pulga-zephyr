@@ -77,12 +77,12 @@ sample_fetch:
     else if (error == -EAGAIN)
     {
         LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
-                "SCD30", error);
+                scd30->name, error);
         goto sample_fetch;
     }
     else
         LOG_ERR("fetch sample from \"%s\" failed: %d",
-                "SCD30", error);
+                scd30->name, error);
 }
 
 // Register SCD30 sensor callbacks

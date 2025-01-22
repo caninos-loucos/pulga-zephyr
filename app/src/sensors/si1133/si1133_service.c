@@ -69,13 +69,13 @@ sample_fetch:
     else if (error == -EAGAIN)
     {
         LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
-                "Si1133", error);
+                si1133->name, error);
         goto sample_fetch;
     }
     else
     {
         LOG_ERR("fetch sample from \"%s\" failed: %d",
-                "Si1133", error);
+                si1133->name, error);
     }
 
 }
