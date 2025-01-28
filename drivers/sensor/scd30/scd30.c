@@ -467,7 +467,7 @@ static int scd30_wait_data_ready(const struct device *dev)
 {
 	struct scd30_data *data = dev->data;
 
-	return k_sem_take(&data->data_ready_signal, SCD30_WAIT_FOR_SEMAPHORE_TIMEOUT_MS);
+	return k_sem_take(&data->data_ready_signal, K_FOREVER);
 }
 
 static void scd30_data_ready_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
@@ -477,9 +477,9 @@ static void scd30_data_ready_handler(const struct device *dev, struct gpio_callb
 
 	LOG_DBG("Callback rodou!");
 
-	// struct scd30_data *data = CONTAINER_OF(cb, struct scd30_data, callback_data_ready);
+	struct scd30_data *data = CONTAINER_OF(cb, struct scd30_data, callback_data_ready);
 
-	// return k_sem_give(&data->data_ready_signal);
+	return k_sem_give(&data->data_ready_signal);
 }
 
 static int scd30_read_sample(const struct device *dev, enum sensor_channel chan) 
@@ -574,11 +574,11 @@ static int scd30_read_sample(const struct device *dev, enum sensor_channel chan)
 		return rc;
 	}
 
-	scd30_lock(dev);
+	// scd30_lock(dev);
 	data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
 	data->temp = scd30_bytes_to_float(rx_data.temp_be);
 	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
-	scd30_unlock(dev);
+	// scd30_unlock(dev);
 
 	return 0;
 }
@@ -589,7 +589,7 @@ static int scd30_perform_read(const struct device *dev, enum sensor_channel chan
 	int rc;
 
 	// scd30_lock(dev);
-	k_sem_reset(&data->data_ready_signal);
+	// k_sem_reset(&data->data_ready_signal);
 
 	rc = scd30_wait_data_ready(dev);
 	if (rc != 0) {
@@ -613,21 +613,22 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 {
 	int rc = 0;
 
-	LOG_DBG("Entrou na sample fetch!");
+	// LOG_DBG("Entrou na sample fetch!");
 
-	rc = scd30_write_command(dev, SCD30_CMD_GET_DATA_READY);
-	if (rc != 0) {
-		LOG_ERR("Could not write get data ready command");
-		return rc;
-	}
-
-	// LOG_DBG("Starting sample fetch");
-
-	// rc = scd30_perform_read(dev, chan);
+	// rc = scd30_write_command(dev, SCD30_CMD_GET_DATA_READY);
 	// if (rc != 0) {
-	// 	LOG_ERR("Error at reading");
+	// 	LOG_ERR("Could not write get data ready command");
 	// 	return rc;
 	// }
+
+
+	LOG_DBG("Starting sample fetch");
+
+	rc = scd30_perform_read(dev, chan);
+	if (rc != 0) {
+		LOG_ERR("Error at reading");
+		return rc;
+	}
 
 	return rc;
 }
@@ -683,6 +684,11 @@ static int scd30_init(const struct device *dev)
 		LOG_ERR("%s: failed to add data ready callback", dev->name);
 		return -EIO;
 	}
+
+	// Forçando a primeira leitura
+
+	printk("Forçando a primeira leitura\n\t");
+	rc = scd30_read_sample(dev, SENSOR_CHAN_ALL);
 	
 
 	// gpio_init_callback(&data->cb, data_is_ready, BIT(cfg->rdy_gpios.pin));
