@@ -42,15 +42,15 @@ until just before getting Zephyr source code (before ``west init`` command, on S
 
 ### Initialization
 
-The first step is to initialize the workspace folder (``my-workspace``) where
+The first step is to initialize the workspace folder (``zephyrproject``) where
 the ``pulga-zephyr`` repository and all Zephyr modules will be cloned. Run the following
 command:
 
 ```shell
-# initialize my-workspace for pulga-zephyr (main branch)
-west init -m https://github.com/caninos-loucos/pulga-zephyr --mr main my-workspace
+# initialize zephyrproject for pulga-zephyr (main branch)
+west init -m https://github.com/caninos-loucos/pulga-zephyr --mr main zephyrproject
 # update Zephyr modules
-cd my-workspace
+cd zephyrproject
 west update
 ```
 
@@ -62,10 +62,9 @@ To build the application, run the following command:
 
 ```shell
 cd pulga-zephyr
-west build -b $BOARD app
+west build -b pulga app
 ```
 
-where `$BOARD` is the target board, `pulga`.
 If you have problems building the application - and specially after changing application or compilation configuration options -, try running a pristine build 
 by appending `-p` to the last command. There are also other examples in the
 `samples` folder, that can be built providing by the proper directories instead
@@ -75,7 +74,7 @@ A sample debug configuration is also provided. To apply it, run the following
 command:
 
 ```shell
-west build -b $BOARD app -- -DOVERLAY_CONFIG=debug.conf
+west build -b pulga app -- -DOVERLAY_CONFIG=debug.conf
 ```
 
 Once you have built the application, run the following command to flash it or use J-Flash Lite.

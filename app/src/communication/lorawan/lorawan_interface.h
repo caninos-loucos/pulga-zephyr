@@ -40,4 +40,7 @@
 // Register lorawan callbacks
 ChannelAPI *register_lorawan_callbacks();
 
+// Configures and initializes lorawan connection, joining the network
+int lorawan_setup_connection();
+
 #endif /* LORAWAN_INTERFACE_H */

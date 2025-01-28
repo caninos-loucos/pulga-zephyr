@@ -43,7 +43,8 @@ endif()
 
 if(CONFIG_SHIELD_PULGA_LORA)
     target_sources(app PRIVATE  
-                        src/communication/lorawan/lorawan_interface.c)
+                        src/communication/lorawan/lorawan_interface.c
+                        src/communication/lorawan/lorawan_setup.c)
 endif()
 
 if(CONFIG_SHIELD_SCD30)
