@@ -90,7 +90,7 @@ void receive_fix_callback(const struct device *gnss_device,
 
         memcpy(&l86_m33_data, &gnss_model, sizeof(SensorModelGNSS));
 
-        if (insert_in_buffer(l86_m33_data, GNSS_MODEL, 0) != 0)
+        if (insert_in_buffer(&app_buffer, l86_m33_data, GNSS_MODEL, 0) != 0)
         {
             LOG_ERR("Failed to insert data in ring buffer.");
         }

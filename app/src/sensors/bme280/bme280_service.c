@@ -63,7 +63,7 @@ static void read_sensor_values()
 
     memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
 
-    if (insert_in_buffer(bme280_data, BME280_MODEL, error) != 0)
+    if (insert_in_buffer(&app_buffer, bme280_data, BME280_MODEL, error) != 0)
     {
         LOG_ERR("Failed to insert data in ring buffer.");
     }

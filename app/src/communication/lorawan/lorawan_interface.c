@@ -1,6 +1,7 @@
 /*
 Lorawan Interface Module
 Authors: Ana Clara Forcelli <ana.forcelli@lsitec.org.br>
+		 Matheus de Almeida Orsi e Silva <matheus.almeida.silva@alumni.usp.br>
 
 This module is composed of four main elements:
 
@@ -74,7 +75,7 @@ static void lorawan_init_channel()
 {
 	LOG_DBG("Initializing LoRaWAN channel");
 	int error = 0;
-	
+
 	error = lorawan_setup_connection();
 
 	LOG_DBG("Initializing LoRaWAN processing data thread");
