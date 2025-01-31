@@ -22,14 +22,13 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "Temperature: %d.%02d°C; Pressure: %d.%02d kPa; "
-                    "Humidity: %d.%02d %%RH;",
-                    bme280_model->temperature.val1,
-                    bme280_model->temperature.val2 / 10000,
-                    bme280_model->pressure.val1,
-                    bme280_model->pressure.val2 / 10000,
-                    bme280_model->humidity.val1,
-                    bme280_model->humidity.val2 / 10000);
+                    "Temperature: %d.%02doC; Pressure: %d.%d hPa; "
+                    "Humidity: %d %%RH;",
+                    bme280_model->temperature / 100,
+                    bme280_model->temperature % 100,
+                    bme280_model->pressure / 10,
+                    bme280_model->pressure % 10,
+                    bme280_model->humidity);
 }
 
 // Encodes all values of data model into a minimal string
@@ -40,13 +39,10 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "T%d.%02dP%d.%02dH%d.%02d",
-                    bme280_model->temperature.val1,
-                    bme280_model->temperature.val2 / 10000,
-                    bme280_model->pressure.val1,
-                    bme280_model->pressure.val2 / 10000,
-                    bme280_model->humidity.val1,
-                    bme280_model->humidity.val2 / 10000);
+                    "T%dP%dH%d",
+                    bme280_model->temperature,
+                    bme280_model->pressure,
+                    bme280_model->humidity);
 }
 
 // Registers BME280 model callbacks

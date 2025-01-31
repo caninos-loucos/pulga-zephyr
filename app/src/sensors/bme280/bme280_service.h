@@ -5,14 +5,13 @@
 #include <sensors/sensors_interface.h>
 
 // Number of 32-bit words in each data item (model)
-// Each sensor_value has 2 words, bme280 has 3 measurements
-#define BME280_MODEL_WORDS 2 * 3
+#define BME280_MODEL_WORDS (sizeof(SensorModelBME280) + 3) / 4
 
 typedef struct
 {
-    struct sensor_value temperature;
-    struct sensor_value pressure;
-    struct sensor_value humidity;
+    int16_t temperature;
+    uint16_t pressure;
+    uint8_t humidity;
 } SensorModelBME280;
 
 // Register BME280 sensor callbacks

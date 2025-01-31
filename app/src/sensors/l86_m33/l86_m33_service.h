@@ -7,15 +7,16 @@
 // Number of 32-bit words in each data item (model)
 // Padding added in navigation field to align
 // by largest member (64-bit fields)
-#define GNSS_MODEL_WORDS 10
+#define GNSS_MODEL_WORDS (sizeof(SensorModelGNSS) + 3) / 4
 
 typedef struct
 {
-	/** Navigation data acquired */
-	struct navigation_data navigation; // 8 words
-	/** UTC time when data was acquired */
-	struct gnss_time real_time; // 2 words
-
+	int32_t latitude; // microdegrees (0 to +- 180E6)
+	int32_t longitude; // microdegrees (0 to +- 180E6)
+	uint16_t bearing; // centidegrees (0 - 36000)
+	uint16_t speed; // cm/s, up to 650m/s
+	uint32_t altitude; // cm, up to the stratosphere (65km)
+	struct gnss_time real_time;
 } SensorModelGNSS;
 
 // Registers Si1133 model callbacks

@@ -2,6 +2,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
 #include <sensors/bme280/bme280_service.h>
+#include <assert.h>
 
 LOG_MODULE_REGISTER(bme280_service, CONFIG_APP_LOG_LEVEL);
 
@@ -42,31 +43,60 @@ static void read_sensor_values()
     LOG_DBG("Reading BME280");
 
     SensorModelBME280 bme280_model;
-    uint32_t bme280_data[MAX_32_WORDS];
-    int error = 0;
+    struct sensor_value val;
+    int error;
+    void *bme280_data;
+
+    assert(sizeof(bme280_model) <= (BME280_MODEL_WORDS * 4));
 
     error = sensor_sample_fetch(bme280);
-    if (!error)
+    if (error)
     {
-        sensor_channel_get(bme280, SENSOR_CHAN_AMBIENT_TEMP,
-                           &bme280_model.temperature);
-        sensor_channel_get(bme280, SENSOR_CHAN_PRESS,
-                           &bme280_model.pressure);
-        sensor_channel_get(bme280, SENSOR_CHAN_HUMIDITY,
-                           &bme280_model.humidity);
-    }
-    else
-    {
-        LOG_ERR("fetch sample from \"%s\" failed: %d",
-                "BME280", error);
+        LOG_ERR("sensor_sample_fetch failed with error %d", error);
+        return;
     }
 
-    memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
+    error = sensor_channel_get(bme280, SENSOR_CHAN_AMBIENT_TEMP,
+                               &val);
+    if (error)
+        goto channel_get_err;
 
-    if (insert_in_buffer(bme280_data, BME280_MODEL, error) != 0)
+    // Temperature in centidegrees ( 1/100th of one degree Celsius )
+    bme280_model.temperature = val.val1 * 100 + val.val2 / 10000;
+
+    error = sensor_channel_get(bme280, SENSOR_CHAN_PRESS,
+                               &val);
+    if (error)
+        goto channel_get_err;
+
+    // Pressure in hPa
+    bme280_model.pressure = val.val1 * 100 + val.val2 / 10000;
+
+    error = sensor_channel_get(bme280, SENSOR_CHAN_HUMIDITY,
+                               &val);
+    if (error)
+        goto channel_get_err;
+
+    // Humidity in %RH
+    bme280_model.humidity = val.val1;
+
+    bme280_data = calloc(BME280_MODEL_WORDS, 4);
+    if (!bme280_data)
     {
-        LOG_ERR("Failed to insert data in ring buffer.");
+        LOG_ERR("could not allocate pointer");
+        return;
     }
+    memcpy(bme280_data, &bme280_model, sizeof(SensorModelBME280));
+
+    error = insert_in_buffer(bme280_data, BME280_MODEL, error);
+    free(bme280_data);
+
+    if (error)
+        LOG_ERR("Failed to insert data in ring buffer with error %d.", error);
+    return;
+
+channel_get_err:
+    LOG_ERR("sensor_channel_get failed with error %d", error);
 }
 
 // Register BME280 sensor callbacks
