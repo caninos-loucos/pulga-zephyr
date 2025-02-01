@@ -65,6 +65,12 @@ LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
 
 // static void scd30_data_ready_callback(const struct device *dev);
 
+static scd30_callback_t callback_registrada = NULL;
+
+void scd30_register_callback(scd30_callback_t cb) {
+    callback_registrada = cb;
+}
+
 static void scd30_lock(const struct device *dev)
 {
 	struct scd30_data *data = dev->data;
