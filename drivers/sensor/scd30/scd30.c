@@ -609,29 +609,128 @@ static int scd30_perform_read(const struct device *dev, enum sensor_channel chan
 
 // Fetch the readings of the sensor and stores it into dev
 // Returns 0 if sucessful or the corresponding rc error code
-static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan)
-{
-	int rc = 0;
 
-	// LOG_DBG("Entrou na sample fetch!");
+static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan) {
+	
+	uint16_t data_ready;
+	struct scd30_data *data = dev->data;
+	const struct scd30_config *cfg = dev->config;
+	int rc;
 
-	// rc = scd30_write_command(dev, SCD30_CMD_GET_DATA_READY);
-	// if (rc != 0) {
-	// 	LOG_ERR("Could not write get data ready command");
-	// 	return rc;
-	// }
+	/*
+	 * Struct represensting data as received from the SCD30
+	 * each scd30_word conists of a 16 bit data word followed
+	 * by an 8 bit crc
+	 */
+	struct scd30_rx_data {
+		struct scd30_word co2_msw;
+		struct scd30_word co2_lsw;
+		struct scd30_word temp_msw;
+		struct scd30_word temp_lsw;
+		struct scd30_word humidity_msw;
+		struct scd30_word humidity_lsw;
+	} raw_rx_data;
 
+	/*
+	 * struct representing the received data from the SCD30
+	 * in big endian order with the CRC's removed.
+	 */
+	struct rx_data {
+		uint8_t co2_be[sizeof(float)];
+		uint8_t temp_be[sizeof(float)];
+		uint8_t humidity_be[sizeof(float)];
+	} rx_data;
 
-	LOG_DBG("Starting sample fetch");
+	if (chan != SENSOR_CHAN_ALL) {
+		return -ENOTSUP;
+	}
 
-	rc = scd30_perform_read(dev, chan);
+	rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
 	if (rc != 0) {
-		LOG_ERR("Error at reading");
 		return rc;
 	}
 
-	return rc;
+	if (!data_ready) {
+		return -ENODATA;
+	}
+
+	rc = scd30_write_command(dev, SCD30_CMD_READ_MEASUREMENT);
+	if (rc != 0) {
+		LOG_DBG("Failed to send command. (rc = %d)", rc);
+		return rc;
+	}
+
+	/* delay for 3 msec as per datasheet. */
+	k_sleep(K_MSEC(3));
+
+	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&raw_rx_data, sizeof(raw_rx_data));
+	if (rc != 0) {
+		LOG_DBG("Failed to read data. (rc = %d)", rc);
+		return rc;
+	}
+
+	/* C02 data */
+	rc = scd30_fill_data_buf(raw_rx_data.co2_msw, &rx_data.co2_be[0]);
+	if (rc != 0) {
+		return rc;
+	}
+	rc = scd30_fill_data_buf(raw_rx_data.co2_lsw, &rx_data.co2_be[SCD30_WORD_SIZE]);
+	if (rc != 0) {
+		return rc;
+	}
+
+	/* temperature data */
+	rc = scd30_fill_data_buf(raw_rx_data.temp_msw, &rx_data.temp_be[0]);
+	if (rc != 0) {
+		return rc;
+	}
+	rc = scd30_fill_data_buf(raw_rx_data.temp_lsw, &rx_data.temp_be[SCD30_WORD_SIZE]);
+	if (rc != 0) {
+		return rc;
+	}
+
+	/* relative humidity */
+	rc = scd30_fill_data_buf(raw_rx_data.humidity_msw, &rx_data.humidity_be[0]);
+	if (rc != 0) {
+		return rc;
+	}
+	rc = scd30_fill_data_buf(raw_rx_data.humidity_lsw, &rx_data.humidity_be[SCD30_WORD_SIZE]);
+	if (rc != 0) {
+		return rc;
+	}
+
+	data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
+	data->temp = scd30_bytes_to_float(rx_data.temp_be);
+	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
+
+	return 0;
 }
+
+// SAMPLE FETCH ATIGA //
+
+// static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan)
+// {
+// 	int rc = 0;
+
+// 	// LOG_DBG("Entrou na sample fetch!");
+
+// 	// rc = scd30_write_command(dev, SCD30_CMD_GET_DATA_READY);
+// 	// if (rc != 0) {
+// 	// 	LOG_ERR("Could not write get data ready command");
+// 	// 	return rc;
+// 	// }
+
+
+// 	LOG_DBG("Starting sample fetch");
+
+// 	rc = scd30_perform_read(dev, chan);
+// 	if (rc != 0) {
+// 		LOG_ERR("Error at reading");
+// 		return rc;
+// 	}
+
+// 	return rc;
+// }
 
 // Struct used to integrate this driver functions into Zephyr sensor's API
 static const struct sensor_driver_api scd30_driver_api = {
