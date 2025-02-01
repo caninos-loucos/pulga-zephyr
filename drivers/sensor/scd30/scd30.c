@@ -611,7 +611,7 @@ static int scd30_perform_read(const struct device *dev, enum sensor_channel chan
 // Returns 0 if sucessful or the corresponding rc error code
 
 static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan) {
-	
+
 	uint16_t data_ready;
 	struct scd30_data *data = dev->data;
 	const struct scd30_config *cfg = dev->config;
@@ -732,6 +732,22 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 // 	return rc;
 // }
 
+// This function is needed so the reading can occur. (WILL DOCUMENT BETTER LATER.)
+static void acquisition_tick(const struct device *dev, enum sensor_channel chan) {
+	
+	int rc = 0;
+
+	while (1){
+		LOG_DBG("Ticking next reading");
+
+		rc = scd30_perform_read(dev, chan);
+		if (rc != 0) {
+			LOG_ERR("Error at reading");
+			return;
+		}
+	}
+}
+
 // Struct used to integrate this driver functions into Zephyr sensor's API
 static const struct sensor_driver_api scd30_driver_api = {
 	.sample_fetch = scd30_sample_fetch,
@@ -837,6 +853,10 @@ static int scd30_init(const struct device *dev)
 
 	return 0;
 }
+
+// REVIEW THIS AFTER
+K_THREAD_DEFINE(acquisition_tick_id, 1024, acquisition_tick, NULL, NULL, NULL, 
+				7, 0, 0);
 
 #define SCD30_DEFINE(inst)                                                                  \
 	static struct scd30_data scd30_data_##inst = {                                          \
