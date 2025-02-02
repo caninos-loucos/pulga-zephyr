@@ -65,25 +65,38 @@ LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
 
 // static void scd30_data_ready_callback(const struct device *dev);
 
-static scd30_callback_t callback_registrada = NULL;
+static scd30_callback_t registered_callback = NULL;
+// Work item to excecute application callback
+static struct k_work work_item;
+
+void trigger_application_callback(struct device *dev, struct k_work *work) {
+
+	struct scd30_data *data = dev->data;
+
+	// Call application callback if registered
+	if (registered_callback) {
+        registered_callback();
+    } 
+}
 
 void scd30_register_callback(scd30_callback_t cb) {
-    callback_registrada = cb;
+    registered_callback = cb;
+	k_work_init(&work_item, trigger_application_callback);
 }
 
-static void scd30_lock(const struct device *dev)
-{
-	struct scd30_data *data = dev->data;
-
-	k_sem_take(&data->lock, K_FOREVER);
-}
-
-static void scd30_unlock(const struct device *dev)
-{
-	struct scd30_data *data = dev->data;
-
-	k_sem_give(&data->lock);
-}
+// static void scd30_lock(const struct device *dev)
+// {
+	// struct scd30_data *data = dev->data;
+// 
+	// k_sem_take(&data->lock, K_FOREVER);
+// }
+// 
+// static void scd30_unlock(const struct device *dev)
+// {
+	// struct scd30_data *data = dev->data;
+// 
+	// k_sem_give(&data->lock);
+// }
 
 // Writes the desired command (cmd) into desired I2C bus
 // Returns 0 if sucessful or -EIO (General input/output error)
@@ -608,6 +621,8 @@ static int scd30_perform_read(const struct device *dev, enum sensor_channel chan
 		LOG_ERR("%s: reading sample failed", dev->name);
 		return rc;
 	}
+
+	k_work_submit(&work_item); // Triggers work schedule to be executed in due time
 
 	// scd30_unlock(dev);
 	return rc;

@@ -10,8 +10,7 @@
 #include <zephyr/drivers/sensor.h>
 
 /* Callback strutucture to be shared in application and driver */
-typedef void (*scd30_callback_t)(const struct device *scd30_device,
-                          		 const struct scd30_data *scd30_data);
+typedef void (*scd30_callback_t)(void);
 
 void scd30_register_callback(scd30_callback_t cb);
 
