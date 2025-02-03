@@ -40,9 +40,6 @@ LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 // Instance of ChannelAPI for lorawan channel
 static ChannelAPI lorawan_api;
 
-// Defines the internal buffer for sending
-RING_BUF_ITEM_DECLARE(lorawan_internal_buffer, LORAWAN_BUFFER_SIZE);
-
 // Stack of the thread that takes data read from general buffer and prepares them to send
 static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_PROCESSING_STACK_SIZE);
 // Thread control block - metadata
@@ -60,10 +57,6 @@ static void lorawan_init_channel();
 static void lorawan_process_data(void *, void *, void *);
 // This is the function that actually sends the data
 static void lorawan_send_data(void *, void *, void *);
-// Returns how many bytes the data currently stored in internal buffer would occupy in a package
-static int get_buffer_to_package_size(int buffered_items);
-// Peeks into buffer to return size of item in 32-bit words
-static int get_item_word_size(uint8_t *item_size);
 // Sends LoRaWAN package and handles errors
 static void send_package(uint8_t *package, uint8_t package_size);
 
@@ -119,9 +112,7 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 	uint8_t max_payload_size;
 	uint8_t unused_arg;
 
-	int encoded_size, error, buffered_items = 0;
-
-	uint8_t encoded_data[256];
+	int error, buffered_items = 0;
 
 	while (1)
 	{
@@ -129,26 +120,11 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 		k_sem_take(&data_ready_sem[LORAWAN], K_FOREVER);
 		// Maximum payload size determined by datarate and region
 		lorawan_get_payload_sizes(&unused_arg, &max_payload_size);
-		// Setting array to zeros
-		memset(encoded_data, 0, 256);
-		LOG_DBG("Encoding data item");
-		// Encoding data to raw bytes
-		encoded_size = encode_data(data_unit.data_words, data_unit.data_type, MINIMALIST,
-								   encoded_data, sizeof(encoded_data));
-		if (encoded_size < 0)
-		{
-			LOG_ERR("Could not encode data");
+		// Encodes data item to be sent and inserts the encoded data in the internal buffer
+		error = encode_and_insert(data_unit);
+		if (error)
 			continue;
-		}
-		LOG_DBG("Encoded LoRa data starting with '0x%X' and size %dB",
-				encoded_data[0], encoded_size);
-
-		// Put bytes in internal buffer, casting it to 32-bit words
-		error = ring_buf_item_put(&lorawan_internal_buffer, data_unit.data_type, 0, (uint32_t *)encoded_data,
-								  SIZE_BYTES_TO_32_BIT_WORDS(encoded_size));
-		if (error == -EMSGSIZE)
-			LOG_WRN("Lorawan internal buffer is full!");
-		else if (!error)
+		else
 			buffered_items++;
 
 #ifdef CONFIG_LORAWAN_JOIN_PACKET
@@ -168,15 +144,6 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 		// Signals for the Communication Interface that Lorawan processing is complete
 		k_sem_give(&data_processed);
 	}
-}
-
-// Returns how many bytes the data currently stored in internal buffer would occupy in a package
-static int get_buffer_to_package_size(int buffered_items)
-{
-	int internal_buffer_used_size = ring_buf_size_get(&lorawan_internal_buffer);
-	// Each item in the buffer has a 32-bit word header, which will be removed
-	internal_buffer_used_size -= SIZE_32_BIT_WORDS_TO_BYTES(buffered_items);
-	return internal_buffer_used_size;
 }
 
 // This is the function that actually sends the data
@@ -206,12 +173,11 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 #endif
 
 		// After waking up, transmits until buffer is empty
-		while (!ring_buf_is_empty(&lorawan_internal_buffer))
+		while (!lorawan_buffer_empty())
 		{
 			LOG_DBG("Resetting data item variables");
 			error = 0;
-			uint16_t type;
-			uint8_t value, encoded_data_size, encoded_data_word_size;
+			uint8_t encoded_data_size, encoded_data_word_size;
 			uint32_t encoded_data[MAX_32_WORDS];
 			memset(encoded_data, 0, sizeof(encoded_data));
 			// Peeking the size of the next item in the buffer
@@ -230,17 +196,12 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			}
 #endif
 			// Get the next packet from the internal buffer
-			error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value,
-									  encoded_data, &encoded_data_word_size);
-			encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
-			if (error)
+			error = get_lorawan_item(encoded_data, &encoded_data_word_size);
+			if(error)
 			{
-				LOG_ERR("read from ring buf failed: %d.", error);
 				continue;
 			}
-			LOG_DBG("Fetched encoded data: \"%s\", with %d bytes",
-					(char *)encoded_data,
-					SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size));
+			encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
 
 #ifdef CONFIG_LORAWAN_JOIN_PACKET
 			// Adds packet to package
@@ -255,25 +216,6 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		}
 		k_sleep(K_FOREVER);
 	}
-}
-
-int get_item_word_size(uint8_t *item_size)
-{
-	// Size of item header in bytes
-	int header_size = 4;
-	uint8_t header_bytes[header_size];
-	memset(header_bytes, 0, sizeof(header_bytes));
-	// Peek into the ring buffer to get next item size
-	int peeked_size = ring_buf_peek(&lorawan_internal_buffer, header_bytes, header_size);
-	if (peeked_size != header_size)
-	{
-		LOG_ERR("Failed to get item size");
-		return -1;
-	}
-	// Copies size byte into item_size
-	*item_size = header_bytes[2];
-
-	return 0;
 }
 
 void send_package(uint8_t *package, uint8_t package_size)

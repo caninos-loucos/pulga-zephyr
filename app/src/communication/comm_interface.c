@@ -124,7 +124,7 @@ static void read_and_notify(void *param0, void *param1, void *param2)
         // After waking up, transmits until buffer is empty
         while (buffer_is_empty(&app_buffer) == false)
         {
-            if (get_from_buffer(&app_buffer, data_unit.data_words, &data_unit.data_type) == 0)
+            if (get_from_buffer(&app_buffer, data_unit.data_words, &data_unit.data_type, NULL) == 0)
             {
                 // Notifies each registered channel that a new data unit is ready
                 for (int i = 0; i < MAX_CHANNELS; i++)

@@ -21,7 +21,7 @@ LOG_MODULE_REGISTER(lorawan_setup, CONFIG_APP_LOG_LEVEL);
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
 // SNR: Signal-noise ratio
-static void downlink_callback(uint8_t port, bool flags, int16_t rssi, int8_t snr, uint8_t length,
+static void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr, uint8_t length,
                               const uint8_t *hex_data);
 // Callback to be used whenever datarate changes. When CONFIG_LORAWAN_COMPRESS_PACKET is set, adjusts the expected compression level.
 static void dr_changed_callback(enum lorawan_datarate dr);
@@ -96,7 +96,7 @@ return_clause:
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
 // SNR: Signal-noise ratio
-void downlink_callback(uint8_t port, bool flags, int16_t rssi, int8_t snr, uint8_t length,
+void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr, uint8_t length,
                        const uint8_t *hex_data)
 {
     LOG_DBG("Port %d, Flags %x, RSSI %ddBm, SNR %ddB", port, flags, rssi, snr);

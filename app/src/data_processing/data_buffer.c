@@ -12,16 +12,16 @@ RING_BUF_ITEM_DECLARE(app_buffer, CONFIG_BUFFER_WORDS);
 // Peeks into buffer to return type of data
 static int get_data_type(struct ring_buf *buffer, enum DataType *data_type);
 // Parses data from buffer according to data type
-static int parse_buffer_data(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type);
+static int parse_buffer_data(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type, uint8_t *num_words);
 
 /**
  * IMPLEMENTATIONS
  */
 
-int get_from_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType *data_type)
+int get_from_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType *data_type, uint8_t *num_words)
 {
     if (get_data_type(buffer, data_type) == 0 &&
-        parse_buffer_data(buffer, data_words, *data_type) == 0)
+        parse_buffer_data(buffer, data_words, *data_type, NULL) == 0)
     {
         return 0;
     }
@@ -46,11 +46,9 @@ int get_data_type(struct ring_buf *buffer, enum DataType *data_type)
     return 0;
 }
 
-int insert_in_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type, uint8_t custom_value)
+int insert_in_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type,
+                     uint8_t custom_value, uint8_t num_words)
 {
-    // Number of 32-bit words in data_words
-    uint8_t num_words = get_data_api(data_type)->num_data_words;
-
     // Removes oldest items from buffer until new item fits
     while (ring_buf_item_put(buffer, data_type, custom_value,
                              data_words, num_words) != 0)
@@ -58,7 +56,7 @@ int insert_in_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataTyp
         LOG_ERR("Failed to insert data in ring buffer.");
         enum DataType last_item_type = -1;
         // Discards item
-        get_from_buffer(buffer, NULL, &last_item_type);
+        get_from_buffer(buffer, NULL, &last_item_type, NULL);
     }
     LOG_DBG("Wrote item to buffer starting with '0x%X' and ending with '0x%X'",
             data_words[0], data_words[num_words - 1]);
@@ -71,12 +69,23 @@ int buffer_is_empty(struct ring_buf *buffer)
     return ring_buf_is_empty(buffer);
 }
 
-int parse_buffer_data(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type)
+int parse_buffer_data(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type, uint8_t *num_words)
 {
     // Number of 32-bit words in data_words
-    uint8_t custom_value = 0, num_words = get_data_api(data_type)->num_data_words;
+    uint8_t *data_size, data_size_value = 0, custom_value = 0;
     uint16_t type;
     int error = 0;
+
+    data_size = &data_size_value;
+    // num_words is NULL when the caller function doesn't know the size of data_words
+    if (num_words == NULL)
+    {
+        *data_size = get_data_api(data_type)->num_data_words;
+    }
+    else
+    {
+        data_size = num_words;
+    }
 
     // Discarding oldest data
     if (data_words == NULL)
@@ -84,7 +93,7 @@ int parse_buffer_data(struct ring_buf *buffer, uint32_t *data_words, enum DataTy
         LOG_DBG("Discarding data item");
     }
     // Tries to get actual item from buffer
-    error = ring_buf_item_get(buffer, &type, &custom_value, data_words, &num_words);
+    error = ring_buf_item_get(buffer, &type, &custom_value, data_words, data_size);
     if (error)
     {
         LOG_ERR("Failed to get data from ring buffer.");
@@ -93,6 +102,6 @@ int parse_buffer_data(struct ring_buf *buffer, uint32_t *data_words, enum DataTy
     }
     LOG_DBG("Got item from buffer with datatype %d, "
             "starting with '0x%X' and ending with '0x%X'",
-            data_type, data_words[0], data_words[num_words - 1]);
+            data_type, data_words[0], data_words[*data_size - 1]);
     return 0;
 }

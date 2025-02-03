@@ -67,10 +67,11 @@ typedef struct
 int register_data_callbacks();
 
 // Gets item from buffer
-int get_from_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType *data_type);
+int get_from_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType *data_type, uint8_t *num_words);
 
 // Inserts data in buffer
-int insert_in_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type, uint8_t custom_value);
+int insert_in_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type,
+                     uint8_t custom_value, uint8_t num_words);
 
 // Verifies if buffer is empty
 int buffer_is_empty(struct ring_buf *buffer);
