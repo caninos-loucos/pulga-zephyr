@@ -55,7 +55,7 @@ sample_fetch:
                            &bme280_model.pressure);
         sensor_channel_get(bme280, SENSOR_CHAN_HUMIDITY,
                            &bme280_model.humidity);
-                           
+
         memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
 
         if (insert_in_buffer(bme280_data, BME280_MODEL, error) != 0)
@@ -64,7 +64,7 @@ sample_fetch:
         }
     }
     else if (error == -EAGAIN)
-    {   
+    {
         LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
                 bme280->name, error);
         goto sample_fetch;
@@ -74,7 +74,6 @@ sample_fetch:
         LOG_ERR("fetch sample from \"%s\" failed: %d",
                 bme280->name, error);
     }
-
 }
 
 // Register BME280 sensor callbacks

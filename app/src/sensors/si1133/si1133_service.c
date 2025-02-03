@@ -58,7 +58,7 @@ sample_fetch:
                            &si1133_model.uv);
         sensor_channel_get(si1133, SENSOR_CHAN_UVI,
                            &si1133_model.uv_index);
-                           
+
         memcpy(&si1133_data, &si1133_model, sizeof(SensorModelSi1133));
 
         if (insert_in_buffer(si1133_data, SI1133_MODEL, error) != 0)
@@ -77,7 +77,6 @@ sample_fetch:
         LOG_ERR("fetch sample from \"%s\" failed: %d",
                 si1133->name, error);
     }
-
 }
 
 // Register Si1133 sensor callbacks
