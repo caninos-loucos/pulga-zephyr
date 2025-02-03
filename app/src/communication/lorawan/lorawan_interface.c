@@ -30,6 +30,7 @@ The order in which everything happens is the following:
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/ring_buffer.h>
 #include <communication/lorawan/lorawan_interface.h>
+#include <communication/lorawan/lorawan_buffer/lorawan_buffer.h>
 
 LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 

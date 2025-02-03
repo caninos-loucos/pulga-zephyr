@@ -54,7 +54,7 @@ cd zephyrproject
 west update
 ```
 
-After running this commands, you can continue the guide until the end of ``Install the Zephyr SDK`` section.
+After running this commands, CONTINUE THE GETTING STARTED GUIDE until the end of ``Install the Zephyr SDK`` section.
 
 ### Building and running
 
@@ -77,7 +77,7 @@ command:
 west build -b pulga app -- -DOVERLAY_CONFIG=debug.conf
 ```
 
-Once you have built the application, run the following command to flash it or use J-Flash Lite.
+Once you have built the application, run the following command to flash it or use J-Flash Lite. When using west, it's necessary to install NRF Command Line Tools beforehand.
 
 ```shell
 west flash
@@ -112,8 +112,8 @@ To deactivate sensors internal to Pulga Core, you simply need to change their st
 #### LoRaWAN configurations
 - LORAWAN_DR: Datarate used in LoRaWAN communication. This affects several communication parameters. The lower the datarate, the smaller the maximum payload size, the lower the range, the slower the communication and the higher the power consumption.
 - LORAWAN_ACTIVATION: Whether joining the LoRaWAN network will be via OTAA (more secure, renews encryption keys during communication) or ABP (less secure, configures keys to be used during all communication).
-- LORAWAN_SELECTED_REGION (lorawan_interface.c): The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc.
-- Lorawan keys (lorawan_keys_example.h): Security parameters that allow LoRaWAN communication. In production environment, configured in a lorawan_keys.h file, which will be properly ignored by git, being necessary to update the import in lorawan_interface.c.
+- LORAWAN_SELECTED_REGION (lorawan_interface.h): The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc.
+- Lorawan keys (lorawan_keys_example.h): Security parameters that allow LoRaWAN communication. In production environment, configured in a lorawan_keys.h file, which will be properly ignored by git, being necessary to update the import in lorawan_setup.c.
 - Power amplifier output pin (boards/shields/pulga-lora.overlay): depends on the type of Pulga Lora board used. Types A and B don't have PA boost so "rfo" pin is used, while types C and D use "pa-boost" pin.
 
 <!-- ### Testing

@@ -1,6 +1,6 @@
 #include <zephyr/sys/ring_buffer.h>
 #include <zephyr/logging/log.h>
-#include <communication/lorawan/lorawan_interface.h>
+#include <communication/lorawan/lorawan_buffer/lorawan_buffer.h>
 
 LOG_MODULE_REGISTER(lorawan_buffer, CONFIG_APP_LOG_LEVEL);
 
