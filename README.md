@@ -97,25 +97,57 @@ list(APPEND SHIELD pulga_gps)
 To deactivate sensors internal to Pulga Core, you simply need to change their status from "okay" to "disabled" in ``app/boards/pulga.overlay``. The sensors sampling interval, the transmission interval of the communication channels, the size of the ring buffer and the use of UART communication to terminal are to be configured in ``app/prj.conf`` and the description of those options can be found in ``app/Kconfig``.
 
 #### Application configurations
-- SAMPLING_INTERVAL: periodically, after the configured time in milliseconds, all activated sensors will write measurements to the ring buffer.
+
+- `SAMPLING_INTERVAL:` periodically, after the configured time in milliseconds, all activated sensors will write measurements to the ring buffer.
   - Constraints: 
     - SCD30: 2s < t < 180s.
-    - L86 GNSS module: 100ms < t < 10s. If t > 1000ms, it needs to be a multiple of 1000. If the interval is bigger than 10s, the application will ignore GNSS measurements and only allow writing to buffer in the configured time.
-- TRANSMISSION_INTERVAL: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it.
+    - L86 GNSS module: 100ms < t < 10s. If t > 1000ms, it needs to be a multiple of 1000. If the interval is bigger than 10s, the application will ignore GNSS measurements and only allow writing to buffer in the configured time.  
+   
+- `TRANSMISSION_INTERVAL:` periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it.
   - Constraints: 
     - LoRaWAN: transmission takes about 5s, so if the transmission interval is too large and the sampling period is too low, data might be lost. To prevent this, this application uses another buffer, internal to LoRaWAN.
-- BUFFER_WORDS: number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
+- `BUFFER_WORDS:` number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
 
 #### Communication configurations
-- SEND_UART: Prints a verbose output to the configured terminal, such as TeraTerm or MiniCOM.
-- SEND_LORA: Sends a compressed version of the output via LoRaWAN, requiring pulga-lora shield to be activated.
+- `SEND_UART:` Prints a verbose output to the configured terminal, such as screen, TeraTerm or MiniCOM.
+- `SEND_LORA:` Sends a compressed version of the output via LoRaWAN, requiring pulga-lora shield to be activated.
 
 #### LoRaWAN configurations
-- LORAWAN_DR: Datarate used in LoRaWAN communication. This affects several communication parameters. The lower the datarate, the smaller the maximum payload size, the lower the range, the slower the communication and the higher the power consumption.
-- LORAWAN_ACTIVATION: Whether joining the LoRaWAN network will be via OTAA (more secure, renews encryption keys during communication) or ABP (less secure, configures keys to be used during all communication).
-- LORAWAN_SELECTED_REGION (lorawan_interface.c): The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc.
-- Lorawan keys (lorawan_keys_example.h): Security parameters that allow LoRaWAN communication. In production environment, configured in a lorawan_keys.h file, which will be properly ignored by git, being necessary to update the import in lorawan_interface.c.
-- Power amplifier output pin (boards/shields/pulga-lora.overlay): depends on the type of Pulga Lora board used. Types A and B don't have PA boost so "rfo" pin is used, while types C and D use "pa-boost" pin.
+- `LORAWAN_DR:` Datarate used in LoRaWAN communication. This affects several communication parameters. The lower the datarate, the smaller the maximum payload size, the lower the range, the slower the communication and the higher the power consumption.
+- `LORAWAN_ACTIVATION:` Whether joining the LoRaWAN network will be via OTAA (more secure, renews encryption keys during communication) or ABP (less secure, configures keys to be used during all communication).
+- `LORAMAC_REGION_LA915:` The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc. The default region for American Tower apllications is LA915, but other providers may use AU915.  
+
+### LoRaWAN usage
+
+The LoRaWAN stack has some files that must be modified according to the specific application:
+- `app/lorawan_keys_example.h:` Example keys for LoRaWAN communication. In production environment, one must create a new `lorawan_keys.h` file, which will be properly ignored by git, and include it in the `app/src/communication/lorawan_interface.c` file.
+- `boards/shields/pulga-lora.overlay:` On the sx127x node, one must change the `power-amplifier-output` property according to the type of Pulga Lora board used. Types A and B don't have PA boost, so "rfo" pin is used, while types C and D use "pa-boost" pin.
+
+
+#### Encoding with raw bytes  
+
+The application, by default, encodes the values of readings in binary mode when sending via LoRaWAN. In this encoding, the structs that represent the sensors are written to the buffer, preceded by a byte for identification. For example, for the BME280 sensor, one data item may be represented in hexadecimal as:  
+```shell
+0x00 0x0a 0x08 0x25 0xd0 0x47
+```  
+
+The first byte of a data item is always the identifier. This way we'll know what are we looking at when we look at the rest of the data. In this example, the first byte is `0x00`, which corresponds to the BME280 temperature, pressure and humidity sensor. The list of sensors and values is present in the `app/src/sensors/sensors_interface.h` file.
+
+The struct corresponding to the BME280 sensor is implemented as follows in the source file `app/src/sensors/bme280/bme280_service.h`:
+
+```code
+typedef struct
+{
+    int16_t temperature;
+    uint16_t pressure;
+    uint8_t humidity;
+} SensorModelBME280;
+```
+ 
+Therefore, when we look at the binary data, we will first read a signed 16-bit integer, then an unsigned 16-bit integer and then a byte. `0x0a 0x08` is a signed int for the temperature (2508, which means 25.08°C), `0x25d0` is an unsigned int that represents the pressure (9680, which is 968.0 hPa) and 0x47 is a byte that represents the humidity (71, corresponding to 71%).  
+
+Other sensors will have their respective structs documented in their `app/src/sensors/XXX/XXX_service.h` files.
+
 
 <!-- ### Testing
 
