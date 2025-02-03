@@ -46,6 +46,7 @@ static void read_sensor_values()
     uint32_t bmi160_data[MAX_32_WORDS];
     int error = 0;
 
+sample_fetch:
     error = sensor_sample_fetch(bmi160);
     if (!error)
     {
@@ -53,18 +54,24 @@ static void read_sensor_values()
                            bmi160_model.acceleration);
         sensor_channel_get(bmi160, SENSOR_CHAN_GYRO_XYZ,
                            bmi160_model.rotation);
+
+        memcpy(&bmi160_data, &bmi160_model, sizeof(SensorModelBMI160));
+
+        if (insert_in_buffer(&app_buffer, bmi160_data, BMI160_MODEL, error, BMI160_MODEL_WORDS) != 0)
+        {
+            LOG_ERR("Failed to insert data in ring buffer.");
+        }
+    }
+    else if (error == -EAGAIN)
+    {
+        LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
+                bmi160->name, error);
+        goto sample_fetch;
     }
     else
     {
         LOG_ERR("fetch sample from \"%s\" failed: %d",
-                "BMI160", error);
-    }
-
-    memcpy(&bmi160_data, &bmi160_model, sizeof(SensorModelBMI160));
-
-    if (insert_in_buffer(&app_buffer, bmi160_data, BMI160_MODEL, error, BMI160_MODEL_WORDS) != 0)
-    {
-        LOG_ERR("Failed to insert data in ring buffer.");
+                bmi160->name, error);
     }
 }
 
