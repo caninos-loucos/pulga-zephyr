@@ -49,8 +49,14 @@ static void read_sensor_values()
 
     assert(sizeof(bme280_model) <= (BME280_MODEL_WORDS * 4));
 
+sample_fetch:
     error = sensor_sample_fetch(bme280);
-    if (error)
+    if (error == -EAGAIN)
+    {
+        LOG_WRN("sensor_sample_fetch failed, trying again", error);
+        goto sample_fetch;
+    }
+    else if (error)
     {
         LOG_ERR("sensor_sample_fetch failed with error %d", error);
         return;
