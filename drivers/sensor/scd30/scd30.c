@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024 Kauê Rodrigues Barbosa
  * Copyright (c) 2023 Jan Gnip
  * Copyright (c) 2018, Sensirion AG
  * All rights reserved.
@@ -45,6 +46,12 @@
 
 #define DT_DRV_COMPAT sensirion_scd30
 
+#define ACQUISITION_THREAD_STACK_SIZE 1024
+#define ACQUISITION_THREAD_PRIORITY 7
+
+// K_THREAD_STACK_DEFINE(acquisition_stack, ACQUISITION_THREAD_STACK_SIZE);
+// struct k_thread acquisition_thread;
+
 // Number of instances of device
 #if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
 #warning "SCD30 driver enabled without any devices"
@@ -69,14 +76,21 @@ static scd30_callback_t registered_callback = NULL;
 // Work item to excecute application callback
 static struct k_work work_item;
 
-void trigger_application_callback(struct device *dev, struct k_work *work) {
+const struct device *dev_global = NULL;
+enum sensor_channel chan_global = SENSOR_CHAN_ALL;
 
-	struct scd30_data *data = dev->data;
+static int scd30_perform_read(const struct device *dev, enum sensor_channel chan);
 
-	// Call application callback if registered
-	if (registered_callback) {
-        registered_callback();
-    } 
+void trigger_application_callback(struct k_work *work) {
+
+	ARG_UNUSED(work);
+
+	int rc = 0;
+
+	rc = scd30_perform_read(dev_global, chan_global);
+	if (rc != 0) {
+		LOG_ERR("Error at reading");
+	}
 }
 
 void scd30_register_callback(scd30_callback_t cb) {
@@ -496,6 +510,9 @@ static void scd30_data_ready_handler(const struct device *dev, struct gpio_callb
 
 	LOG_DBG("Callback rodou!");
 
+	LOG_DBG("Tentando submeter a primeira work");
+	k_work_submit(&work_item); // Triggers work schedule to be executed in due time
+
 	struct scd30_data *data = CONTAINER_OF(cb, struct scd30_data, callback_data_ready);
 
 	return k_sem_give(&data->data_ready_signal);
@@ -597,6 +614,7 @@ static int scd30_read_sample(const struct device *dev, enum sensor_channel chan)
 	data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
 	data->temp = scd30_bytes_to_float(rx_data.temp_be);
 	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
+
 	// scd30_unlock(dev);
 
 	return 0;
@@ -604,17 +622,21 @@ static int scd30_read_sample(const struct device *dev, enum sensor_channel chan)
 
 static int scd30_perform_read(const struct device *dev, enum sensor_channel chan) {
 
-	struct scd30_data *data = dev->data;
-	int rc;
+	// struct scd30_data *data = dev->data;
+	int rc = 0;
 
 	// scd30_lock(dev);
 	// k_sem_reset(&data->data_ready_signal);
 
-	rc = scd30_wait_data_ready(dev);
-	if (rc != 0) {
-		LOG_ERR("%s: waiting for data to be ready failed", dev->name);
-		return rc;
-	}
+	// LOG_DBG("Esperando data ficar ready");
+
+	// rc = scd30_wait_data_ready(dev);
+	// if (rc != 0) {
+	// 	LOG_ERR("%s: waiting for data to be ready failed", dev->name);
+	// 	return rc;
+	// }
+
+	LOG_DBG("Indo chamar a read sample");
 
 	rc = scd30_read_sample(dev, chan);
 	if (rc != 0) {
@@ -622,7 +644,10 @@ static int scd30_perform_read(const struct device *dev, enum sensor_channel chan
 		return rc;
 	}
 
-	k_work_submit(&work_item); // Triggers work schedule to be executed in due time
+	// Call application callback if registered
+	if (registered_callback) {
+        registered_callback();
+    } 
 
 	// scd30_unlock(dev);
 	return rc;
@@ -671,8 +696,14 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		return rc;
 	}
 
-	if (!data_ready) {
-		return -ENODATA;
+	while (!data_ready) {
+		rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
+
+		if (rc != 0) {
+			return rc;
+		}
+		
+		k_sleep(K_MSEC(3));
 	}
 
 	rc = scd30_write_command(dev, SCD30_CMD_READ_MEASUREMENT);
@@ -681,8 +712,8 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		return rc;
 	}
 
-	/* delay for 3 msec as per datasheet. */
-	k_sleep(K_MSEC(3));
+	// /* delay for 3 msec as per datasheet. */
+	// k_sleep(K_MSEC(3));
 
 	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&raw_rx_data, sizeof(raw_rx_data));
 	if (rc != 0) {
@@ -753,21 +784,26 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 // 	return rc;
 // }
 
-// This function is needed so the reading can occur. (WILL DOCUMENT BETTER LATER.)
-static void acquisition_tick(const struct device *dev, enum sensor_channel chan) {
+// // This function is needed so the reading can occur. (WILL DOCUMENT BETTER LATER.)
+// static void acquisition_tick(void *arg1, void *arg2, void *arg3) {
 	
-	int rc = 0;
+// 	// const struct device *dev = (const struct device *)arg1;;
+// 	// ARG_UNUSED(arg2);
+// 	// ARG_UNUSED(arg3);
 
-	while (1){
-		LOG_DBG("Ticking next reading");
+// 	// int rc = 0;
 
-		rc = scd30_perform_read(dev, chan);
-		if (rc != 0) {
-			LOG_ERR("Error at reading");
-			return;
-		}
-	}
-}
+// 	// while (1){
+// 	// 	LOG_DBG("Ticking next reading");
+
+// 	// 	rc = scd30_perform_read(dev, chan_global);
+// 	// 	if (rc != 0) {
+// 	// 		LOG_ERR("Error at reading");
+// 	// 	}
+		
+// 	// 	k_sleep(K_SECONDS(2));
+// 	// }
+// }
 
 // Struct used to integrate this driver functions into Zephyr sensor's API
 static const struct sensor_driver_api scd30_driver_api = {
@@ -784,6 +820,8 @@ static int scd30_init(const struct device *dev)
 	const struct scd30_config *cfg = dev->config;
 	struct scd30_data *data = dev->data;
 	int rc = 0;
+
+	dev_global = dev;
 
 	data->dev = dev;
 
@@ -872,12 +910,12 @@ static int scd30_init(const struct device *dev)
 		return rc;
 	}
 
+	// k_thread_create(&acquisition_thread, acquisition_stack, ACQUISITION_THREAD_STACK_SIZE,
+	// 				acquisition_tick,(void *)dev, SENSOR_CHAN_ALL, NULL,
+    //                 ACQUISITION_THREAD_PRIORITY, 0, K_NO_WAIT);
+
 	return 0;
 }
-
-// REVIEW THIS AFTER
-K_THREAD_DEFINE(acquisition_tick_id, 1024, acquisition_tick, NULL, NULL, NULL, 
-				7, 0, 0);
 
 #define SCD30_DEFINE(inst)                                                                  \
 	static struct scd30_data scd30_data_##inst = {                                          \

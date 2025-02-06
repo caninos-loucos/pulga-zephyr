@@ -68,30 +68,33 @@ static void read_sensor_values()
     LOG_DBG("Allowing SCD30 to store fix data in buffer");
     k_sem_give(&store_data);
 
-    // LOG_DBG("Reading SCD30");
+    LOG_DBG("Teste sample fetch antiga");
 
-    // SensorModelSCD30 scd30_model;
-    // uint32_t scd30_data[MAX_32_WORDS];
-    // int error = 0;
 
-    // error = sensor_sample_fetch(scd30);
-    // if (!error)
-    // {
-    //     sensor_channel_get(scd30, SENSOR_CHAN_CO2,
-    //                        &scd30_model.co2);
-    //     sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP,
-    //                        &scd30_model.temperature);
-    //     sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
-    //                        &scd30_model.humidity);
-    //     memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
+    LOG_DBG("Reading SCD30");
 
-    //     if (insert_in_buffer(scd30_data, SCD30_MODEL, error) != 0)
-    //     {
-    //         LOG_ERR("Failed to insert data in ring buffer.");
-    //     }
-    // }
-    // else
-    //     LOG_ERR("fetch_sample failed: %d", error);
+    SensorModelSCD30 scd30_model;
+    uint32_t scd30_data[MAX_32_WORDS];
+    int error = 0;
+
+    error = sensor_sample_fetch(scd30);
+    if (!error)
+    {
+        sensor_channel_get(scd30, SENSOR_CHAN_CO2,
+                           &scd30_model.co2);
+        sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP,
+                           &scd30_model.temperature);
+        sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
+                           &scd30_model.humidity);
+        memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
+
+        if (insert_in_buffer(scd30_data, SCD30_MODEL, error) != 0)
+        {
+            LOG_ERR("Failed to insert data in ring buffer.");
+        }
+    }
+    else
+        LOG_ERR("fetch_sample failed: %d", error);
 }
 
 void store_data_callback(void) {
