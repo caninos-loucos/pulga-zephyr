@@ -139,9 +139,17 @@ Different applications and interfaces require data to be encoded in different fo
 
 Default encoding format for UART communication with terminal. Adequate for cases in which the number of transmitted bytes isn't a limitation. Provides the most complete and naturally comprehensible description of the data.
 
+```shell
+"Temperature: 25.08 oC; Pressure: 968.0 hPa; Humidity: 71 %RH;"
+```
+
 ### Minimalist
 
 This encoding format reduces the number of stored or transmitted bytes while still maintaining the representation of the data in text. It's adequate for debugging new features in LoRaWAN communication without the need to parse and process the transmitted bytes in the receptor. The specifications of what types of measurements correspond to each symbol in the minimalist encoded messages are described in `app/src/sensors/XXX/XXX_model.c` files.
+
+```shell
+"T2508P968H71"
+```
 
 ### Raw bytes
 
