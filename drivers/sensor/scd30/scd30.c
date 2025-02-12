@@ -468,9 +468,6 @@ static void scd30_data_ready_handler(const struct device *dev, struct gpio_callb
 	ARG_UNUSED(dev);
 	ARG_UNUSED(pins);
 
-	LOG_DBG("Callback rodou!");
-
-	LOG_DBG("Tentando submeter a primeira work");
 	k_work_submit(&work_item); // Triggers work schedule to be executed in due time
 
 	struct scd30_data *data = CONTAINER_OF(cb, struct scd30_data, callback_data_ready);
@@ -863,7 +860,7 @@ static int scd30_init(const struct device *dev)
 		LOG_ERR("could not start periodic meas");
 		return rc;
 	}
-	
+
 	return 0;
 }
 
