@@ -81,6 +81,8 @@ enum sensor_channel chan_global = SENSOR_CHAN_ALL;
 
 static int scd30_perform_read(const struct device *dev, enum sensor_channel chan);
 
+static void scd30_data_ready_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins);
+
 void trigger_application_callback(struct k_work *work) {
 
 	ARG_UNUSED(work);
@@ -96,6 +98,35 @@ void trigger_application_callback(struct k_work *work) {
 void scd30_register_callback(scd30_callback_t cb) {
     registered_callback = cb;
 	k_work_init(&work_item, trigger_application_callback);
+
+	const struct scd30_config *cfg = dev_global->config;
+	struct scd30_data *data = dev_global->data;
+	int rc = 0;
+
+	if (!gpio_is_ready_dt(&cfg->rdy_gpios)) {
+		LOG_ERR("Error: ready_pin device %s is not ready\n",
+		       cfg->rdy_gpios.port->name);
+		return;
+	}
+
+	rc = gpio_pin_configure_dt(&cfg->rdy_gpios, GPIO_INPUT);
+	if (rc != 0) {
+		LOG_ERR("%s: failed to initialize GPIO for data ready", dev_global->name);
+		return;
+	}
+
+	rc = gpio_pin_interrupt_configure_dt(&cfg->rdy_gpios, GPIO_INT_EDGE_TO_ACTIVE);
+	if (rc != 0) {
+		LOG_ERR("%s: failed to configure data ready interrupt", dev_global->name);
+		return;
+	}
+
+	gpio_init_callback(&data->callback_data_ready, scd30_data_ready_handler, BIT(cfg->rdy_gpios.pin));
+	rc = gpio_add_callback(cfg->rdy_gpios.port, &data->callback_data_ready);
+	if (rc != 0) {
+		LOG_ERR("%s: failed to add data ready callback", dev_global->name);
+		return;
+	}
 }
 
 // static void scd30_lock(const struct device *dev)
@@ -837,30 +868,30 @@ static int scd30_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	if (!gpio_is_ready_dt(&cfg->rdy_gpios)) {
-		LOG_ERR("Error: ready_pin device %s is not ready\n",
-		       cfg->rdy_gpios.port->name);
-		return -ENODEV;
-	}
+	// if (!gpio_is_ready_dt(&cfg->rdy_gpios)) {
+	// 	LOG_ERR("Error: ready_pin device %s is not ready\n",
+	// 	       cfg->rdy_gpios.port->name);
+	// 	return -ENODEV;
+	// }
 
-	rc = gpio_pin_configure_dt(&cfg->rdy_gpios, GPIO_INPUT);
-	if (rc != 0) {
-		LOG_ERR("%s: failed to initialize GPIO for data ready", dev->name);
-		return rc;
-	}
+	// rc = gpio_pin_configure_dt(&cfg->rdy_gpios, GPIO_INPUT);
+	// if (rc != 0) {
+	// 	LOG_ERR("%s: failed to initialize GPIO for data ready", dev->name);
+	// 	return rc;
+	// }
 
-	rc = gpio_pin_interrupt_configure_dt(&cfg->rdy_gpios, GPIO_INT_EDGE_TO_ACTIVE);
-	if (rc != 0) {
-		LOG_ERR("%s: failed to configure data ready interrupt", dev->name);
-		return -EIO;
-	}
+	// rc = gpio_pin_interrupt_configure_dt(&cfg->rdy_gpios, GPIO_INT_EDGE_TO_ACTIVE);
+	// if (rc != 0) {
+	// 	LOG_ERR("%s: failed to configure data ready interrupt", dev->name);
+	// 	return -EIO;
+	// }
 
-	gpio_init_callback(&data->callback_data_ready, scd30_data_ready_handler, BIT(cfg->rdy_gpios.pin));
-	rc = gpio_add_callback(cfg->rdy_gpios.port, &data->callback_data_ready);
-	if (rc != 0) {
-		LOG_ERR("%s: failed to add data ready callback", dev->name);
-		return -EIO;
-	}
+	// gpio_init_callback(&data->callback_data_ready, scd30_data_ready_handler, BIT(cfg->rdy_gpios.pin));
+	// rc = gpio_add_callback(cfg->rdy_gpios.port, &data->callback_data_ready);
+	// if (rc != 0) {
+	// 	LOG_ERR("%s: failed to add data ready callback", dev->name);
+	// 	return -EIO;
+	// }
 
 	// Forçando a primeira leitura
 
@@ -888,7 +919,7 @@ static int scd30_init(const struct device *dev)
 
 	
 	// really ugly workaround to make I2C1 work at 50KHz
-	((NRF_TWIM_Type *)NRF_TWIM1_BASE)->FREQUENCY = 0x00550000UL;
+	((NRF_TWIM_Type *)NRF_TWIM1_BASE)->FREQUENCY = 0x00500000UL;
 
 	// soft reset
 
