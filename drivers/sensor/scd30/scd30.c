@@ -90,7 +90,7 @@ void trigger_application_callback(struct k_work *work) {
 	rc = scd30_perform_read(dev_global, chan_global);
 	if (rc != 0) {
 		LOG_ERR("Error at reading");
-	}
+    } 
 }
 
 void scd30_register_callback(scd30_callback_t cb) {
@@ -566,6 +566,9 @@ static int scd30_read_sample(const struct device *dev, enum sensor_channel chan)
 		LOG_DBG("Failed to send command. (rc = %d)", rc);
 		return rc;
 	}
+
+	/* delay for 3 msec as per datasheet. */
+	k_sleep(K_MSEC(3));
 
 	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&raw_rx_data, sizeof(raw_rx_data));
 	if (rc != 0)
