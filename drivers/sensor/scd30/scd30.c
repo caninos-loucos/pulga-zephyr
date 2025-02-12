@@ -489,7 +489,7 @@ static void scd30_data_ready_handler(const struct device *dev, struct gpio_callb
  */
 static int scd30_read_sample(const struct device *dev, enum sensor_channel chan) 
 {
-	
+
 	struct scd30_data *data = dev->data;
 	const struct scd30_config *cfg = dev->config;
 	int rc;
@@ -603,8 +603,6 @@ static int scd30_read_sample(const struct device *dev, enum sensor_channel chan)
 static int scd30_perform_read(const struct device *dev, enum sensor_channel chan) {
 
 	int rc = 0;
-
-	LOG_DBG("Indo chamar a read sample");
 
 	rc = scd30_read_sample(dev, chan);
 	if (rc != 0) {
