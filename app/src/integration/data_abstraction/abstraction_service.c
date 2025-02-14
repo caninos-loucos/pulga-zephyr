@@ -1,5 +1,5 @@
 #include <zephyr/logging/log.h>
-#include <data_processing/data_abstraction.h>
+#include <integration/data_abstraction/abstraction_service.h>
 #include <sensors/sensors_interface.h>
 
 LOG_MODULE_REGISTER(data_abstraction, CONFIG_APP_LOG_LEVEL);

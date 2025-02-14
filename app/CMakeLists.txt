@@ -7,13 +7,13 @@
 cmake_minimum_required(VERSION 3.13.1)
 
 # Uncomment to activate GPS shield, when Pulga-GPS module is attached to the stack
-# list(APPEND SHIELD pulga_gps)
+#list(APPEND SHIELD pulga_gps)
 
 # Uncomment to activate LoRa shield, when Pulga-LoRa module is attached to the stack
-list(APPEND SHIELD pulga-lora)
+#list(APPEND SHIELD pulga-lora)
 
 # Uncomment to activate SCD30 shield, a CO2 concentration sensor
-# list(APPEND SHIELD scd30)
+#list(APPEND SHIELD scd30)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
@@ -25,8 +25,8 @@ target_sources(app PRIVATE
                     src/main.c
                     src/communication/comm_interface.c
                     src/communication/uart/uart_interface.c
-                    src/data_processing/data_buffer.c
-                    src/data_processing/data_abstraction.c
+                    src/integration/data_buffer/buffer_service.c
+                    src/integration/data_abstraction/abstraction_service.c
                     src/sensors/sensors_interface.c
                     src/sensors/bme280/bme280_model.c
                     src/sensors/bme280/bme280_service.c

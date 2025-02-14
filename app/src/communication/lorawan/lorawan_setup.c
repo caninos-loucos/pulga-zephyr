@@ -89,6 +89,12 @@ int lorawan_setup_connection()
         LOG_ERR("lorawan_join_network failed: %d", error);
         goto return_clause;
     }
+    error = lorawan_request_device_time(1);
+    printk("\nLORAWAN TIME REQ ERROR %d\n", error);
+    uint32_t gps_time;
+    error = lorawan_device_time_get(&gps_time);
+    printk("\nLORAWAN TIME ERROR %d\n", error);
+    printk("\nLORAWAN TIME %d\n", gps_time);
 return_clause:
     return error;
 }
