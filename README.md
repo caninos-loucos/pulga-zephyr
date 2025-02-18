@@ -48,8 +48,8 @@ you should:
 ### Building and running
 
 To update the code running on the Pulga, you must build it and flash it:
-  - Eter this project's directory:
-    > cd pulga-zephyr\
+  - Enter this project's directory:
+    > cd pulga-zephyr
   - Build the `app` application:
     > west build -b pulga "app"
   - Flash it using `west` or use J-Flash Lite. When using `west`,
