@@ -47,32 +47,28 @@ you should:
 
 ### Building and running
 
-To build the application, run the following command:
+To update the code running on the Pulga, you must build it and flash it:
+  - Eter this project's directory:
+    > cd pulga-zephyr\
+  - Build the `app` application:
+    > west build -b pulga "app"
+  - Flash it using `west` or use J-Flash Lite. When using `west`,
+  it's necessary to install **NRF Command Line Tools** beforehand.
+    > west flash
 
-```shell
-cd pulga-zephyr
-west build -b pulga app
-```
+If you have issues building the application
+(specially after changing application or compilation configuration options),
+try running a **pristine** build:
+  > west build -p -b pulga "app"
 
-If you have problems building the application - and specially after changing application or compilation configuration options -, try running a pristine build
-by appending `-p` to the last command.
-
-A sample debug configuration is provided. To apply it, run the following
-command:
-
-```shell
-west build -b pulga app -- -DOVERLAY_CONFIG=debug.conf
-```
+A sample **debug configuration** is provided.
+You can use it for building:
+  > west build -b pulga "app" -- -DOVERLAY_CONFIG=debug.conf
 
 There are also other example applications in the `samples` directory,
-which can be built by using their directories instead of `app` as argument:
-  > west build -b pulga samples/blinky
-
-Once you have built the application, run the following command to flash it or use J-Flash Lite. When using west, it's necessary to install NRF Command Line Tools beforehand.
-
-```shell
-west flash
-```
+which can be built by using their directories
+instead of the `app` directory as argument:
+  > west build -b pulga "samples/blinky"
 
 ### Additional features
 
