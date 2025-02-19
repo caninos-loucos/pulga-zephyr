@@ -21,7 +21,7 @@ static int parse_buffer_data(struct ring_buf *buffer, uint32_t *data_words, enum
 int get_from_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType *data_type, uint8_t *num_words)
 {
     if (get_data_type(buffer, data_type) == 0 &&
-        parse_buffer_data(buffer, data_words, *data_type, NULL) == 0)
+        parse_buffer_data(buffer, data_words, *data_type, num_words) == 0)
     {
         return 0;
     }

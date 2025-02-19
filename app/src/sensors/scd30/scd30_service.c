@@ -32,12 +32,12 @@ static int init_sensor()
     if (!scd30)
     {
         LOG_ERR("SDC30 not declared at device tree");
-        return -1;
+        return -ENODEV;
     }
     else if (!device_is_ready(scd30))
     {
         LOG_ERR("device \"%s\" is not ready", scd30->name);
-        return -2;
+        return -EAGAIN;
     }
 
     // Try to set the application sampling time
