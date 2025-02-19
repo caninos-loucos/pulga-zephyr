@@ -1,5 +1,7 @@
+#include <stdlib.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/shell/shell.h>
 #include <zephyr/logging/log.h>
 #include <communication/comm_interface.h>
 #include <communication/uart/uart_interface.h>
@@ -143,7 +145,7 @@ static void read_and_notify(void *param0, void *param1, void *param2)
     }
 }
 
-void set_transmision_interval(int interval)
+void set_transmission_interval(int interval)
 {
     current_transmission_interval = interval;
 }
