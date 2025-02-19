@@ -31,13 +31,18 @@ int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLeve
 	switch (encoding)
 	{
 	case VERBOSE:
-		data_api->encode_verbose(data_words, encoded_data, encoded_size);
+		return data_api->encode_verbose(data_words, encoded_data, encoded_size);
+		break;
+	case MINIMALIST:
+		return data_api->encode_minimalist(data_words, encoded_data, encoded_size);
+		break;
+	case RAW_BYTES:
+		return data_api->encode_raw_bytes(data_words, encoded_data, encoded_size);
 		break;
 	default:
 		LOG_ERR("Invalid encoding level");
-		return -1;
+		return -EINVAL;
 	}
-	return 0;
 }
 
 DataAPI *get_data_api(enum DataType data_type)

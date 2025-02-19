@@ -197,6 +197,9 @@ static int si1133_wait_meas(const struct device *dev)
 	return -ETIMEDOUT;
 }
 
+/**
+* Returns the value multiplied by 100 ("centi" UV index) 
+*/
 static inline int32_t si1133_calculate_uvi(int32_t uv) {
 	int64_t x = (int64_t)uv;
 	int64_t y = ((INT64_C(391) * x * x) / INT64_C(100)) + (x * INT64_C(1000));

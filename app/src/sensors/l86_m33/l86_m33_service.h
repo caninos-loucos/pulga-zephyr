@@ -4,11 +4,6 @@
 #include <zephyr/drivers/gnss.h>
 #include <sensors/sensors_interface.h>
 
-// Number of 32-bit words in each data item (model)
-// Padding added in navigation field to align
-// by largest member (64-bit fields)
-#define GNSS_MODEL_WORDS 10
-
 typedef struct
 {
 	/** Navigation data acquired */
@@ -18,10 +13,15 @@ typedef struct
 
 } SensorModelGNSS;
 
-// Registers gnss model callbacks
+// Number of 32-bit words in each data item (model)
+// Padding added in navigation field to align
+// by largest member (64-bit fields)
+#define GNSS_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelGNSS))
+
+// Registers Si1133 model callbacks
 DataAPI *register_gnss_model_callbacks();
 
-// Registers gnss sensor callbacks
+// Registers Si1133 sensor callbacks
 SensorAPI *register_l86_m33_callbacks();
 
 #endif /* L86_M33_SERVICE_H */

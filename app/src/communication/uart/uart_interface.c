@@ -17,31 +17,31 @@ static struct k_thread uart_thread_data;
 static k_tid_t uart_thread_id;
 
 // Initializes and starts thread to send data via UART
-void init_channel();
+static void uart_init_channel();
 // Functions that prints data to UART in separate thread
-static void send_data_uart(void *, void *, void *);
+static void uart_send_data(void *, void *, void *);
 
 /**
  * IMPLEMENTATIONS
  */
 
-void init_channel()
+static void uart_init_channel()
 {
     LOG_DBG("Initializing send via UART thread");
-    int error = 0;
+    int ret = 0;
     // Create thread and starts it immediately
     uart_thread_id = k_thread_create(&uart_thread_data, uart_thread_stack_area,
                                      K_THREAD_STACK_SIZEOF(uart_thread_stack_area),
-                                     send_data_uart, NULL, NULL, NULL,
+                                     uart_send_data, NULL, NULL, NULL,
                                      UART_THREAD_PRIORITY, 0, K_NO_WAIT);
-    error = k_thread_name_set(uart_thread_id, "send_uart");
-    if (error)
+    ret = k_thread_name_set(uart_thread_id, "send_uart");
+    if (ret)
     {
-        LOG_ERR("Failed to set read buffer thread name: %d", error);
+        LOG_ERR("Failed to set read buffer thread name: %d", ret);
     }
 }
 
-static void send_data_uart(void *param0, void *param1, void *param2)
+static void uart_send_data(void *param0, void *param1, void *param2)
 {
     LOG_DBG("Sending via UART started");
     ARG_UNUSED(param0);
@@ -50,7 +50,7 @@ static void send_data_uart(void *param0, void *param1, void *param2)
 
     // Max fprintf character output is 4096
     uint8_t encoded_data[1024];
-    int error = 0;
+    int size;
 
     while (1)
     {
@@ -58,12 +58,12 @@ static void send_data_uart(void *param0, void *param1, void *param2)
         k_sem_take(&data_ready_sem[UART], K_FOREVER);
 
         // Encoding data to verbose string
-        error = encode_data(data_unit.data_words, data_unit.data_type, VERBOSE,
-                            encoded_data, sizeof(encoded_data));
-        if (!error)
-        {
-            printk("Encoded data: %s", encoded_data);
-        }
+        size = encode_data(data_unit.data_words, data_unit.data_type, VERBOSE,
+                           encoded_data, sizeof(encoded_data));
+        if (size >= 0)
+            printk("%s\n", encoded_data);
+        else
+            LOG_ERR("Could not encode data");
 
         // Signals back that UART sending is complete
         k_sem_give(&data_processed);
@@ -73,6 +73,6 @@ static void send_data_uart(void *param0, void *param1, void *param2)
 ChannelAPI *register_uart_callbacks()
 {
     LOG_DBG("Initializing UART callbacks");
-    uart_api.init_channel = init_channel;
+    uart_api.init_channel = uart_init_channel;
     return &uart_api;
 }
