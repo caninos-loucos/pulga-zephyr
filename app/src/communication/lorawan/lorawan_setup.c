@@ -1,4 +1,5 @@
 #include <zephyr/device.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
 /* 	Get the LoraWAN keys from file in main directory, in the following format:
@@ -11,12 +12,19 @@
 */
 #include <communication/lorawan/lorawan_keys_example.h>
 #include <communication/lorawan/lorawan_interface.h>
+#include <integration/timestamp/timestamp_service.h>
 
 LOG_MODULE_REGISTER(lorawan_setup, CONFIG_APP_LOG_LEVEL);
 
 /**
  * Declarations
  */
+
+#if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
+
+struct k_timer sync_time_timer;
+void get_network_time(struct k_timer *timer_id);
+#endif
 
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
@@ -89,12 +97,25 @@ int lorawan_setup_connection()
         LOG_ERR("lorawan_join_network failed: %d", error);
         goto return_clause;
     }
-    error = lorawan_request_device_time(1);
-    printk("\nLORAWAN TIME REQ ERROR %d\n", error);
-    uint32_t gps_time;
-    error = lorawan_device_time_get(&gps_time);
-    printk("\nLORAWAN TIME ERROR %d\n", error);
-    printk("\nLORAWAN TIME %d\n", gps_time);
+
+#if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
+    uint32_t gps_epoch = 0;
+    error = lorawan_request_device_time(true);
+    if (error)
+    {
+        LOG_ERR("Error requesting LoRaWAN network time: %d", error);
+    }
+    error = lorawan_device_time_get(&gps_epoch);
+    if (error)
+    {
+        LOG_ERR("Error getting LoRaWAN network time: %d", error);
+    }
+    LOG_INF("LoRaWAN network time: %d", gps_epoch);
+    set_sync_time_seconds(gps_epoch);
+    k_timer_init(&sync_time_timer, get_network_time, NULL);
+    k_timer_start(&sync_time_timer, K_SECONDS(30), K_SECONDS(60));
+#endif
+
 return_clause:
     return error;
 }
@@ -145,3 +166,44 @@ void lorawan_config_activation(struct lorawan_join_config *join_config)
     LOG_DBG("Joining network over ABP");
 #endif
 }
+
+struct k_work my_work;
+void my_work_handler(struct k_work *work)
+{
+    int error = 0;
+    uint32_t gps_epoch = 0;
+    printk("\nHEYHEY\n");
+// um mutex aqui talvez resolva
+
+    error = lorawan_request_device_time(false);
+    if (error)
+    {
+        LOG_ERR("Error requesting LoRaWAN network time: %d", error);
+        goto handling_error;
+    }
+    error = lorawan_device_time_get(&gps_epoch);
+    if (error)
+    {
+        LOG_ERR("Error getting LoRaWAN network time: %d", error);
+        goto handling_error;
+    }
+    LOG_INF("LoRaWAN network time: %d", gps_epoch);
+    set_sync_time_seconds(gps_epoch);
+    return;
+
+handling_error:
+    k_sleep(K_SECONDS(10));
+    k_work_submit(&my_work);
+}
+
+#if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
+
+void get_network_time(struct k_timer *timer_id)
+{
+
+    printk("\n init work \n");
+    k_work_init(&my_work, my_work_handler);
+    printk("\n submit work \n");
+    k_work_submit(&my_work);
+}
+#endif

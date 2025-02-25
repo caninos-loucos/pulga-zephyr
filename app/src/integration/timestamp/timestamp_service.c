@@ -5,30 +5,34 @@
 
 LOG_MODULE_REGISTER(timestamp_service, CONFIG_APP_LOG_LEVEL);
 
+#define TIME_UTILS_BASE_YEAR 1980
+
 /**
  * DEFINITIONS
  */
 
 #ifndef CONFIG_EVENT_TIMESTAMP_UPTIME
-static uint64_t startup_time;
+static uint32_t sync_real_time_seconds = 0;
+static uint32_t sync_uptime_seconds = 0;
 #endif /* CONFIG_EVENT_TIMESTAMP_UPTIME */
 
 /**
  * IMPLEMENTATIONS
  */
 
-uint64_t get_current_timestamp()
+uint32_t get_current_timestamp()
 {
 #if defined(CONFIG_EVENT_TIMESTAMP_UPTIME)
    return k_uptime_seconds();
 #else
-   return k_uptime_seconds() + startup_time;
+   return sync_real_time_seconds + k_uptime_seconds() - sync_uptime_seconds;
 #endif
 }
 
 #ifndef CONFIG_EVENT_TIMESTAMP_UPTIME
-void set_startup_time(uint32_t sync_time)
+void set_sync_time_seconds(uint32_t sync_real_time)
 {
-   startup_time = sync_time - k_uptime_seconds();
+   sync_real_time_seconds = sync_real_time;
+   sync_uptime_seconds = k_uptime_seconds();
 }
 #endif /* CONFIG_EVENT_TIMESTAMP_UPTIME */
