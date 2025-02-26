@@ -46,7 +46,7 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "A%d.%02d %d.%02d %d.%02dR%d.%02d %d.%02d %d.%02d",
+                    "AC%d.%02d %d.%02d %d.%02dR%d.%02d %d.%02d %d.%02d",
                     bmi160_model->acceleration[0].val1,
                     bmi160_model->acceleration[0].val2 / 10000,
                     bmi160_model->acceleration[1].val1,

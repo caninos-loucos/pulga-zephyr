@@ -15,7 +15,7 @@ set(BOARD_FLASH_RUNNER jlink)
 # Uncomment to activate LoRa shield, when Pulga-LoRa module is attached to the stack
 # list(APPEND SHIELD pulga-lora)
 
-# Uncomment to activate scd30 shield
+# Uncomment to activate SCD30 shield, a CO2 concentration sensor
 list(APPEND SHIELD scd30)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
@@ -37,13 +37,7 @@ target_sources(app PRIVATE
                     src/sensors/bmi160/bmi160_service.c
                     src/sensors/si1133/si1133_model.c
                     src/sensors/si1133/si1133_service.c)
-
-if(CONFIG_SHIELD_SCD30)
-    target_sources(app PRIVATE  
-                    src/sensors/scd30/scd30_model.c
-                    src/sensors/scd30/scd30_service.c)
-endif()
-
+                    
 if(CONFIG_SHIELD_PULGA_GPS)
     target_sources(app PRIVATE  
                         src/sensors/l86_m33/gnss_model.c
@@ -53,4 +47,10 @@ endif()
 if(CONFIG_SHIELD_PULGA_LORA)
     target_sources(app PRIVATE  
                         src/communication/lorawan/lorawan_interface.c)
+endif()
+
+if(CONFIG_SHIELD_SCD30)
+    target_sources(app PRIVATE  
+                    src/sensors/scd30/scd30_model.c
+                    src/sensors/scd30/scd30_service.c)
 endif()

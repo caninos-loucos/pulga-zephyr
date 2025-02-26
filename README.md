@@ -96,6 +96,26 @@ set(SHIELD pulga_gps)
 
 To deactivate sensors internal to Pulga Core, you simply need to change their status from "okay" to "disabled" in ``app/boards/pulga.overlay``. The sensors sampling interval, the transmission interval of the communication channels, the size of the ring buffer and the use of UART communication to terminal are to be configured in ``app/prj.conf`` and the description of those options can be found in ``app/Kconfig``.
 
+#### Application configurations
+- SAMPLING_INTERVAL: periodically, after the configured time in milliseconds, all activated sensors will write measurements to the ring buffer.
+  - Constraints: 
+    - SCD30: 2s < t < 180s.
+    - L86 GNSS module: 100ms < t < 10s. If t > 1000ms, it needs to be a multiple of 1000. If the interval is bigger than 10s, the application will ignore GNSS measurements and only allow writing to buffer in the configured time.
+- TRANSMISSION_INTERVAL: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it.
+  - Constraints: 
+    - LoRaWAN: transmission takes about 5s, so if the transmission interval is too large and the sampling period is too low, data might be lost. To prevent this, this application uses another buffer, internal to LoRaWAN.
+- BUFFER_WORDS: number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
+
+#### Communication configurations
+- SEND_UART: Prints a verbose output to the configured terminal, such as TeraTerm or MiniCOM.
+- SEND_LORA: Sends a compressed version of the output via LoRaWAN, requiring pulga-lora shield to be activated.
+
+#### LoRaWAN configurations
+- LORAWAN_DR: Datarate used in LoRaWAN communication. This affects several communication parameters. The lower the datarate, the smaller the maximum payload size, the lower the range, the slower the communication and the higher the power consumption.
+- LORAWAN_ACTIVATION: Whether joining the LoRaWAN network will be via OTAA (more secure, renews encryption keys during communication) or ABP (less secure, configures keys to be used during all communication).
+- LORAWAN_SELECTED_REGION (lorawan_interface.c): The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc.
+- Lorawan keys (lorawan_keys_example.h): Security parameters that allow LoRaWAN communication. In production environment, configured in a lorawan_keys.h file, which will be properly ignored by git, being necessary to update the import in lorawan_interface.c.
+
 <!-- ### Testing
 
 To execute Twister integration tests, run the following command:
