@@ -83,12 +83,39 @@ int lorawan_setup_connection()
     // Configuration structure to join network
     struct lorawan_join_config join_config;
     lorawan_config_activation(&join_config);
-    error = lorawan_join(&join_config);
-    if (error)
+
+    // Will try to join until devnonce is right 
+
+    uint16_t devnonce = join_config.otaa.dev_nonce;
+
+
+    // error = lorawan_join(&join_config);
+    // if (error)
+    // {
+    //     LOG_ERR("lorawan_join_network failed: %d", error);
+    //     goto return_clause;
+    // }
+
+    int ret = 1;
+    while (ret != 0) 
     {
-        LOG_ERR("lorawan_join_network failed: %d", error);
-        goto return_clause;
-    }
+        ret = lorawan_join(&join_config);
+        if (ret != 0)
+        {
+            LOG_ERR("lorawan_join_network failed: %d", ret);
+            LOG_DBG("Failed with %d devnonce", devnonce); 
+            devnonce++;
+            LOG_DBG("Trying with %d devnonce", devnonce);
+            join_config.otaa.dev_nonce = devnonce;
+            // goto return_clause;
+            k_sleep(K_MSEC(1000));
+        }
+    }   
+
+    // LOG_DBG("Joined over OTAA"); 
+
+    // goto return_clause;
+
 return_clause:
     return error;
 }
