@@ -2,6 +2,8 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/timeutil.h>
+#include <integration/timestamp/timestamp_service.h>
 #include <sensors/l86_m33/l86_m33_service.h>
 
 LOG_MODULE_REGISTER(l86_m33_service, CONFIG_APP_LOG_LEVEL);
@@ -24,6 +26,10 @@ static void receive_fix_callback(const struct device *gnss_device,
 static int set_valid_fix_interval(int raw_fix_interval);
 // Rounds the value to the closest multiple of 1000
 static int round_closest_1000_multiple(int number);
+#if defined(CONFIG_EVENT_TIMESTAMP_GNSS)
+// Converts the GNSS time to a timestamp and sets it as the synchronization time
+static void convert_and_set_sync_time(const struct gnss_data *gnss_data);
+#endif
 
 /**
  * IMPLEMENTATIONS
@@ -85,6 +91,10 @@ void receive_fix_callback(const struct device *gnss_device,
         SensorModelGNSS gnss_model;
         uint32_t l86_m33_data[MAX_32_WORDS] = {0};
 
+#if defined(CONFIG_EVENT_TIMESTAMP_GNSS)
+        convert_and_set_sync_time(gnss_data);
+#endif
+
         gnss_model.navigation = gnss_data->nav_data;
         gnss_model.real_time = gnss_data->utc;
 
@@ -134,6 +144,25 @@ int round_closest_1000_multiple(int number)
     // Closest
     return (number - floor >= ceiling - number) ? ceiling : floor;
 }
+
+#if defined(CONFIG_EVENT_TIMESTAMP_GNSS)
+static void convert_and_set_sync_time(const struct gnss_data *gnss_data)
+{
+    // Converts GNSS time to timestamp
+    struct tm structured_time = {
+        .tm_sec = gnss_data->utc.millisecond / 1000,
+        .tm_min = gnss_data->utc.minute,
+        .tm_hour = gnss_data->utc.hour,
+        .tm_mday = gnss_data->utc.month_day,
+        .tm_mon = gnss_data->utc.month - 1,
+        .tm_year = gnss_data->utc.century_year + 2000 - TIME_UTILS_BASE_YEAR,
+    };
+    uint64_t gps_epoch = timeutil_timegm64(&structured_time);
+    LOG_INF("GNSS time: %lld", gps_epoch);
+    // Sets the timestamp as the synchronization time
+    set_sync_time_seconds(gps_epoch);
+}
+#endif
 
 // Register L86_M33 sensor callbacks
 SensorAPI *register_l86_m33_callbacks()
