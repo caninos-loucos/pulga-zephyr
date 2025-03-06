@@ -6,6 +6,8 @@
 // Get the current timestamp in seconds
 uint32_t get_current_timestamp();
 
+#define GPS_TO_UNIX_EPOCH(expr) (expr + 315964800)
+
 #ifndef CONFIG_EVENT_TIMESTAMP_UPTIME
 // Set the synchronization time in seconds
 void set_sync_time_seconds(uint32_t sync_real_time);

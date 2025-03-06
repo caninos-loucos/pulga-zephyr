@@ -40,7 +40,7 @@ static struct lorawan_downlink_cb downlink_cb;
 // static void synchronization_handler(struct k_timer *timer_id);
 // Sends a request to the network to get the current time and
 // sets it as the synchronization time
-static int get_network_time();
+static int get_network_time(bool force_request);
 // Handles requesting network time and retrying if it fails
 static void sync_work_handler(struct k_work *work);
 // Work to be done when the timer triggers
@@ -108,23 +108,9 @@ int lorawan_setup_connection()
     }
 
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
-    uint32_t gps_epoch = 0;
-	// printk("\nPEGAR PRIMEIRO HORARIO\n");
-
-    error = lorawan_request_device_time(true);
-    if (error)
-    {
-        LOG_ERR("Error requesting LoRaWAN network time: %d", error);
-    }
-    error = lorawan_device_time_get(&gps_epoch);
-    if (error)
-    {
-        LOG_ERR("Error getting LoRaWAN network time: %d", error);
-    }
-    LOG_INF("LoRaWAN network time: %d", gps_epoch);
-    // Sets the timestamp as the synchronization time
-    set_sync_time_seconds(gps_epoch);
-
+    // uint32_t gps_epoch = 0;
+	// // printk("\nPEGAR PRIMEIRO HORARIO\n");
+    get_network_time(true);
     k_work_schedule(&sync_work, K_SECONDS(60));
 #endif
 
@@ -180,12 +166,12 @@ void lorawan_config_activation(struct lorawan_join_config *join_config)
 }
 
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
-int get_network_time()
+int get_network_time(bool force_request)
 {
     int error = 0;
     uint32_t gps_epoch = 0;
 
-    error = lorawan_request_device_time(false);
+    error = lorawan_request_device_time(force_request);
     if (error)
     {
         // printk("\nDEU ERRO NO REQUEST \n");
@@ -200,6 +186,7 @@ get_device_time:
         k_sleep(K_SECONDS(30));
         goto get_device_time;
     }
+    gps_epoch = GPS_TO_UNIX_EPOCH(gps_epoch);
     LOG_INF("LoRaWAN network time: %d", gps_epoch);
     // Sets the timestamp as the synchronization time
     set_sync_time_seconds(gps_epoch);
@@ -211,7 +198,7 @@ void sync_work_handler(struct k_work *work)
     int error = 0;
     // printk("\nHEYHEY\n");
 
-    error = get_network_time();
+    error = get_network_time(false);
 	// printk("\nSAIU DO GET\n");
 
     // Retry after some time if it fails
