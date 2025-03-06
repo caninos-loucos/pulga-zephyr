@@ -11,6 +11,7 @@ typedef struct
     struct sensor_value infrared;
     struct sensor_value uv;
     struct sensor_value uv_index;
+    uint32_t timestamp;
 } SensorModelSi1133;
 
 // Number of 32-bit words in each data item (model)

@@ -1,3 +1,4 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
@@ -65,6 +66,9 @@ sample_fetch:
                            &scd30_model.temperature);
         sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
                            &scd30_model.humidity);
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+        scd30_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
         memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
 

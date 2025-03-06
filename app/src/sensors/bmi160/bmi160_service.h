@@ -9,6 +9,7 @@ typedef struct
 {
     struct sensor_value acceleration[3];
     struct sensor_value rotation[3];
+    uint32_t timestamp;
 } SensorModelBMI160;
 
 // Number of 32-bit words in each data item (model)

@@ -10,6 +10,7 @@ typedef struct
 	struct sensor_value co2;
 	struct sensor_value temperature;
 	struct sensor_value humidity;
+	uint32_t timestamp;
 } SensorModelSCD30;
 
 // Number of 32-bit words in each data item (model)

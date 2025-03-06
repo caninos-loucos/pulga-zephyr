@@ -21,7 +21,9 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "CO2: %d ppm; Temperature: %d.%02d oC; Humidity: %d.%02d %% RH;",
+                    "Timestamp: %d; CO2: %d ppm; Temperature: %d.%02d oC; "
+                    "Humidity: %d.%02d %% RH;",
+                    scd30_model->timestamp,
                     scd30_model->co2.val1,
                     scd30_model->temperature.val1,
                     scd30_model->temperature.val2 / 10000,

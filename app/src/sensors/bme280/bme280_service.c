@@ -1,3 +1,4 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
@@ -55,6 +56,9 @@ sample_fetch:
                            &bme280_model.pressure);
         sensor_channel_get(bme280, SENSOR_CHAN_HUMIDITY,
                            &bme280_model.humidity);
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+        bme280_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
         memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
 

@@ -11,7 +11,6 @@ typedef struct
 	struct navigation_data navigation; // 8 words
 	/** UTC time when data was acquired */
 	struct gnss_time real_time; // 2 words
-
 } SensorModelGNSS;
 
 // Number of 32-bit words in each data item (model)
