@@ -54,14 +54,14 @@ config EVENT_TIMESTAMP_LORAWAN
     bool "Use LoRaWAN network time"
     depends on LORAWAN
     help
-        Get GPS epoch time when joining LoRaWAN network and later infer 
+        Get Posix time when joining LoRaWAN network and later infer 
 		the current time using system uptime.
 
 config EVENT_TIMESTAMP_GNSS
     bool "Use GNSS satellite time"
     depends on GNSS
     help
-        Periodically gets GPS epoch time from a GNSS module and, if needed,
+        Periodically gets Posix time from a GNSS module and, if needed,
 		later infer the current time using system uptime.
 endchoice
 

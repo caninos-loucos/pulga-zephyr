@@ -20,7 +20,6 @@ LOG_MODULE_REGISTER(lorawan_setup, CONFIG_APP_LOG_LEVEL);
  * Declarations
  */
 
-
 // Downlink callback, dumps the received data onto the log as debug, along with several reception parameters:
 // RSSI: Received Signal Strength Indicator
 // SNR: Signal-noise ratio
@@ -34,18 +33,16 @@ static void lorawan_config_activation(struct lorawan_join_config *join_config);
 static struct lorawan_downlink_cb downlink_cb;
 
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
-// // Timer to request network time periodically
-// static struct k_timer sync_time_timer;
-// // Handles synchronization timer interruptions
-// static void synchronization_handler(struct k_timer *timer_id);
 // Sends a request to the network to get the current time and
 // sets it as the synchronization time
 static int get_network_time(bool force_request);
 // Handles requesting network time and retrying if it fails
 static void sync_work_handler(struct k_work *work);
-// Work to be done when the timer triggers
+// Work to be queued and executed when the delay expires
 static struct k_work_delayable sync_work;
 static K_WORK_DELAYABLE_DEFINE(sync_work, sync_work_handler);
+// Period to request network time again as a kernel timeout value
+#define SYNC_PERIOD K_SECONDS(60)
 #endif
 
 /**
@@ -108,10 +105,12 @@ int lorawan_setup_connection()
     }
 
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
-    // uint32_t gps_epoch = 0;
-	// // printk("\nPEGAR PRIMEIRO HORARIO\n");
-    get_network_time(true);
-    k_work_schedule(&sync_work, K_SECONDS(60));
+    // Request network time until it succeeds and schedule periodic requests
+    do
+    {
+        error = get_network_time(true);
+    } while (error);
+    k_work_schedule(&sync_work, SYNC_PERIOD);
 #endif
 
 return_clause:
@@ -170,23 +169,21 @@ int get_network_time(bool force_request)
 {
     int error = 0;
     uint32_t gps_epoch = 0;
-
+    // Request network time
     error = lorawan_request_device_time(force_request);
     if (error)
     {
-        // printk("\nDEU ERRO NO REQUEST \n");
         LOG_ERR("Error requesting LoRaWAN network time: %d", error);
         return error;
     }
-get_device_time:
     error = lorawan_device_time_get(&gps_epoch);
     if (error)
     {
         LOG_ERR("Error getting LoRaWAN network time: %d", error);
-        k_sleep(K_SECONDS(30));
-        goto get_device_time;
+        return error;
     }
-    gps_epoch = GPS_TO_UNIX_EPOCH(gps_epoch);
+    // Converts the GPS epoch to Unix epoch
+    gps_epoch = GPS_EPOCH_TO_POSIX(gps_epoch);
     LOG_INF("LoRaWAN network time: %d", gps_epoch);
     // Sets the timestamp as the synchronization time
     set_sync_time_seconds(gps_epoch);
@@ -196,11 +193,8 @@ get_device_time:
 void sync_work_handler(struct k_work *work)
 {
     int error = 0;
-    // printk("\nHEYHEY\n");
 
     error = get_network_time(false);
-	// printk("\nSAIU DO GET\n");
-
     // Retry after some time if it fails
     if (error)
     {
@@ -208,7 +202,7 @@ void sync_work_handler(struct k_work *work)
         k_work_schedule(&sync_work, K_SECONDS(30));
         return;
     }
-	// printk("\nDEU BOM\n");
-    k_work_schedule(&sync_work, K_SECONDS(60));
+    // Schedule next request
+    k_work_schedule(&sync_work, SYNC_PERIOD);
 }
 #endif
