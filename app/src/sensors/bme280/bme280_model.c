@@ -40,7 +40,8 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "T%d.%02dP%d.%02dH%d.%02d",
+                    "TS%dT%d.%02dP%d.%02dH%d.%02d",
+                    bme280_model->timestamp,
                     bme280_model->temperature.val1,
                     bme280_model->temperature.val2 / 10000,
                     bme280_model->pressure.val1,

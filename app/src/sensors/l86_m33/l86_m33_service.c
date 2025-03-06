@@ -98,6 +98,10 @@ void receive_fix_callback(const struct device *gnss_device,
         gnss_model.navigation = gnss_data->nav_data;
         gnss_model.real_time = gnss_data->utc;
 
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+        gnss_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
+
         memcpy(&l86_m33_data, &gnss_model, sizeof(SensorModelGNSS));
 
         if (insert_in_buffer(&app_buffer, l86_m33_data, GNSS_MODEL, 0, GNSS_MODEL_WORDS) != 0)
