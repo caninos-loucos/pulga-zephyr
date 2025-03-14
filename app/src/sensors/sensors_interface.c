@@ -1,5 +1,4 @@
 #include <zephyr/logging/log.h>
-#include <zephyr/shell/shell.h>
 #include <sensors/sensors_interface.h>
 #include <sensors/si1133/si1133_service.h>
 #include <sensors/bme280/bme280_service.h>
@@ -138,64 +137,3 @@ int get_sampling_interval()
 {
 	return current_sampling_interval;
 }
-
-#ifdef CONFIG_SHELL
-
-static int set_sampling_interval_cmd_handler(const struct shell *sh, size_t argc, char **argv)
-{
-	if(argc > 1)
-		set_sampling_interval((int)strtol(argv[1], NULL, 10));
-
-	return 0;
-}
-
-static int get_sampling_interval_cmd_handler(const struct shell *sh, size_t argc, char **argv)
-{
-	shell_print(sh, "Sampling interval is %d milliseconds", get_sampling_interval());
-
-	return 0;
-}
-
-
-SHELL_STATIC_SUBCMD_SET_CREATE(sampling_interval_subcmds,
-							   SHELL_CMD(set, NULL, "Set sensor interval", set_sampling_interval_cmd_handler),
-							   SHELL_CMD(get, NULL, "Get sampling interval", get_sampling_interval_cmd_handler),
-							   SHELL_SUBCMD_SET_END);
-
-SHELL_CMD_REGISTER(sampling_interval, &sampling_interval_subcmds, "Get or set sensor interface's sampling interval", NULL);
-
-static int read_sensors_cmd_handler(const struct shell *sh, size_t argc, char **argv)
-{
-	for (int i = 1; i < argc; i++)
-	{
-		char* sensor_name = argv[i];
-		int sensor_num = -1;
-
-		if (!strcmp(sensor_name, "bme280"))
-			sensor_num = (int)BME280;
-		else if (!strcmp(sensor_name, "bmi160"))
-			sensor_num = (int)BMI160;
-		else if (!strcmp(sensor_name, "si1133"))
-			sensor_num = (int)SI1133;/* 
-		else if (!strcmp(sensor_name, "scd30"))
-			sensor_num = (int)SCD30; */
-		else if (!strcmp(sensor_name, "gps"))
-			sensor_num = (int)L86_M33;
-		else{
-			shell_warn(sh, "Sensor %s is not available", sensor_name);
-			continue;
-		}
-		
-		if (sensor_apis[sensor_num] != NULL) {
-			shell_print(sh, "Reading from %s", sensor_name);
-			sensor_apis[sensor_num]->read_sensor_values();
-		}
-		else
-			shell_warn(sh, "Sensor %s is not available", sensor_name);
-	}
-	return 0;
-}
-
-SHELL_CMD_REGISTER(read_sensor, NULL, "Read sensors and store values in the buffer", read_sensors_cmd_handler);
-
-#endif

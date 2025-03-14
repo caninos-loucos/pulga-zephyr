@@ -47,4 +47,7 @@ int init_communication();
 // Registers callbacks for the used communication channels
 int register_comm_callbacks();
 
+int get_transmission_interval();
+void set_transmission_interval(int interval);
+
 #endif /* COMM_INTERFACE_H */
