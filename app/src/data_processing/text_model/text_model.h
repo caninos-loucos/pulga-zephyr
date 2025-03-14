@@ -1,5 +1,5 @@
-#ifndef TEXT_INTERFACE_H
-#define TEXT_INTERFACE_H
+#ifndef TEXT_MODEL_H
+#define TEXT_MODEL_H
 
 #include "data_processing/data_abstraction.h"
 
