@@ -11,13 +11,12 @@ LOG_MODULE_REGISTER(shell_commands, CONFIG_APP_LOG_LEVEL);
 
 static int set_sampling_interval_cmd_handler(const struct shell *sh, size_t argc, char **argv)
 {
-    int interval;
+    if (argc < 1)
+        return 0;
 
-    if (argc > 1)
-    {
-        memcpy(&interval, argv[1], sizeof(int));
-        set_sampling_interval(interval);
-    }
+    int interval;
+    memcpy(&interval, argv[1], sizeof(int));
+    set_sampling_interval(interval);
 
     return 0;
 }
@@ -60,6 +59,7 @@ static int read_sensors_cmd_handler(const struct shell *sh, size_t argc, char **
         else
             shell_warn(sh, "Sensor %s is not available", sensor_name);
     }
+
     return 0;
 }
 
@@ -75,13 +75,13 @@ SHELL_CMD_REGISTER(read_sensor, NULL, "Read sensors and store values in the buff
 
 static int set_transmission_interval_cmd_handler(const struct shell *sh, size_t argc, char **argv)
 {
-    int interval;
 
-    if (argc > 1)
-    {
-        memcpy(&interval, argv[1], sizeof(int));
-        set_transmission_interval(interval);
-    }
+    if (argc < 1)
+        return 0;
+
+    int interval;
+    memcpy(&interval, argv[1], sizeof(int));
+    set_transmission_interval(interval);
 
     return 0;
 }
@@ -98,7 +98,7 @@ static int forward_cmd_handler(const struct shell *sh, size_t argc, char **argv)
     if (argc != 2)
     {
         shell_print(sh, "Must provide one payload");
-        return -1;
+        return 0;
     }
 
     char payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS - 1))] = {0};

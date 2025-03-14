@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <communication/comm_interface.h>
@@ -149,9 +147,10 @@ static void read_and_notify(void *param0, void *param1, void *param2)
     }
 }
 
-void set_transmission_interval(int interval)
+void set_transmission_interval(int new_interval)
 {
-    current_transmission_interval = interval;
+    current_transmission_interval = new_interval;
+    LOG_DBG("Transmission interval set to %dms", new_interval);
 }
 
 int get_transmission_interval()
