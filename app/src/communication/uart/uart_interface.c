@@ -2,10 +2,6 @@
 #include <zephyr/logging/log.h>
 #include <communication/uart/uart_interface.h>
 
-#ifdef CONFIG_SHELL
-#include <communication/uart/shell_commands.h>
-#endif
-
 LOG_MODULE_REGISTER(uart_interface, CONFIG_APP_LOG_LEVEL);
 
 /**

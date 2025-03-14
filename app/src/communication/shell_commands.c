@@ -1,7 +1,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/shell/shell.h>
-#include <communication/uart/shell_commands.h>
 #include <communication/uart/uart_interface.h>
 #include <sensors/sensors_interface.h>
 
@@ -116,7 +115,7 @@ static int forward_cmd_handler(const struct shell *sh, size_t argc, char **argv)
     snprintf(payload, sizeof(payload), "%s", argv[1]);
     memcpy(&data_words, payload, sizeof(payload));
 
-    if (insert_in_buffer(&app_buffer, data_words, TEXT_DATA, 0, MAX_32_WORDS) != 0)
+    if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA, 0, MAX_32_WORDS) != 0)
     {
         LOG_ERR("Failed to insert data in ring buffer.");
         return -1;
