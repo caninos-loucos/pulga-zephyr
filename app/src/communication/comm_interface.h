@@ -48,6 +48,7 @@ int init_communication();
 int register_comm_callbacks();
 
 int get_transmission_interval();
+// Set the `interval` in milliseconds between transmissions
 void set_transmission_interval(int interval);
 
 #endif /* COMM_INTERFACE_H */
