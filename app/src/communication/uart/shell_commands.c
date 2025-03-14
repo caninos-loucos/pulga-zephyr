@@ -14,8 +14,14 @@ static int set_sampling_interval_cmd_handler(const struct shell *sh, size_t argc
     if (argc < 1)
         return 0;
 
-    int interval;
-    memcpy(&interval, argv[1], sizeof(int));
+    int error = 0;
+    int interval = shell_strtol(argv[1], 10, &error);
+    if (error != 0)
+    {
+        shell_print(sh, "Ivalid interval");
+        return 0;
+    }
+
     set_sampling_interval(interval);
 
     return 0;
@@ -45,19 +51,15 @@ static int read_sensors_cmd_handler(const struct shell *sh, size_t argc, char **
             sensor_num = SCD30;
         else if (!strcmp(sensor_name, "gps"))
             sensor_num = L86_M33;
-        else
+
+        if (sensor_num == -1 || sensor_apis[sensor_num] == NULL)
         {
             shell_warn(sh, "Sensor %s is not available", sensor_name);
             continue;
         }
 
-        if (sensor_apis[sensor_num] != NULL)
-        {
-            shell_print(sh, "Reading from %s", sensor_name);
-            sensor_apis[sensor_num]->read_sensor_values();
-        }
-        else
-            shell_warn(sh, "Sensor %s is not available", sensor_name);
+        shell_print(sh, "Reading from %s", sensor_name);
+        sensor_apis[sensor_num]->read_sensor_values();
     }
 
     return 0;
@@ -79,8 +81,15 @@ static int set_transmission_interval_cmd_handler(const struct shell *sh, size_t 
     if (argc < 1)
         return 0;
 
-    int interval;
-    memcpy(&interval, argv[1], sizeof(int));
+    int error = 0;
+    int interval = shell_strtol(argv[1], 10, &error);
+
+    if (error != 0)
+    {
+        shell_print(sh, "Ivalid interval");
+        return 0;
+    }
+
     set_transmission_interval(interval);
 
     return 0;
@@ -101,7 +110,7 @@ static int forward_cmd_handler(const struct shell *sh, size_t argc, char **argv)
         return 0;
     }
 
-    char payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS - 1))] = {0};
+    char payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS))] = {0};
     uint32_t data_words[MAX_32_WORDS] = {0};
 
     snprintf(payload, sizeof(payload), "%s", argv[1]);
