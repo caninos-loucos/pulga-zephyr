@@ -42,7 +42,7 @@ static void sync_work_handler(struct k_work *work);
 static struct k_work_delayable sync_work;
 static K_WORK_DELAYABLE_DEFINE(sync_work, sync_work_handler);
 // Period to request network time again as a kernel timeout value
-#define SYNC_PERIOD K_SECONDS(60)
+#define SYNC_PERIOD K_SECONDS(86400) // Once a day
 #endif
 
 /**
