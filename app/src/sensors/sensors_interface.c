@@ -127,12 +127,14 @@ static void perform_read_sensors(void *param0, void *param1, void *param2)
 	}
 }
 
+// Set the interval in milliseconds between samples
 void set_sampling_interval(int new_interval)
 {
 	current_sampling_interval = new_interval;
 	LOG_DBG("Sampling interval set to %dms", new_interval);
 }
 
+// Get the interval in milliseconds between samples
 int get_sampling_interval()
 {
 	return current_sampling_interval;

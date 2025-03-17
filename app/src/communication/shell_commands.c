@@ -13,8 +13,8 @@ static int read_sensors_cmd_handler(const struct shell *sh, size_t argc, char **
 
 SHELL_CMD_REGISTER(read_sensor, NULL, "Read sensors and store values in the buffer", read_sensors_cmd_handler);
 SHELL_STATIC_SUBCMD_SET_CREATE(sampling_interval_subcmds,
-                               SHELL_CMD(set, NULL, "Set sensor interval", set_sampling_interval_cmd_handler),
-                               SHELL_CMD(get, NULL, "Get sampling interval", get_sampling_interval_cmd_handler),
+                               SHELL_CMD(set, NULL, "Set sampling interval in milliseconds", set_sampling_interval_cmd_handler),
+                               SHELL_CMD(get, NULL, "Get sampling interval in milliseconds", get_sampling_interval_cmd_handler),
                                SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(sampling_interval, &sampling_interval_subcmds, "Get or set sensor interface's sampling interval", NULL);
 
@@ -25,8 +25,8 @@ static int forward_cmd_handler(const struct shell *sh, size_t argc, char **argv)
 
 SHELL_CMD_REGISTER(forward, NULL, "Insert one or more text items in the buffer", forward_cmd_handler);
 SHELL_STATIC_SUBCMD_SET_CREATE(transmission_interval_subcmds,
-                               SHELL_CMD(set, NULL, "Set transmission interval", set_transmission_interval_cmd_handler),
-                               SHELL_CMD(get, NULL, "Get transmission interval", get_transmission_interval_cmd_handler),
+                               SHELL_CMD(set, NULL, "Set transmission interval in milliseconds", set_transmission_interval_cmd_handler),
+                               SHELL_CMD(get, NULL, "Get transmission interval in milliseconds", get_transmission_interval_cmd_handler),
                                SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(transmission_interval, &transmission_interval_subcmds, "Get or set communication interface's transmission interval", NULL);
 

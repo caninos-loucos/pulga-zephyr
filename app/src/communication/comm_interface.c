@@ -147,12 +147,14 @@ static void read_and_notify(void *param0, void *param1, void *param2)
     }
 }
 
+// Set the interval in milliseconds between transmissions
 void set_transmission_interval(int new_interval)
 {
     current_transmission_interval = new_interval;
     LOG_DBG("Transmission interval set to %dms", new_interval);
 }
 
+// Get the interval in milliseconds between transmissions
 int get_transmission_interval()
 {
     return current_transmission_interval;
