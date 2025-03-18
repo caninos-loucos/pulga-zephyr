@@ -2,21 +2,22 @@
 
 ## Summary
 
-- [First Steps]()
-- [Connecting the Firmware to the Network]()
-    - [In American Tower Connection]()
-        - [Create Device]()
-        - [Create Filter]()
-        - [Create Connection]()
-    - [Device Images in American Tower]()
-      - [Device]()
-      - [Filter]()
-      - [Connection]()
-    - [In Google Sheets]()
-    - [Google Sheets Images]()
-      - [Google Sheets ID]()
-      - [Deploy]()
-- [Building an Image]()
+- [First Steps](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#first-steps)
+- **Connecting the Firmware to the Network**
+        - *In American Tower Connection*
+        - [Create Device](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-device)
+        - [Create Filter](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-filter)
+        - [Create Connection](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-connection)
+        - [In Coding](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding) 
+    - **Device American Tower screenshot**
+      - [Device](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
+      - [Filter](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
+      - [Connection](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
+    - [In Google Sheets](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
+    - *Google Sheets screenshot*
+      - [Google Sheets ID](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
+      - [Deploy](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
+- [Building an Image](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
 
 ## First Steps
 
@@ -131,27 +132,27 @@ Path: `PULGA-ZEPHY/app/comunicaition/lorawan/lorawan_buffer/lorawan_keys_exampla
 #### Device
 <div align="center">
 
-![Device part 1](link)
+![Device part 1](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/createdevicefirststep.jpeg)
 
 </div>
 
 <div align="center">
 
-![Device part 2](link)
+![Device part 2](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/createdevicesecondstep.jpeg)
 
 </div>
 
 #### Filter 
 <div align="center">
 
-![Filter](link)
+![Filter](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/createfilter.jpeg)
 
 </div>
 
 #### Connection
 <div align="center">
 
-![Connection](link)
+![Connection](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/createconnection.jpeg)
 
 </div>
 
@@ -267,38 +268,38 @@ function doPost(request){
 #### Sheets Id
 <div align="center">
 
-![Get Sheets ID](link)
+![Get Sheets ID](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/SheetsID.jpeg)
 
 </div>
 
 #### Deploy Application
 <div align="center">
 
-![Deploy Parte 1](link)
+![Deploy Parte 1](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/Deploy_part_1.jpeg)
 
 </div>
 
 <div align="center">
 
-![Deploy Parte 2](link)
+![Deploy Parte 2](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/Deploy_part_2.jpeg)
 
 </div>
 
 <div align="center">
 
-![Deploy Parte 3](link)
+![Deploy Parte 3](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/Deploy_part_3.jpeg)
 
 </div>
 
 <div align="center">
 
-![Deploy Parte 4](link)
+![Deploy Parte 4](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/Deploy_part_4.jpeg)
 
 </div>
 
 <div align="center">
 
-![Deploy Parte 5](link)
+![Deploy Parte 5](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/images/Deploy_part_5.jpeg)
 
 </div>
 
