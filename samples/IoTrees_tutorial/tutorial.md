@@ -2,22 +2,22 @@
 
 ## Summary
 
-- [First Steps](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#first-steps)
+- [**First Steps**](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#first-steps)
 - **Connecting the Firmware to the Network**
-        - *In American Tower Connection*
-        - [Create Device](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-device)
-        - [Create Filter](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-filter)
-        - [Create Connection](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-connection)
-        - [In Coding](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding) 
-    - **Device American Tower screenshot**
-      - [Device](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
-      - [Filter](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
-      - [Connection](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
-    - [In Google Sheets](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
-    - *Google Sheets screenshot*
-      - [Google Sheets ID](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
-      - [Deploy](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
-- [Building an Image](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding)
+    - *In American Tower Connection*
+      - [Create Device](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-device)
+      - [Create Filter](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-filter)
+      - [Create Connection](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#create-connection)
+      - [In Coding](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-coding) 
+    - *Device American Tower screenshot*
+        - [Device](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#device)
+        - [Filter](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#filter)
+        - [Connection](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#connection)
+    - [*In Google Sheets*](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-google-sheets)
+      - Google Sheets screenshot
+        - [Google Sheets ID](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#sheets-id)
+        - [Deploy](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#deploy-application)
+- [**Building an Image**](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#building-image)
 
 ## First Steps
 
@@ -69,7 +69,7 @@ To create a new device in [American Tower Connection](https://ns.atc.everynet.io
             - Network session key `128-bit`
             - Application session key `128-bit`
             - And choose a tag to *Tags* field
-For more details, see [Images]() below.
+For more details, see [Images](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#american-tower-screenshot) below.
 
 #### Create Filter
 
@@ -82,7 +82,7 @@ For more details, see [Images]() below.
 - Select `HTTP v2` 
 - Filter &rarr; Use the key from the filter section.
 - Application URL &rarr; Enter the Google Sheets link.  
-    - See the [Google Sheets]() section below for more details.
+    - See the [Google Sheets](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#in-google-sheets) section below for more details.
 ---
 ### In Coding 
 
@@ -165,6 +165,8 @@ Path: `PULGA-ZEPHY/app/comunicaition/lorawan/lorawan_buffer/lorawan_keys_exampla
     - Google Sheet using Id: 
         - Example
             - docs.google.com/spreadsheets/d/<mark>1sO6Xqce1NKMzsS28SWCquOBqy7wZhiUHdqbM6FaCgrY </mark>/edit?gid=0#gid=0
+
+For more details, see [Images](https://github.com/caninos-loucos/pulga-zephyr/blob/main/samples/IoTrees_tutorial/tutorial.md#google-sheets-screenshot) below.
 
 
 ``` c
