@@ -164,6 +164,8 @@ Path: `PULGA-ZEPHY/app/comunicaition/lorawan/lorawan_buffer/lorawan_keys_exampla
     - Google Sheet using Id: 
         - Example
             - docs.google.com/spreadsheets/d/<mark>1sO6Xqce1NKMzsS28SWCquOBqy7wZhiUHdqbM6FaCgrY </mark>/edit?gid=0#gid=0
+
+
 ``` c
 
 function doPost(request){
@@ -303,5 +305,6 @@ function doPost(request){
 _______
 ## Building Image
 
-To build the Image just follow the steps dicribed in [Building](https://github.com/caninos-loucos/pulga-zephyr?tab=readme-ov-file#building-and-running) section 
+To build the image, just follow the steps described in the [Building](https://github.com/caninos-loucos/pulga-zephyr?tab=readme-ov-file#building-and-running) section.
+
 
