@@ -9,7 +9,7 @@
     #define LORAWAN_NET_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
     #define LORAWAN_APP_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
 */
-#include <communication/lorawan/lorawan_keys_example.h>
+#include <communication/lorawan/lorawan_keys.h>
 #include <communication/lorawan/lorawan_interface.h>
 
 LOG_MODULE_REGISTER(lorawan_setup, CONFIG_APP_LOG_LEVEL);
@@ -86,6 +86,9 @@ int lorawan_setup_connection()
 
     // Will try to join until devnonce is right 
 
+    // Forcing devnonve to 70 for debbugging reasons
+    // join_config.otaa.dev_nonce = 70u;
+
     uint16_t devnonce = join_config.otaa.dev_nonce;
 
 
@@ -110,6 +113,8 @@ int lorawan_setup_connection()
             // goto return_clause;
             k_sleep(K_MSEC(1000));
         }
+        LOG_DBG("Joined with %d devnonce?", devnonce); 
+
     }   
 
     // LOG_DBG("Joined over OTAA"); 
