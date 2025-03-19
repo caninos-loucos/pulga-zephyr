@@ -3,3 +3,4 @@
 
 add_subdirectory_ifdef(CONFIG_SI1133 si1133)
 add_subdirectory_ifdef(CONFIG_SCD30 scd30)
+add_subdirectory_ifdef(CONFIG_TCS34725 tcs34725)
