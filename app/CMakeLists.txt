@@ -27,6 +27,7 @@ target_sources(app PRIVATE
                     src/communication/uart/uart_interface.c
                     src/data_processing/data_buffer.c
                     src/data_processing/data_abstraction.c
+                    src/data_processing/text_model/text_model.c
                     src/sensors/sensors_interface.c
                     src/sensors/bme280/bme280_model.c
                     src/sensors/bme280/bme280_service.c
@@ -50,6 +51,11 @@ endif()
 
 if(CONFIG_SHIELD_SCD30)
     target_sources(app PRIVATE  
-                    src/sensors/scd30/scd30_model.c
-                    src/sensors/scd30/scd30_service.c)
+                        src/sensors/scd30/scd30_model.c
+                        src/sensors/scd30/scd30_service.c)
+endif()
+
+if(CONFIG_SHELL)
+    target_sources(app PRIVATE
+                        src/communication/shell_commands.c)
 endif()

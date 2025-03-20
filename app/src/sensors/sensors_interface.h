@@ -41,9 +41,9 @@ int register_sensors_callbacks();
 // Initializes sensors and start reading them
 int read_sensors();
 // #TODO: probably will require sync
-// Dynamically sets current sampling interval
+// Set the interval in milliseconds between samples
 void set_sampling_interval(int new_interval);
-// Gets current sampling interval
+// Get the interval in milliseconds between samples
 int get_sampling_interval();
 
 #endif /* SENSORS_INTERFACE_H */

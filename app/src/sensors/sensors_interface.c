@@ -38,15 +38,15 @@ static void perform_read_sensors(void *, void *, void *);
 int register_sensors_callbacks()
 {
 	LOG_DBG("Registering sensors callbacks");
-#if defined(CONFIG_BME280)
+#ifdef CONFIG_BME280
 	sensor_apis[BME280] = register_bme280_callbacks();
 #endif /* CONFIG_BME280 */
 
-#if defined(CONFIG_BMI160)
+#ifdef CONFIG_BMI160
 	sensor_apis[BMI160] = register_bmi160_callbacks();
 #endif /* CONFIG_BMI160 */
 
-#if defined(CONFIG_SI1133)
+#ifdef CONFIG_SI1133
 	sensor_apis[SI1133] = register_si1133_callbacks();
 #endif /* CONFIG_SI1133 */
 
@@ -54,7 +54,7 @@ int register_sensors_callbacks()
 	sensor_apis[SCD30] = register_scd30_callbacks();
 #endif /* CONFIG_SCD30 */
 
-#if defined(CONFIG_SHIELD_PULGA_GPS)
+#ifdef CONFIG_SHIELD_PULGA_GPS
 	sensor_apis[L86_M33] = register_l86_m33_callbacks();
 #endif /* CONFIG_SHIELD_PULGA_GPS */
 
@@ -127,11 +127,14 @@ static void perform_read_sensors(void *param0, void *param1, void *param2)
 	}
 }
 
+// Set the interval in milliseconds between samples
 void set_sampling_interval(int new_interval)
 {
 	current_sampling_interval = new_interval;
+	LOG_DBG("Sampling interval set to %dms", new_interval);
 }
 
+// Get the interval in milliseconds between samples
 int get_sampling_interval()
 {
 	return current_sampling_interval;
