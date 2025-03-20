@@ -3,12 +3,14 @@
 
 #include <zephyr/drivers/sensor.h>
 #include <sensors/sensors_interface.h>
+#include <integration/data_buffer/buffer_service.h>
 
 typedef struct
 {
 	struct sensor_value co2;
 	struct sensor_value temperature;
 	struct sensor_value humidity;
+	uint32_t timestamp;
 } SensorModelSCD30;
 
 // Number of 32-bit words in each data item (model)

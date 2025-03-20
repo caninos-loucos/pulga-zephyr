@@ -1,3 +1,4 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
@@ -58,6 +59,9 @@ sample_fetch:
                            &si1133_model.uv);
         sensor_channel_get(si1133, SENSOR_CHAN_UVI,
                            &si1133_model.uv_index);
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+        si1133_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
         memcpy(&si1133_data, &si1133_model, sizeof(SensorModelSi1133));
 

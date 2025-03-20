@@ -72,7 +72,7 @@ instead of the `app` directory as argument:
 
 ### Additional features
 
-Features that are external to the Pulga Core board, such as SCD30 sensor, GPS sampling and LoraWAN, need to activated by uncommenting the respective pieces of code in ``app/CMakeLists.txt``. For example, if you want to activate GNSS (GPS) sensoring, the following line needs to be uncommented:
+Features that are external to the Pulga Core board, such as SCD30 sensor, GPS sampling and LoraWAN, need to activated by uncommenting the respective lines of code in ``app/CMakeLists.txt``. For example, if you want to activate GNSS (GPS) sensoring, the following line needs to be uncommented:
 
 ```
 list(APPEND SHIELD pulga_gps)
@@ -87,10 +87,14 @@ To deactivate sensors internal to Pulga Core, you simply need to change their st
   - Constraints:
     - SCD30: 2s < t < 180s.
     - L86 GNSS module: 100ms < t < 10s. If t > 1000ms, it needs to be a multiple of 1000. If the interval is bigger than 10s, the application will ignore GNSS measurements and only allow writing to buffer in the configured time.
-- TRANSMISSION_INTERVAL: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it.
-  - Constraints:
+- TRANSMISSION_INTERVAL: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it, repeating this until the buffer is empty.
+  - Constraints: 
     - LoRaWAN: transmission takes about 5s, so if the transmission interval is too large and the sampling period is too low, data might be lost. To prevent this, this application uses another buffer, internal to LoRaWAN.
 - BUFFER_WORDS: number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
+- EVENT_TIMESTAMP_SOURCE: this option allows the user to choose whether the application will timestamp the sampling events or not. In case it does, it's possible to configure the source of the time reference between the LoRaWAN network, GNSS satellite data or system uptime. As a choice configuration (available options found in KConfig file), selecting one option will automatically set all others to false.
+  - Constraints:
+    - EVENT_TIMESTAMP_LORAWAN: this option can only be set when using pulga-lora shield and if LoRaWAN is active.
+    - EVENT_TIMESTAMP_GNSS: this option can only be set when using pulga_gps shield.
 
 #### Communication configurations
 - SEND_UART: Prints a verbose output to the configured terminal, such as TeraTerm or MiniCOM.

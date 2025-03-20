@@ -1,7 +1,7 @@
 #ifndef SENSORS_INTERFACE_H
 #define SENSORS_INTERFACE_H
 
-#include <data_processing/data_abstraction.h>
+#include <integration/data_abstraction/abstraction_service.h>
 
 /*
  * Refer to:

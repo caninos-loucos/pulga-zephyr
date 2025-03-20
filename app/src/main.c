@@ -1,7 +1,7 @@
 #include <zephyr/logging/log.h>
 
 #include <sensors/sensors_interface.h>
-#include <data_processing/data_abstraction.h>
+#include <integration/data_abstraction/abstraction_service.h>
 #include <communication/comm_interface.h>
 
 // change log level in debug.conf

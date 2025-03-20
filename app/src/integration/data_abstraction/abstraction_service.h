@@ -2,20 +2,11 @@
 #define DATA_ABSTRACTION_H
 
 #include <zephyr/kernel.h>
-#include <zephyr/sys/ring_buffer.h>
 
-#define SIZE_BYTES_TO_32_BIT_WORDS(expr) DIV_ROUND_UP(expr, sizeof(uint32_t))
-#define SIZE_32_BIT_WORDS_TO_BYTES(expr) (expr * 4)
-
-// Maximum number of 32-bit words an item of the application buffer can have
-#define MAX_32_WORDS 16
 // Offset in DataType enum. Values equal or greater than this
 // mean the data came from a sensor. Other types of data will
 // have a value less than this.
 #define SENSOR_TYPE_OFFSET 5
-
-// Declares ring buffer that will store data until it is read and sent
-extern struct ring_buf app_buffer;
 
 // Encoding used in buffer items so program
 // knows how to parse and present the data
@@ -65,16 +56,6 @@ typedef struct
 
 // Registers callbacks for data types not corresponding to sensor data
 int register_data_callbacks();
-
-// Gets item from buffer
-int get_from_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType *data_type, uint8_t *num_words);
-
-// Inserts data in buffer
-int insert_in_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type,
-                     uint8_t custom_value, uint8_t num_words);
-
-// Verifies if buffer is empty
-int buffer_is_empty(struct ring_buf *buffer);
 
 // Encodes data to chosen presentation format
 int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLevel encoding,
