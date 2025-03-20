@@ -45,6 +45,8 @@ enum EncodingLevel
     MINIMALIST,
     // Encodes data into a verbose string
     VERBOSE,
+    // Encodes data into zcbor
+    ZCBOR,
 };
 
 // Functions exposed for each data type

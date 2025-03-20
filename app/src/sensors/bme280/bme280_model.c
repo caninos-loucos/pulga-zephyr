@@ -1,4 +1,6 @@
 #include <zephyr/logging/log.h>
+#include <zcbor_encode.h>
+#include <sensors/bme280/zcbor/bme280_encode.h>
 #include <sensors/bme280/bme280_service.h>
 
 LOG_MODULE_REGISTER(bme280_model, CONFIG_APP_LOG_LEVEL);
@@ -56,12 +58,35 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
     return sizeof(SensorModelBME280);
 }
 
+struct ZcborPayloadBME280 {
+    int32_t temperature;
+};
+
+
+static int encode_zcbor_string(uint32_t *data_words, uint8_t *encoded_data, size_t payload_size)
+{
+    SensorModelBME280 *bme280_model = (SensorModelBME280 *)data_words;
+
+    int encoded_size = -1;
+    int err;
+    struct ZcborPayloadBME280 payload = {.temperature = bme280_model->temperature.val1};
+    int32_t payloadbytes[sizeof(payload) / 4];
+    bytecpy(payloadbytes, &payload, sizeof(payload));
+
+    err = cbor_encode_ZcborPayloadBME280(encoded_data, sizeof(payloadbytes), payloadbytes, &encoded_size);
+	if (err != ZCBOR_SUCCESS) {
+        LOG_ERR("Could not encode bme280 data into zcbor");
+	}
+
+    return encoded_size;
+}
+
 // Registers BME280 model callbacks
 DataAPI *register_bme280_model_callbacks()
 {
     bme280_model_api.num_data_words = BME280_MODEL_WORDS;
-    bme280_model_api.encode_verbose = encode_verbose;
-    bme280_model_api.encode_minimalist = encode_minimalist;
+    bme280_model_api.encode_verbose = encode_zcbor_string;
+    bme280_model_api.encode_minimalist = encode_zcbor_string;
     bme280_model_api.encode_raw_bytes = encode_raw_bytes;
     // bme280_model_api.split_values = split_values;
     return &bme280_model_api;
