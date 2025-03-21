@@ -160,6 +160,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	{
 
 #ifdef CONFIG_LORAWAN_JOIN_PACKET
+reset_join_variables:
 		LOG_DBG("Resetting join variables");
 		uint8_t max_payload_size, unused_arg, insert_index = 0;
 		// Maximum LoRaWAN package size won't surpass 256 B
@@ -189,16 +190,20 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			}
 
 #ifdef CONFIG_LORAWAN_JOIN_PACKET
-			// Sends package as the new item wouldn't fit in it and waits untill buffer is able to fill a package
+			// Sends package as the new item wouldn't fit in it and waits until buffer is able to fill a package
 			if (available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
 			{
 				send_package(joined_data, max_payload_size - available_package_size);
+				if (!lorawan_buffer_empty())
+				{
+					goto reset_join_variables;
+				}
 				break;
 			}
 #endif
 			// Get the next packet from the internal buffer
 			error = get_lorawan_item(encoded_data, &encoded_data_word_size);
-			if(error)
+			if (error)
 			{
 				continue;
 			}
@@ -211,6 +216,11 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			insert_index = max_payload_size - available_package_size;
 			bytecpy(joined_data + insert_index, encoded_data, encoded_data_size);
 			available_package_size -= encoded_data_size;
+			if (lorawan_buffer_empty())
+			{
+				LOG_DBG("Buffer is empty, sleeping");
+				k_sleep(K_FOREVER);
+			}
 			continue;
 #endif
 			send_package((uint8_t *)encoded_data, encoded_data_size);
