@@ -22,64 +22,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE. 
  *
- * @file      driver_tcs34725.c
+ * @file      tcs34725.c
  * @brief     driver tcs34725 source file
  * @version   2.0.0
- * @author    Shifeng Li
- * @date      2021-02-28
+ * @author    Kaue Rodrigues Barbosa
+ * @date      2025-03-20
  *
  * <h3>history</h3>
  * <table>
  * <tr><th>Date        <th>Version  <th>Author      <th>Description
- * <tr><td>2025/03/13  <td>2.0      <td>Kaue Rodrigues Barbosa <td>adaptation to Zephyr
+ * <tr><td>2025/03/20  <td>2.0      <td>Kaue Rodrigues Barbosa <td>adaptation to Zephyr
  * <tr><td>2021/02/28  <td>2.0      <td>Shifeng Li  <td>format the code
  * <tr><td>2020/10/30  <td>1.0      <td>Shifeng Li  <td>first upload
  * </table>
  */
 
-#include "driver_tcs34725.h"
+#include "tsc34725_priv.h"
+
+// Writes data to a register
+static int tcs34725_register_write(const struct device *dev, uint8_t buf, uint32_t size)
+{
+    const struct tcs34725_config *cfg = dev->config;
+    return i2c_write_dt(&cfg->i2c, buf, size);
+}
+
+// Reads data from a register
+static int tcs34725_register_read(const struct device *dev, uint8_t buf, uint32_t size)
+{
+    const struct tcs34725_config *cfg = dev->config;
+    return i2c_read_dt(&cfg->i2c, buf, size);
+}
+
+// Writes command in the command register
+static int tcs34725_command_write(const struct device *dev,  uint8_t cmd)
+{
+    return 0; // Maybe it isnt necessary. Not sure yet. Read datasheet for more info
+}
+
+// Fetches sample data
+static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel channel);
+
+// Gets desired attribute
+static int tcs34725_att_get(const struct device *dev, enum sensor_channel channel, struct sensor_value value);
+
+// Sets desired attribute 
+static int tcs34725_att_get(const struct device *dev, enum sensor_channel channel, struct sensor_value value);
+
 
 /**
- * @brief chip information definition
+ * @brief i2c address definition
  */
-#define CHIP_NAME                 "AMS TCS34725"        /**< chip name */
-#define MANUFACTURER_NAME         "AMS"                 /**< manufacturer name */
-#define SUPPLY_VOLTAGE_MIN        2.7f                  /**< chip min supply voltage */
-#define SUPPLY_VOLTAGE_MAX        3.6f                  /**< chip max supply voltage */
-#define MAX_CURRENT               20.0f                 /**< chip max current */
-#define TEMPERATURE_MIN           -40.0f                /**< chip min operating temperature */
-#define TEMPERATURE_MAX           85.0f                 /**< chip max operating temperature */
-#define DRIVER_VERSION            2000                  /**< driver version */
-
-/**
- * @brief chip register definition
- */
-#define TCS34725_REG_ENABLE         0x80        /**< enable register */
-#define TCS34725_REG_ATIME          0x81        /**< atime register */
-#define TCS34725_REG_WTIME          0x83        /**< wtime register */
-#define TCS34725_REG_AILTL          0xA4        /**< ailtl register */
-#define TCS34725_REG_AILTH          0xA5        /**< ailth register */
-#define TCS34725_REG_AIHTL          0xA6        /**< aihtl register */
-#define TCS34725_REG_AIHTH          0xA7        /**< aihtl register */
-#define TCS34725_REG_PERS           0x8C        /**< pers register */
-#define TCS34725_REG_CONFIG         0x8D        /**< config register */
-#define TCS34725_REG_CONTROL        0x8F        /**< control register */
-#define TCS34725_REG_ID             0x92        /**< id register */
-#define TCS34725_REG_STATUS         0x93        /**< status register */
-#define TCS34725_REG_CDATAL         0xB4        /**< cdatal register */
-#define TCS34725_REG_CDATAH         0xB5        /**< cdatah register */
-#define TCS34725_REG_RDATAL         0xB6        /**< rdatal register */
-#define TCS34725_REG_RDATAH         0xB7        /**< rdatah register */
-#define TCS34725_REG_GDATAL         0xB8        /**< gdatal register */
-#define TCS34725_REG_GDATAH         0xB9        /**< gdatah register */
-#define TCS34725_REG_BDATAL         0xBA        /**< bdatal register */
-#define TCS34725_REG_BDATAH         0xBB        /**< bdatah register */
-#define TCS34725_REG_CLEAR          0xE6        /**< clear register */
-
-/**
- * @brief iic address definition
- */
-#define TCS34725_ADDRESS        (0x29 << 1)        /**< iic address */
+#define TCS34725_ADDRESS        (0x29 << 1)        /**< i2c address */
 
 /**
  * @brief     enable or disable the rgbc interrupt
@@ -105,7 +98,7 @@ uint8_t tcs34725_set_rgbc_interrupt(tcs34725_handle_t *handle, tcs34725_bool_t e
         return 3;                                                                                /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read enable config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read enable config */
     if (res != 0)                                                                                /* check the result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                /* read register failed */
@@ -114,7 +107,7 @@ uint8_t tcs34725_set_rgbc_interrupt(tcs34725_handle_t *handle, tcs34725_bool_t e
     }
     prev &= ~(1 << 4);                                                                           /* clear interrupt */
     prev |= enable << 4;                                                                         /* set enable */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
     if (res != 0)                                                                                /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                               /* write register failed */
@@ -149,7 +142,7 @@ uint8_t tcs34725_get_rgbc_interrupt(tcs34725_handle_t *handle, tcs34725_bool_t *
         return 3;                                                                              /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read enable config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read enable config */
     if (res != 0)                                                                              /* check the result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                              /* read register failed */
@@ -186,7 +179,7 @@ uint8_t tcs34725_set_wait(tcs34725_handle_t *handle, tcs34725_bool_t enable)
         return 3;                                                                                /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read enable config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read enable config */
     if (res != 0)                                                                                /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                /* read register failed */
@@ -195,7 +188,7 @@ uint8_t tcs34725_set_wait(tcs34725_handle_t *handle, tcs34725_bool_t enable)
     }
     prev &= ~(1 << 3);                                                                           /* clear enable bit */
     prev |= enable << 3;                                                                         /* set enable */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
     if (res != 0)                                                                                /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                               /* write register failed */
@@ -230,7 +223,7 @@ uint8_t tcs34725_get_wait(tcs34725_handle_t *handle, tcs34725_bool_t *enable)
         return 3;                                                                              /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read config */
     if (res != 0)                                                                              /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                              /* read register failed */
@@ -267,7 +260,7 @@ uint8_t tcs34725_set_rgbc(tcs34725_handle_t *handle, tcs34725_bool_t enable)
         return 3;                                                                                /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read config */
     if (res != 0)                                                                                /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                /* read register failed */
@@ -276,7 +269,7 @@ uint8_t tcs34725_set_rgbc(tcs34725_handle_t *handle, tcs34725_bool_t enable)
     }
     prev &= ~(1 << 1);                                                                           /* clear enable bit */
     prev |= enable << 1;                                                                         /* set enable */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
     if (res != 0)                                                                                /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                               /* write register failed */
@@ -311,7 +304,7 @@ uint8_t tcs34725_get_rgbc(tcs34725_handle_t *handle, tcs34725_bool_t *enable)
         return 3;                                                                              /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read enable config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read enable config */
     if (res != 0)                                                                              /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                              /* read register failed */
@@ -348,7 +341,7 @@ uint8_t tcs34725_set_power_on(tcs34725_handle_t *handle, tcs34725_bool_t enable)
         return 3;                                                                                /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);          /* read config */
     if (res != 0)                                                                                /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                /* read register failed */
@@ -357,7 +350,7 @@ uint8_t tcs34725_set_power_on(tcs34725_handle_t *handle, tcs34725_bool_t enable)
     }
     prev &= ~(1 << 0);                                                                           /* clear enable bit */
     prev |= enable << 0;                                                                         /* set enable */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);         /* write config */
     if (res != 0)                                                                                /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                               /* write register failed */
@@ -392,7 +385,7 @@ uint8_t tcs34725_get_power_on(tcs34725_handle_t *handle, tcs34725_bool_t *enable
         return 3;                                                                              /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read enable config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);        /* read enable config */
     if (res != 0)                                                                              /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                              /* read register failed */
@@ -429,7 +422,7 @@ uint8_t tcs34725_set_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_i
         return 3;                                                                              /* return error */
     }
     
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_ATIME, (uint8_t *)&t, 1);           /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_ATIME, (uint8_t *)&t, 1);           /* write config */
     if (res != 0)                                                                              /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                             /* write register failed */
@@ -464,7 +457,7 @@ uint8_t tcs34725_get_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_i
         return 3;                                                                            /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ATIME, (uint8_t *)t, 1);           /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ATIME, (uint8_t *)t, 1);           /* read config */
     if (res != 0)                                                                            /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                           /* write register failed */
@@ -499,7 +492,7 @@ uint8_t tcs34725_set_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t t
         return 3;                                                                               /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_CONFIG, (uint8_t *)&prev, 1);         /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CONFIG, (uint8_t *)&prev, 1);         /* read config */
     if (res != 0)                                                                               /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                               /* read register failed */
@@ -509,7 +502,7 @@ uint8_t tcs34725_set_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t t
     bit = (t & 0x100) >> 8;                                                                     /* get bit */
     prev &= ~(1 << 1);                                                                          /* clear wait time bit */
     prev |= bit << 1;                                                                           /* set bit */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_CONFIG, (uint8_t *)&prev, 1);        /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_CONFIG, (uint8_t *)&prev, 1);        /* write config */
     if (res != 0)                                                                               /* check result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                              /* write register failed */
@@ -517,7 +510,7 @@ uint8_t tcs34725_set_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t t
         return 1;                                                                               /* return error */
     }
     prev = t & 0xFF;                                                                            /* get time */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_WTIME, (uint8_t *)&prev, 1);         /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_WTIME, (uint8_t *)&prev, 1);         /* write config */
     if (res != 0)                                                                               /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                              /* write register failed */
@@ -552,7 +545,7 @@ uint8_t tcs34725_get_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t *
         return 3;                                                                              /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_CONFIG, (uint8_t *)&prev, 1);        /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CONFIG, (uint8_t *)&prev, 1);        /* read config */
     if (res != 0)                                                                              /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                              /* read failed */
@@ -561,7 +554,7 @@ uint8_t tcs34725_get_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t *
     }
     prev &= 1 << 1;                                                                            /* get wait time bit */
     bit = (prev >> 1) & 0x01;                                                                  /* get wait time */
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_WTIME, (uint8_t *)&prev, 1);         /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_WTIME, (uint8_t *)&prev, 1);         /* read config */
     if (res != 0)                                                                              /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                              /* read register failed */
@@ -600,7 +593,7 @@ uint8_t tcs34725_set_rgbc_clear_low_interrupt_threshold(tcs34725_handle_t *handl
     
     buf[0] = threshold & 0xFF;                                                               /* get threshold LSB */
     buf[1] = (threshold >> 8) & 0xFF;                                                        /* get threshold MSB */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_AILTL, (uint8_t *)buf, 2);        /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_AILTL, (uint8_t *)buf, 2);        /* write config */
     if (res != 0)                                                                            /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                           /* write register failed */
@@ -636,7 +629,7 @@ uint8_t tcs34725_get_rgbc_clear_low_interrupt_threshold(tcs34725_handle_t *handl
     }
     
     memset(buf, 0, sizeof(uint8_t) * 2);                                                    /* clear the buffer */
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_AILTL, (uint8_t *)buf, 2);        /* read ailtl */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_AILTL, (uint8_t *)buf, 2);        /* read ailtl */
     if (res != 0)                                                                           /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                           /* read register failed */
@@ -675,7 +668,7 @@ uint8_t tcs34725_set_rgbc_clear_high_interrupt_threshold(tcs34725_handle_t *hand
     
     buf[0] = threshold & 0xFF;                                                               /* get threshold LSB */
     buf[1] = (threshold >> 8) & 0xFF;                                                        /* get threshold MSB */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_AIHTL, (uint8_t *)buf, 2);        /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_AIHTL, (uint8_t *)buf, 2);        /* write config */
     if (res != 0)                                                                            /* check the result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                           /* write register failed */
@@ -711,7 +704,7 @@ uint8_t tcs34725_get_rgbc_clear_high_interrupt_threshold(tcs34725_handle_t *hand
     }
     
     memset(buf, 0, sizeof(uint8_t) * 2);                                                    /* clear the buffer */
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_AIHTL, (uint8_t *)buf, 2);        /* read aihtl */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_AIHTL, (uint8_t *)buf, 2);        /* read aihtl */
     if (res != 0)                                                                           /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                           /* read register failed */
@@ -747,7 +740,7 @@ uint8_t tcs34725_set_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrup
         return 3;                                                                              /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_PERS, (uint8_t *)&prev, 1);          /* read pers */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_PERS, (uint8_t *)&prev, 1);          /* read pers */
     if (res != 0)                                                                              /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                              /* read register failed */
@@ -756,7 +749,7 @@ uint8_t tcs34725_set_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrup
     }
     prev &= ~0x0F;                                                                             /* clear mode bit */
     prev |= mode;                                                                              /* set mode */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_PERS, (uint8_t *)&prev, 1);         /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_PERS, (uint8_t *)&prev, 1);         /* write config */
     if (res != 0)                                                                              /* check result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                             /* write register failed */
@@ -791,7 +784,7 @@ uint8_t tcs34725_get_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrup
         return 3;                                                                            /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_PERS, (uint8_t *)&prev, 1);        /* read pers */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_PERS, (uint8_t *)&prev, 1);        /* read pers */
     if (res != 0)                                                                            /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                            /* read register failed */
@@ -828,7 +821,7 @@ uint8_t tcs34725_set_gain(tcs34725_handle_t *handle, tcs34725_gain_t gain)
         return 3;                                                                                 /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);          /* read control */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);          /* read control */
     if (res != 0)                                                                                 /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                 /* read register failed */
@@ -837,7 +830,7 @@ uint8_t tcs34725_set_gain(tcs34725_handle_t *handle, tcs34725_gain_t gain)
     }
     prev &= ~0x03;                                                                                /* get gain bits */
     prev |= gain;                                                                                 /* set gain */
-    res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);         /* write config */
+    res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);         /* write config */
     if (res != 0)                                                                                 /* check result */
     {
         handle->debug_print("tcs34725: write register failed.\n");                                /* write register failed */
@@ -872,7 +865,7 @@ uint8_t tcs34725_get_gain(tcs34725_handle_t *handle, tcs34725_gain_t *gain)
         return 3;                                                                               /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);        /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);        /* read config */
     if (res != 0)                                                                               /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                               /* read register failed */
@@ -913,7 +906,7 @@ uint8_t tcs34725_read_rgbc(tcs34725_handle_t *handle, uint16_t *red, uint16_t *g
         return 3;                                                                                /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_STATUS, (uint8_t *)&prev, 1);          /* read status */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_STATUS, (uint8_t *)&prev, 1);          /* read status */
     if (res != 0)                                                                                /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                /* read register failed */
@@ -922,7 +915,7 @@ uint8_t tcs34725_read_rgbc(tcs34725_handle_t *handle, uint16_t *red, uint16_t *g
     }
     if ((prev & (1 << 4)) != 0)                                                                  /* find interrupt */
     {
-        res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
+        res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
         if (res != 0)                                                                            /* check result */
         {
             handle->debug_print("tcs34725: clear interrupt failed.\n");                          /* clear interrupt failed */
@@ -932,7 +925,7 @@ uint8_t tcs34725_read_rgbc(tcs34725_handle_t *handle, uint16_t *red, uint16_t *g
     }
     if ((prev & 0x01) != 0)                                                                      /* if data ready */
     {
-        res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_CDATAL, (uint8_t *)buf, 8);        /* read data */
+        res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CDATAL, (uint8_t *)buf, 8);        /* read data */
         if (res != 0)                                                                            /* check result */
         {
             handle->debug_print("tcs34725: read failed.\n");                                     /* read failed */
@@ -981,7 +974,7 @@ uint8_t tcs34725_read_rgb(tcs34725_handle_t *handle, uint16_t *red, uint16_t *gr
         return 3;                                                                                /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_STATUS, (uint8_t *)&prev, 1);          /* read config */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_STATUS, (uint8_t *)&prev, 1);          /* read config */
     if (res != 0)                                                                                /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                /* read register failed */
@@ -990,7 +983,7 @@ uint8_t tcs34725_read_rgb(tcs34725_handle_t *handle, uint16_t *red, uint16_t *gr
     }
     if ((prev & (1 << 4)) != 0)                                                                  /* find interrupt */
     {
-        res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
+        res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
         if (res != 0)                                                                            /* check result */
         {
             handle->debug_print("tcs34725: clear interrupt failed.\n");                          /* clear interrupt failed */
@@ -1000,7 +993,7 @@ uint8_t tcs34725_read_rgb(tcs34725_handle_t *handle, uint16_t *red, uint16_t *gr
     }
     if ((prev & 0x01) != 0)                                                                      /* if data ready */
     {
-        res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_CDATAL, (uint8_t *)buf, 8);        /* read data */
+        res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CDATAL, (uint8_t *)buf, 8);        /* read data */
         if (res != 0)                                                                            /* check result */
         {
             handle->debug_print("tcs34725: read failed.\n");                                     /* read data failed */
@@ -1046,7 +1039,7 @@ uint8_t tcs34725_read_c(tcs34725_handle_t *handle, uint16_t *clear)
         return 3;                                                                                /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_STATUS, (uint8_t *)&prev, 1);          /* read status */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_STATUS, (uint8_t *)&prev, 1);          /* read status */
     if (res != 0)                                                                                /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                                /* read register failed */
@@ -1055,7 +1048,7 @@ uint8_t tcs34725_read_c(tcs34725_handle_t *handle, uint16_t *clear)
     }
     if ((prev & (1 << 4)) != 0)                                                                  /* find interrupt */
     {
-        res = handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
+        res = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
         if (res != 0)                                                                            /* check result */
         {
             handle->debug_print("tcs34725: clear interrupt failed.\n");                          /* clear interrupt failed */
@@ -1065,7 +1058,7 @@ uint8_t tcs34725_read_c(tcs34725_handle_t *handle, uint16_t *clear)
     }
     if ((prev & 0x01) != 0)                                                                      /* if data ready */
     {
-        res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_CDATAL, (uint8_t *)buf, 8);        /* read data */
+        res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CDATAL, (uint8_t *)buf, 8);        /* read data */
         if (res != 0)                                                                            /* check result */
         {
             handle->debug_print("tcs34725: read failed.\n");                                     /* read failed */
@@ -1089,7 +1082,7 @@ uint8_t tcs34725_read_c(tcs34725_handle_t *handle, uint16_t *clear)
  * @param[in] *handle pointer to a tcs34725 handle structure
  * @return    status code
  *            - 0 success
- *            - 1 iic initialization failed
+ *            - 1 i2c initialization failed
  *            - 2 handle is NULL
  *            - 3 linked functions is NULL
  * @note      none
@@ -1106,27 +1099,27 @@ uint8_t tcs34725_init(tcs34725_handle_t *handle)
     {
         return 3;                                                                        /* return error */
     }
-    if (handle->iic_init == NULL)                                                        /* check iic_init */
+    if (handle->i2c_init == NULL)                                                        /* check i2c_init */
     {
-        handle->debug_print("tcs34725: iic_init is null.\n");                            /* iic_init is null */
+        handle->debug_print("tcs34725: i2c_init is null.\n");                            /* i2c_init is null */
         
         return 3;                                                                        /* return error */
     }
-    if (handle->iic_deinit == NULL)                                                      /* check iic_init */
+    if (handle->i2c_deinit == NULL)                                                      /* check i2c_init */
     {
-        handle->debug_print("tcs34725: iic_deinit is null.\n");                          /* iic_deinit is null */
+        handle->debug_print("tcs34725: i2c_deinit is null.\n");                          /* i2c_deinit is null */
         
         return 3;                                                                        /* return error */
     }
-    if (handle->iic_read == NULL)                                                        /* check iic_read */
+    if (handle->i2c_read == NULL)                                                        /* check i2c_read */
     {
-        handle->debug_print("tcs34725: iic_read is null.\n");                            /* iic_read is null */
+        handle->debug_print("tcs34725: i2c_read is null.\n");                            /* i2c_read is null */
         
         return 3;                                                                        /* return error */
     }
-    if (handle->iic_write == NULL)                                                       /* check iic_write */
+    if (handle->i2c_write == NULL)                                                       /* check i2c_write */
     {
-        handle->debug_print("tcs34725: iic_write is null.\n");                           /* iic_write is null */
+        handle->debug_print("tcs34725: i2c_write is null.\n");                           /* i2c_write is null */
         
         return 3;                                                                        /* return error */
     }
@@ -1137,24 +1130,24 @@ uint8_t tcs34725_init(tcs34725_handle_t *handle)
         return 3;                                                                        /* return error */
     }
     
-    if (handle->iic_init() != 0)                                                         /* iic init */
+    if (handle->i2c_init() != 0)                                                         /* i2c init */
     {
-        handle->debug_print("tcs34725: iic init failed.\n");                             /* iic init failed */
+        handle->debug_print("tcs34725: i2c init failed.\n");                             /* i2c init failed */
         
         return 1;                                                                        /* return error */
     }
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ID, (uint8_t *)&id, 1);        /* read id */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ID, (uint8_t *)&id, 1);        /* read id */
     if (res != 0)                                                                        /* check result */
     {
         handle->debug_print("tcs34725: read id failed.\n");                              /* read id failed */
-        (void)handle->iic_deinit();                                                      /* iic deinit */
+        (void)handle->i2c_deinit();                                                      /* i2c deinit */
         
         return 1;                                                                        /* return error */
     }
     if ((id != 0x44) && (id != 0x4D))                                                    /* check id */
     {
         handle->debug_print("tcs34725: id is error.\n");                                 /* id is error */
-        (void)handle->iic_deinit();                                                      /* iic deinit */
+        (void)handle->i2c_deinit();                                                      /* i2c deinit */
         
         return 1;                                                                        /* return error */
     }
@@ -1168,7 +1161,7 @@ uint8_t tcs34725_init(tcs34725_handle_t *handle)
  * @param[in] *handle pointer to a tcs34725 handle structure
  * @return    status code
  *            - 0 success
- *            - 1 iic deinit failed
+ *            - 1 i2c deinit failed
  *            - 2 handle is NULL
  *            - 3 handle is not initialized
  * @note      none
@@ -1186,7 +1179,7 @@ uint8_t tcs34725_deinit(tcs34725_handle_t *handle)
         return 3;                                                                             /* return error */
     }
  
-    res = handle->iic_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);       /* read enable */
+    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1);       /* read enable */
     if (res != 0)                                                                             /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");                             /* read register failed */
@@ -1194,15 +1187,15 @@ uint8_t tcs34725_deinit(tcs34725_handle_t *handle)
         return 1;                                                                             /* return error */
     }
     prev &= ~(1 << 0);                                                                        /* disable */
-    if (handle->iic_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1) != 0)   /* write enable */
+    if (handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_ENABLE, (uint8_t *)&prev, 1) != 0)   /* write enable */
     {
          handle->debug_print("tcs34725: write register failed.\n");                           /* write register failed */
         
         return 1;                                                                             /* return error */
     }
-    if (handle->iic_deinit() != 0)                                                            /* iic deinit */
+    if (handle->i2c_deinit() != 0)                                                            /* i2c deinit */
     {
-        handle->debug_print("tcs34725: iic deinit failed.\n");                                /* iic deinit failed */
+        handle->debug_print("tcs34725: i2c deinit failed.\n");                                /* i2c deinit failed */
         
         return 1;                                                                             /* return error */
     }   
@@ -1214,7 +1207,7 @@ uint8_t tcs34725_deinit(tcs34725_handle_t *handle)
 /**
  * @brief     set the chip register
  * @param[in] *handle pointer to a tcs34725 handle structure
- * @param[in] reg iic register address
+ * @param[in] reg i2c register address
  * @param[in] *buf pointer to a data buffer
  * @param[in] len data buffer length
  * @return    status code
@@ -1237,7 +1230,7 @@ uint8_t tcs34725_set_reg(tcs34725_handle_t *handle, uint8_t reg, uint8_t *buf, u
         return 3;                                                         /* return error */
     }
     
-    res = handle->iic_write(TCS34725_ADDRESS, reg, buf, len);             /* write data */
+    res = handle->i2c_write(TCS34725_ADDRESS, reg, buf, len);             /* write data */
     if (res != 0)                                                         /* check result */
     {
         handle->debug_print("tcs34725: write register failed.\n");        /* write register failed */
@@ -1251,7 +1244,7 @@ uint8_t tcs34725_set_reg(tcs34725_handle_t *handle, uint8_t reg, uint8_t *buf, u
 /**
  * @brief      get the chip register
  * @param[in]  *handle pointer to a tcs34725 handle structure
- * @param[in]  reg iic register address
+ * @param[in]  reg i2c register address
  * @param[out] *buf pointer to a data buffer
  * @param[in]  len data buffer length
  * @return     status code
@@ -1274,7 +1267,7 @@ uint8_t tcs34725_get_reg(tcs34725_handle_t *handle, uint8_t reg, uint8_t *buf, u
         return 3;                                                        /* return error */
     }
     
-    res = handle->iic_read(TCS34725_ADDRESS, reg, buf, len);             /* read data */
+    res = handle->i2c_read(TCS34725_ADDRESS, reg, buf, len);             /* read data */
     if (res != 0)                                                        /* check result */
     {
         handle->debug_print("tcs34725: read register failed.\n");        /* read register failed */
@@ -1303,7 +1296,7 @@ uint8_t tcs34725_info(tcs34725_info_t *info)
     memset(info, 0, sizeof(tcs34725_info_t));                       /* initialize tcs34725 info structure */
     strncpy(info->chip_name, CHIP_NAME, 32);                        /* copy chip name */
     strncpy(info->manufacturer_name, MANUFACTURER_NAME, 32);        /* copy manufacturer name */
-    strncpy(info->interface, "IIC", 8);                             /* copy interface name */
+    strncpy(info->interface, "i2c", 8);                             /* copy interface name */
     info->supply_voltage_min_v = SUPPLY_VOLTAGE_MIN;                /* set minimal supply voltage */
     info->supply_voltage_max_v = SUPPLY_VOLTAGE_MAX;                /* set maximum supply voltage */
     info->max_current_ma = MAX_CURRENT;                             /* set maximum current */

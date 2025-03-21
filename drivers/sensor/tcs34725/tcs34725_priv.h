@@ -1,4 +1,5 @@
 /**
+ * Copyright (c) 2025 - LSITEC - Kaue Rodrigues Barbosa
  * Copyright (c) 2015 - present LibDriver All rights reserved
  * 
  * The MIT License (MIT)
@@ -21,30 +22,70 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE. 
  *
- * @file      driver_tcs34725.h
- * @brief     driver tcs34725 header file
+ * @file      tsc34725_priv.h
+ * @brief     tcs34725 driver header private file
  * @version   2.0.0
- * @author    Shifeng Li
- * @date      2021-02-28
+ * @author    Kaue Rodrigues Barbosa
+ * @date      2025-03-19
  *
  * <h3>history</h3>
  * <table>
  * <tr><th>Date        <th>Version  <th>Author      <th>Description
+ * <tr><td>2025/03/20  <td>2.0      <td>Kaue Rodrigues Barbosa <td>adaptation to Zephyr
  * <tr><td>2021/02/28  <td>2.0      <td>Shifeng Li  <td>format the code
  * <tr><td>2020/10/30  <td>1.0      <td>Shifeng Li  <td>first upload
  * </table>
  */
 
-#ifndef DRIVER_TCS34725_H
-#define DRIVER_TCS34725_H
+#ifndef TCS34725_PRIV_H
+#define TCS34725_PRIV_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
+#include <zephyr/device.h>
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/gpio.h>
 
 #ifdef __cplusplus
 extern "C"{
 #endif
+
+/**
+ * @brief chip information definition
+ */
+#define CHIP_NAME                 "AMS TCS34725"        /**< chip name */
+#define MANUFACTURER_NAME         "AMS"                 /**< manufacturer name */
+#define SUPPLY_VOLTAGE_MIN        2.7f                  /**< chip min supply voltage */
+#define SUPPLY_VOLTAGE_MAX        3.6f                  /**< chip max supply voltage */
+#define MAX_CURRENT               20.0f                 /**< chip max current */
+#define TEMPERATURE_MIN           -40.0f                /**< chip min operating temperature */
+#define TEMPERATURE_MAX           85.0f                 /**< chip max operating temperature */
+#define DRIVER_VERSION            2000                  /**< driver version */
+
+/**
+ * @brief chip register definition
+ */
+#define TCS34725_REG_ENABLE         0x80        /**< enable register */
+#define TCS34725_REG_ATIME          0x81        /**< atime register */
+#define TCS34725_REG_WTIME          0x83        /**< wtime register */
+#define TCS34725_REG_AILTL          0xA4        /**< ailtl register */
+#define TCS34725_REG_AILTH          0xA5        /**< ailth register */
+#define TCS34725_REG_AIHTL          0xA6        /**< aihtl register */
+#define TCS34725_REG_AIHTH          0xA7        /**< aihtl register */
+#define TCS34725_REG_PERS           0x8C        /**< pers register */
+#define TCS34725_REG_CONFIG         0x8D        /**< config register */
+#define TCS34725_REG_CONTROL        0x8F        /**< control register */
+#define TCS34725_REG_ID             0x92        /**< id register */
+#define TCS34725_REG_STATUS         0x93        /**< status register */
+#define TCS34725_REG_CDATAL         0xB4        /**< cdatal register */
+#define TCS34725_REG_CDATAH         0xB5        /**< cdatah register */
+#define TCS34725_REG_RDATAL         0xB6        /**< rdatal register */
+#define TCS34725_REG_RDATAH         0xB7        /**< rdatah register */
+#define TCS34725_REG_GDATAL         0xB8        /**< gdatal register */
+#define TCS34725_REG_GDATAH         0xB9        /**< gdatah register */
+#define TCS34725_REG_BDATAL         0xBA        /**< bdatal register */
+#define TCS34725_REG_BDATAH         0xBB        /**< bdatah register */
+#define TCS34725_REG_CLEAR          0xE6        /**< clear register */
 
 /**
  * @defgroup tcs34725_driver tcs34725 driver function
@@ -149,10 +190,10 @@ typedef enum
  */
 typedef struct tcs34725_handle_s
 {
-    uint8_t (*iic_init)(void);                                                          /**< point to an iic_init function address */
-    uint8_t (*iic_deinit)(void);                                                        /**< point to an iic_deinit function address */
-    uint8_t (*iic_read)(uint8_t addr, uint8_t reg, uint8_t *buf, uint16_t len);         /**< point to an iic_read function address */
-    uint8_t (*iic_write)(uint8_t addr, uint8_t reg, uint8_t *buf, uint16_t len);        /**< point to an iic_write function address */
+    uint8_t (*i2c_init)(void);                                                          /**< point to an i2c_init function address */
+    uint8_t (*i2c_deinit)(void);                                                        /**< point to an i2c_deinit function address */
+    uint8_t (*i2c_read)(uint8_t addr, uint8_t reg, uint8_t *buf, uint16_t len);         /**< point to an i2c_read function address */
+    uint8_t (*i2c_write)(uint8_t addr, uint8_t reg, uint8_t *buf, uint16_t len);        /**< point to an i2c_write function address */
     void (*delay_ms)(uint32_t ms);                                                      /**< point to a delay_ms function address */
     void (*debug_print)(const char *const fmt, ...);                                    /**< point to a debug_print function address */
     uint8_t  inited;                                                                    /**< inited flag */
@@ -174,6 +215,36 @@ typedef struct tcs34725_info_s
     uint32_t driver_version;           /**< driver version */
 } tcs34725_info_t;
 
+
+struct tcs34725_data {
+	uint16_t red;
+    uint16_t green;
+    uint16_t blue;
+    uint16_t clear;
+};
+
+struct tcs34725_config {
+	struct i2c_dt_spec i2c;
+};
+
+// Writes data to a register
+static int tcs34725_register_write(const struct device *dev, uint8_t buf, uint32_t size);
+
+// Reads data from a register
+static int tcs34725_register_read(const struct device *dev, uint8_t buf, uint32_t size);
+
+// Writes command in the command register
+static int tcs34725_command_write(const struct device *dev,  uint8_t cmd);
+
+// Fetches sample data
+static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel channel);
+
+// Gets desired attribute
+static int tcs34725_att_get(const struct device *dev, enum sensor_channel channel, struct sensor_value value);
+
+// Sets desired attribute 
+static int tcs34725_att_get(const struct device *dev, enum sensor_channel channel, struct sensor_value value);
+
 /**
  * @}
  */
@@ -194,36 +265,36 @@ typedef struct tcs34725_info_s
 #define DRIVER_TCS34725_LINK_INIT(HANDLE, STRUCTURE)   memset(HANDLE, 0, sizeof(STRUCTURE))
 
 /**
- * @brief     link iic_init function
+ * @brief     link i2c_init function
  * @param[in] HANDLE pointer to a tcs34725 handle structure
- * @param[in] FUC pointer to an iic_init function address
+ * @param[in] FUC pointer to an i2c_init function address
  * @note      none
  */
-#define DRIVER_TCS34725_LINK_IIC_INIT(HANDLE, FUC)    (HANDLE)->iic_init = FUC
+#define DRIVER_TCS34725_LINK_I2C_INIT(HANDLE, FUC)    (HANDLE)->i2c_init = FUC
 
 /**
- * @brief     link iic_deinit function
+ * @brief     link i2c_deinit function
  * @param[in] HANDLE pointer to a tcs34725 handle structure
- * @param[in] FUC pointer to an iic_deinit function address
+ * @param[in] FUC pointer to an i2c_deinit function address
  * @note      none
  */
-#define DRIVER_TCS34725_LINK_IIC_DEINIT(HANDLE, FUC)  (HANDLE)->iic_deinit = FUC
+#define DRIVER_TCS34725_LINK_I2C_DEINIT(HANDLE, FUC)  (HANDLE)->i2c_deinit = FUC
 
 /**
- * @brief     link iic_read function
+ * @brief     link i2c_read function
  * @param[in] HANDLE pointer to a tcs34725 handle structure
- * @param[in] FUC pointer to an iic_read function address
+ * @param[in] FUC pointer to an i2c_read function address
  * @note      none
  */
-#define DRIVER_TCS34725_LINK_IIC_READ(HANDLE, FUC)    (HANDLE)->iic_read = FUC
+#define DRIVER_TCS34725_LINK_I2C_READ(HANDLE, FUC)    (HANDLE)->i2c_read = FUC
 
 /**
- * @brief     link iic_write function
+ * @brief     link i2c_write function
  * @param[in] HANDLE pointer to a tcs34725 handle structure
- * @param[in] FUC pointer to an iic_write function address
+ * @param[in] FUC pointer to an i2c_write function address
  * @note      none
  */
-#define DRIVER_TCS34725_LINK_IIC_WRITE(HANDLE, FUC)   (HANDLE)->iic_write = FUC
+#define DRIVER_TCS34725_LINK_I2C_WRITE(HANDLE, FUC)   (HANDLE)->i2c_write = FUC
 
 /**
  * @brief     link delay_ms function
@@ -267,7 +338,7 @@ uint8_t tcs34725_info(tcs34725_info_t *info);
  * @param[in] *handle pointer to a tcs34725 handle structure
  * @return    status code
  *            - 0 success
- *            - 1 iic initialization failed
+ *            - 1 i2c initialization failed
  *            - 2 handle is NULL
  *            - 3 linked functions is NULL
  * @note      none
@@ -279,7 +350,7 @@ uint8_t tcs34725_init(tcs34725_handle_t *handle);
  * @param[in] *handle pointer to a tcs34725 handle structure
  * @return    status code
  *            - 0 success
- *            - 1 iic deinit failed
+ *            - 1 i2c deinit failed
  *            - 2 handle is NULL
  *            - 3 handle is not initialized
  * @note      none
@@ -615,7 +686,7 @@ uint8_t tcs34725_get_rgbc_clear_high_interrupt_threshold(tcs34725_handle_t *hand
 /**
  * @brief     set the chip register
  * @param[in] *handle pointer to a tcs34725 handle structure
- * @param[in] reg iic register address
+ * @param[in] reg i2c register address
  * @param[in] *buf pointer to a data buffer
  * @param[in] len data buffer length
  * @return    status code
@@ -630,7 +701,7 @@ uint8_t tcs34725_set_reg(tcs34725_handle_t *handle, uint8_t reg, uint8_t *buf, u
 /**
  * @brief      get the chip register
  * @param[in]  *handle pointer to a tcs34725 handle structure
- * @param[in]  reg iic register address
+ * @param[in]  reg i2c register address
  * @param[out] *buf pointer to a data buffer
  * @param[in]  len data buffer length
  * @return     status code
