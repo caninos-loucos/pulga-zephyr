@@ -62,4 +62,5 @@ endif()
 
 if(CONFIG_ZCBOR)
     include(src/sensors/bme280/CMakeLists.txt)
+    include(src/sensors/l86_m33/CMakeLists.txt)
 endif()

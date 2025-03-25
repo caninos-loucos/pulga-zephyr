@@ -68,6 +68,7 @@ static int encode_zcbor_string(uint32_t *data_words, uint8_t *encoded_data, size
     if (err != ZCBOR_SUCCESS)
     {
         LOG_ERR("Could not encode bme280 data into zcbor, error %d", err);
+        return -1;
     }
 
     return encoded_size;

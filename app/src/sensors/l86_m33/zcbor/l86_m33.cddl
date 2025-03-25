@@ -1,0 +1,1 @@
+ZcborPayloadL86_M33 = [ latitude: float, longitude: float, timestamp: int ]

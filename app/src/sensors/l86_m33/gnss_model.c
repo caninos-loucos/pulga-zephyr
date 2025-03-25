@@ -1,5 +1,9 @@
 #include <stdlib.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/timeutil.h>
+#include <zcbor_encode.h>
+#include <sensors/l86_m33/zcbor/l86_m33_encode.h>
+#include <sensors/l86_m33/zcbor/l86_m33_encode_types.h>
 #include <sensors/l86_m33/l86_m33_service.h>
 
 LOG_MODULE_REGISTER(gnss_model, CONFIG_APP_LOG_LEVEL);
@@ -74,12 +78,45 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
     return sizeof(SensorModelGNSS);
 }
 
+static int encode_zcbor_string(uint32_t *data_words, uint8_t *encoded_data, size_t payload_size)
+{
+    struct ZcborPayloadL86_M33 zcbor_input;
+    int encoded_size;
+
+    SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
+
+    struct tm structured_time = {
+        .tm_sec = gnss_model->real_time.millisecond / 1000,
+        .tm_min = gnss_model->real_time.minute,
+        .tm_hour = gnss_model->real_time.hour,
+        .tm_mday = gnss_model->real_time.month_day,
+        .tm_mon = gnss_model->real_time.month - 1,
+        .tm_year = gnss_model->real_time.century_year + 2000 - TIME_UTILS_BASE_YEAR,
+    };
+    uint32_t gps_epoch = timeutil_timegm64(&structured_time);
+    LOG_INF("GNSS time: %d", gps_epoch);
+
+    zcbor_input.latitude = gnss_model->navigation.latitude;
+    zcbor_input.longitude = gnss_model->navigation.longitude;
+    zcbor_input.timestamp = gps_epoch;
+
+    int err = cbor_encode_ZcborPayloadL86_M33(encoded_data, sizeof(encoded_data), &zcbor_input, &encoded_size);
+    if (err != ZCBOR_SUCCESS)
+    {
+        LOG_ERR("Could not encode lm86_m33 data into zcbor, error %d", err);
+        return -1;
+    }
+
+    return encoded_size;
+}
+
 // Registers GNSS model callbacks
 DataAPI *register_gnss_model_callbacks()
 {
     gnss_model_api.num_data_words = GNSS_MODEL_WORDS;
     gnss_model_api.encode_verbose = encode_verbose;
     gnss_model_api.encode_minimalist = encode_minimalist;
+    gnss_model_api.encode_zcbor = encode_zcbor_string;
     gnss_model_api.encode_raw_bytes = encode_raw_bytes;
     // gnss_model_api.split_values = split_values;
     return &gnss_model_api;
