@@ -1,0 +1,1 @@
+ZcborPayloadBME280 = [ temperature: int ]
