@@ -221,6 +221,8 @@ struct tcs34725_data {
     uint16_t green;
     uint16_t blue;
     uint16_t clear;
+    // Not sure if this is how it should be done
+    struct tcs34725_handle_s *handle;
 };
 
 struct tcs34725_config {
@@ -239,11 +241,12 @@ static int tcs34725_command_write(const struct device *dev,  uint8_t cmd);
 // Fetches sample data
 static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel channel);
 
-// Gets desired attribute
-static int tcs34725_att_get(const struct device *dev, enum sensor_channel channel, struct sensor_value value);
+static int tcs34725_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
 
+// Gets desired attribute
+static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, struct sensor_attibute attribute, struct sensor_value *value);
 // Sets desired attribute 
-static int tcs34725_att_get(const struct device *dev, enum sensor_channel channel, struct sensor_value value);
+static int tcs34725_attr_set(const struct device *dev, enum sensor_channel channel, struct sensor_attibute attribute, struct sensor_value *value);
 
 /**
  * @}

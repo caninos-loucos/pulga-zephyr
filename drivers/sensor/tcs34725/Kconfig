@@ -1,13 +1,13 @@
-# DFROBOT TCS34725 Color sensor configuration options
+# AMS TCS34725 Color sensor configuration options
 
 # Copyright (c) 2025 LSITEC - Kaue Rodrigues Barbosa
 # SPDX-License-Identifier: Apache-2.0
 
 config TCS34725
-	bool "DFROBOT TCS34725 Color Sensor"
+	bool "AMS TCS34725 Color Sensor"
 	select I2C
 	default y
 	select CRC
-	depends on DT_HAS_DFROBOT_TCS34725_ENABLED
+	depends on DT_HAS_AMS_TCS34725_ENABLED
 	help
 	  Enable driver for TCS34725 color sensor
