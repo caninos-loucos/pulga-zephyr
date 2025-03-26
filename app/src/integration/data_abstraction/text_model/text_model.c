@@ -1,5 +1,6 @@
 #include <zephyr/logging/log.h>
-#include <data_processing/text_model/text_model.h>
+#include <integration/data_abstraction/text_model/text_model.h>
+#include <integration/data_buffer/buffer_service.h>
 
 LOG_MODULE_REGISTER(text_model, CONFIG_APP_LOG_LEVEL);
 
