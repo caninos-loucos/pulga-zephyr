@@ -27,6 +27,7 @@ target_sources(app PRIVATE
                     src/communication/uart/uart_interface.c
                     src/integration/data_buffer/buffer_service.c
                     src/integration/data_abstraction/abstraction_service.c
+                    src/integration/data_abstraction/text_model/text_model.c
                     src/sensors/sensors_interface.c
                     src/sensors/bme280/bme280_model.c
                     src/sensors/bme280/bme280_service.c
@@ -50,11 +51,16 @@ endif()
 
 if(CONFIG_SHIELD_SCD30)
     target_sources(app PRIVATE  
-                    src/sensors/scd30/scd30_model.c
-                    src/sensors/scd30/scd30_service.c)
+                        src/sensors/scd30/scd30_model.c
+                        src/sensors/scd30/scd30_service.c)
 endif()
 
 if(NOT CONFIG_EVENT_TIMESTAMP_NONE)
     target_sources(app PRIVATE  
-                    src/integration/timestamp/timestamp_service.c)
+                        src/integration/timestamp/timestamp_service.c)
+endif()
+
+if(CONFIG_SHELL)
+    target_sources(app PRIVATE
+                        src/communication/shell_commands.c)
 endif()
