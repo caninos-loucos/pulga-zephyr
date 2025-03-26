@@ -108,7 +108,7 @@ static int encode_zcbor_string(uint32_t *data_words, uint8_t *encoded_data, size
         return -1;
     }
 
-    return snprintf(encoded_data, zcbor_output_size + 8, "g %d %s", zcbor_output_size, zcbor_output);
+    return snprintf(encoded_data, zcbor_output_size + 5, "g %d %s", zcbor_output_size, zcbor_output);
 }
 
 // Registers GNSS model callbacks
