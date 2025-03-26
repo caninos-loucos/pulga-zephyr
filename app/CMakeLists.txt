@@ -61,6 +61,6 @@ if(CONFIG_SHELL)
 endif()
 
 if(CONFIG_ZCBOR)
-    include(src/sensors/bme280/CMakeLists.txt)
-    include(src/sensors/l86_m33/CMakeLists.txt)
+    add_subdirectory(src/sensors/bme280)
+    add_subdirectory(src/sensors/l86_m33)
 endif()

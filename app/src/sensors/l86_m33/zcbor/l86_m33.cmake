@@ -13,6 +13,6 @@ target_sources(l86_m33 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/l86_m33_encode.c
     )
 target_include_directories(l86_m33 PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}/../../../../../../.venv/Lib/site-packages/zcbor/include
+    ${CMAKE_CURRENT_LIST_DIR}/../../../../../../.venv/Lib/site-packages/zcbor/include
+    ${CMAKE_CURRENT_LIST_DIR}
     )

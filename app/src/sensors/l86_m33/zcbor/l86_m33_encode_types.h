@@ -26,9 +26,9 @@ extern "C" {
 #define DEFAULT_MAX_QTY 3
 
 struct ZcborPayloadL86_M33 {
+	int32_t timestamp;
 	double latitude;
 	double longitude;
-	int32_t timestamp;
 };
 
 #ifdef __cplusplus

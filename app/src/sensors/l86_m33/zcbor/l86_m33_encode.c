@@ -33,9 +33,9 @@ static bool encode_ZcborPayloadL86_M33(
 {
 	zcbor_log("%s\r\n", __func__);
 
-	bool res = (((zcbor_list_start_encode(state, 3) && ((((zcbor_float64_encode(state, (&(*input).latitude))))
-	&& ((zcbor_float64_encode(state, (&(*input).longitude))))
-	&& ((zcbor_int32_encode(state, (&(*input).timestamp))))) || (zcbor_list_map_end_force_encode(state), false)) && zcbor_list_end_encode(state, 3))));
+	bool res = (((zcbor_list_start_encode(state, 3) && ((((zcbor_int32_encode(state, (&(*input).timestamp))))
+	&& ((zcbor_float64_encode(state, (&(*input).latitude))))
+	&& ((zcbor_float64_encode(state, (&(*input).longitude))))) || (zcbor_list_map_end_force_encode(state), false)) && zcbor_list_end_encode(state, 3))));
 
 	log_result(state, res, __func__);
 	return res;

@@ -13,6 +13,6 @@ target_sources(bme280 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/bme280_encode.c
     )
 target_include_directories(bme280 PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}/../../../../../../.venv/Lib/site-packages/zcbor/include
+    ${CMAKE_CURRENT_LIST_DIR}/../../../../../../.venv/Lib/site-packages/zcbor/include
+    ${CMAKE_CURRENT_LIST_DIR}
     )
