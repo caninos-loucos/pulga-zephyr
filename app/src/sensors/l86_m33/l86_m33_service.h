@@ -3,6 +3,7 @@
 
 #include <zephyr/drivers/gnss.h>
 #include <sensors/sensors_interface.h>
+#include <integration/data_buffer/buffer_service.h>
 
 typedef struct
 {
@@ -10,7 +11,7 @@ typedef struct
 	struct navigation_data navigation; // 8 words
 	/** UTC time when data was acquired */
 	struct gnss_time real_time; // 2 words
-
+	uint32_t timestamp; // 1 word
 } SensorModelGNSS;
 
 // Number of 32-bit words in each data item (model)

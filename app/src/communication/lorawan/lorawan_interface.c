@@ -56,10 +56,19 @@ static void lorawan_init_channel();
 // Functions that receives data from application buffer and
 // inserts it in LoRaWAN internal buffer
 static void lorawan_process_data(void *, void *, void *);
-// This is the function that actually sends the data
-static void lorawan_send_data(void *, void *, void *);
 // Sends LoRaWAN package and handles errors
 static void send_package(uint8_t *package, uint8_t package_size);
+// This is the function executed by the thread that actually sends the data
+static void lorawan_send_data(void *, void *, void *);
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
+// Resets variables used to join packets into package
+static void reset_join_variables(uint8_t *max_payload_size, uint8_t *insert_index,
+								 uint8_t *available_package_size, uint8_t *joined_data);
+// Adds data item from buffer to package
+static void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payload_size,
+								uint8_t *available_package_size, uint8_t *joined_data,
+								uint8_t *insert_index, uint32_t *encoded_data);
+#endif // CONFIG_LORAWAN_JOIN_PACKET
 
 /**
  * Definitions
@@ -147,7 +156,85 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 	}
 }
 
-// This is the function that actually sends the data
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
+void lorawan_send_data(void *param0, void *param1, void *param2)
+{
+	LOG_INF("Sending via lorawan started");
+	ARG_UNUSED(param0);
+	ARG_UNUSED(param1);
+	ARG_UNUSED(param2);
+	
+	uint8_t max_payload_size, insert_index, available_package_size, error = 0;
+	// Maximum LoRaWAN package size won't surpass 256 B
+	uint8_t joined_data[256];
+	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data);
+	
+	while (1)
+	{
+		// After waking up, transmits until buffer is empty
+		while (!lorawan_buffer_empty())
+		{
+			LOG_DBG("Resetting data item variables");
+			error = 0;
+			uint8_t encoded_data_word_size;
+			uint32_t encoded_data[MAX_32_WORDS];
+			memset(encoded_data, 0, sizeof(encoded_data));
+			// Peeking the size of the next item in the buffer
+			error = get_item_word_size(&encoded_data_word_size);
+			if (error)
+			{
+				encoded_data_word_size = MAX_32_WORDS;
+			}
+
+			// Sends package as the new item wouldn't fit in it and resets package variables to form a new one
+			if (available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
+			{
+				send_package(joined_data, max_payload_size - available_package_size);
+				reset_join_variables(&max_payload_size, &insert_index,
+									 &available_package_size, joined_data);
+				continue;
+			}
+			// Get the next packet from the internal buffer
+			error = get_lorawan_item(encoded_data, &encoded_data_word_size);
+			if (error)
+			{
+				continue;
+			}
+			add_item_to_package(encoded_data_word_size, max_payload_size,
+								&available_package_size, joined_data,
+								&insert_index, encoded_data);
+		}
+		LOG_DBG("Buffer is empty, sleeping");
+		k_sleep(K_FOREVER);
+	}
+}
+
+void reset_join_variables(uint8_t *max_payload_size, uint8_t *insert_index,
+						  uint8_t *available_package_size, uint8_t *joined_data)
+{
+	LOG_DBG("Resetting join variables");
+	uint8_t unused_arg;
+	*insert_index = 0;
+	// Resetting join package variables after last send
+	memset(joined_data, 0, 256);
+	lorawan_get_payload_sizes(&unused_arg, max_payload_size);
+	*available_package_size = *max_payload_size;
+	LOG_DBG("Maximum payload size for current datarate: %d B", *available_package_size);
+}
+
+void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payload_size,
+						 uint8_t *available_package_size, uint8_t *joined_data,
+						 uint8_t *insert_index, uint32_t *encoded_data)
+{
+	uint8_t encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
+	// Adds packet to package
+	LOG_DBG("Adding item with size %d B to package with %d available bytes",
+			encoded_data_size, *available_package_size);
+	*insert_index = max_payload_size - *available_package_size;
+	bytecpy(joined_data + *insert_index, encoded_data, encoded_data_size);
+	*available_package_size -= encoded_data_size;
+}
+#else // CONFIG_LORAWAN_JOIN_PACKET
 void lorawan_send_data(void *param0, void *param1, void *param2)
 {
 	LOG_INF("Sending via lorawan started");
@@ -158,21 +245,6 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 
 	while (1)
 	{
-
-#ifdef CONFIG_LORAWAN_JOIN_PACKET
-		LOG_DBG("Resetting join variables");
-		uint8_t max_payload_size, unused_arg, insert_index = 0;
-		// Maximum LoRaWAN package size won't surpass 256 B
-		int available_package_size = 256;
-		uint8_t joined_data[available_package_size];
-
-		// Resetting join package variables after last send
-		memset(joined_data, 0, sizeof(joined_data));
-		lorawan_get_payload_sizes(&unused_arg, &max_payload_size);
-		available_package_size = max_payload_size;
-		LOG_DBG("Maximum payload size for current datarate: %d B", available_package_size);
-#endif
-
 		// After waking up, transmits until buffer is empty
 		while (!lorawan_buffer_empty())
 		{
@@ -180,44 +252,23 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			error = 0;
 			uint8_t encoded_data_size, encoded_data_word_size;
 			uint32_t encoded_data[MAX_32_WORDS];
-			memset(encoded_data, 0, sizeof(encoded_data));
-			// Peeking the size of the next item in the buffer
-			error = get_item_word_size(&encoded_data_word_size);
-			if (error)
-			{
-				encoded_data_word_size = MAX_32_WORDS;
-			}
 
-#ifdef CONFIG_LORAWAN_JOIN_PACKET
-			// Sends package as the new item wouldn't fit in it and waits untill buffer is able to fill a package
-			if (available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
-			{
-				send_package(joined_data, max_payload_size - available_package_size);
-				break;
-			}
-#endif
+			memset(encoded_data, 0, sizeof(encoded_data));
+			encoded_data_word_size = MAX_32_WORDS;
 			// Get the next packet from the internal buffer
 			error = get_lorawan_item(encoded_data, &encoded_data_word_size);
-			if(error)
+			if (error)
 			{
 				continue;
 			}
 			encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
-
-#ifdef CONFIG_LORAWAN_JOIN_PACKET
-			// Adds packet to package
-			LOG_DBG("Adding item with size %d B to package with %d available bytes",
-					encoded_data_size, available_package_size);
-			insert_index = max_payload_size - available_package_size;
-			bytecpy(joined_data + insert_index, encoded_data, encoded_data_size);
-			available_package_size -= encoded_data_size;
-			continue;
-#endif
 			send_package((uint8_t *)encoded_data, encoded_data_size);
 		}
+		LOG_DBG("Buffer is empty, sleeping");
 		k_sleep(K_FOREVER);
 	}
 }
+#endif // CONFIG_LORAWAN_JOIN_PACKET
 
 void send_package(uint8_t *package, uint8_t package_size)
 {
