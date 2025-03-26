@@ -79,12 +79,12 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
     return sizeof(SensorModelGNSS);
 }
 
-static int encode_zcbor_string(uint32_t *data_words, uint8_t *encoded_data, size_t payload_size)
+static int encode_zcbor_string(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
-    struct ZcborPayloadL86_M33 zcbor_input;
-    int encoded_size;
-
     SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
+    struct ZcborPayloadL86_M33 zcbor_input;
+    uint8_t zcbor_output[MAX_32_WORDS];
+    int zcbor_output_size;
 
     struct tm structured_time = {
         .tm_sec = gnss_model->real_time.millisecond / 1000,
@@ -101,14 +101,14 @@ static int encode_zcbor_string(uint32_t *data_words, uint8_t *encoded_data, size
     zcbor_input.longitude = gnss_model->navigation.longitude;
     zcbor_input.timestamp = gps_epoch;
 
-    int err = cbor_encode_ZcborPayloadL86_M33(encoded_data, sizeof(encoded_data), &zcbor_input, &encoded_size);
+    int err = cbor_encode_ZcborPayloadL86_M33(zcbor_output, sizeof(zcbor_output), &zcbor_input, &zcbor_output_size);
     if (err != ZCBOR_SUCCESS)
     {
         LOG_ERR("Could not encode lm86_m33 data into zcbor, error %d", err);
         return -1;
     }
 
-    return encoded_size;
+    return snprintf(encoded_data, zcbor_output_size + 8, "g %d %s", zcbor_output_size, zcbor_output);
 }
 
 // Registers GNSS model callbacks
