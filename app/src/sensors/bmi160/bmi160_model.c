@@ -21,8 +21,10 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
+                    "Timestamp: %d; "
                     "Acceleration [m/s²]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z); "
                     "Rotation [radian/s]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z);",
+                    bmi160_model->timestamp,
                     bmi160_model->acceleration[0].val1,
                     bmi160_model->acceleration[0].val2 / 10000,
                     bmi160_model->acceleration[1].val1,
@@ -45,7 +47,8 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "AC%d.%02d %d.%02d %d.%02dR%d.%02d %d.%02d %d.%02d",
+                    "TS%dAC%d.%02d %d.%02d %d.%02dR%d.%02d %d.%02d %d.%02d",
+                    bmi160_model->timestamp,
                     bmi160_model->acceleration[0].val1,
                     bmi160_model->acceleration[0].val2 / 10000,
                     bmi160_model->acceleration[1].val1,

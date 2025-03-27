@@ -52,7 +52,8 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "LT%lldLG%lldB%dS%dAL%dTS%02d%02d%dD%02d%02d%02d",
+                    "TS%dLT%lldLG%lldB%dS%dAL%dTU%02d%02d%dD%02d%02d%02d",
+                    gnss_model->timestamp,
                     gnss_model->navigation.latitude / 100,
                     gnss_model->navigation.longitude / 100,
                     gnss_model->navigation.bearing,
@@ -74,7 +75,7 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
     return sizeof(SensorModelGNSS);
 }
 
-// Registers Si1133 model callbacks
+// Registers GNSS model callbacks
 DataAPI *register_gnss_model_callbacks()
 {
     gnss_model_api.num_data_words = GNSS_MODEL_WORDS;

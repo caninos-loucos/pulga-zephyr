@@ -1,3 +1,4 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/devicetree.h>
@@ -54,6 +55,9 @@ sample_fetch:
                            bmi160_model.acceleration);
         sensor_channel_get(bmi160, SENSOR_CHAN_GYRO_XYZ,
                            bmi160_model.rotation);
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+        bmi160_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
         memcpy(&bmi160_data, &bmi160_model, sizeof(SensorModelBMI160));
 

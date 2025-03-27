@@ -1,7 +1,7 @@
 #ifndef COMM_INTERFACE_H
 #define COMM_INTERFACE_H
 
-#include <data_processing/data_abstraction.h>
+#include <integration/data_buffer/buffer_service.h>
 
 /*
  * Refer to:
@@ -46,5 +46,10 @@ extern CommunicationUnit data_unit;
 int init_communication();
 // Registers callbacks for the used communication channels
 int register_comm_callbacks();
+
+// Get the interval in milliseconds between transmissions
+int get_transmission_interval();
+// Set the `interval` in milliseconds between transmissions
+void set_transmission_interval(int interval);
 
 #endif /* COMM_INTERFACE_H */
