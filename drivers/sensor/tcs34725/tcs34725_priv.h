@@ -43,6 +43,7 @@
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/sensor.h>
+#include <drivers/tcs34725.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/gpio.h>
 
@@ -236,6 +237,7 @@ static int tcs34725_register_write(const struct device *dev, uint8_t buf, uint32
 static int tcs34725_register_read(const struct device *dev, uint8_t buf, uint32_t size);
 
 // Writes command in the command register
+// Maybe not useful
 static int tcs34725_command_write(const struct device *dev,  uint8_t cmd);
 
 // Fetches sample data

@@ -107,7 +107,7 @@ static int tcs34725_attr_set(const struct device *dev, enum sensor_channel chann
 /**
  * @brief i2c address definition
  */
-#define TCS34725_ADDRESS        (0x29 << 1)        /**< i2c address */
+#define TCS34725_ADDRESS        (0x29 << 1)        /**< i2c address */ // 
 
 /**
  * @brief     enable or disable the rgbc interrupt
@@ -1208,7 +1208,7 @@ uint8_t tcs34725_init(const struct device *dev)
         LOG_DBG("read id failed");
         // (void)handle->i2c_deinit();                                                      /* i2c deinit */
         
-        return 1;                                                                        /* return error */
+        return 1;  // -EIO                                                                      /* return error */
     }
     if ((id != 0x44) && (id != 0x4D))                                                    /* check id */
     {
