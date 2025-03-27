@@ -111,7 +111,7 @@ void receive_fix_callback(const struct device *gnss_device,
     }
 
     memcpy(l86_m33_data, &gnss_model, sizeof(SensorModelGNSS));
-    error = insert_in_buffer(l86_m33_data, GNSS_MODEL, 0);
+    error = insert_in_buffer(&app_buffer, (uint32_t*)&l86_m33_data, GNSS_MODEL, 0, GNSS_MODEL_WORDS);
     free(l86_m33_data);
 
     if (error)

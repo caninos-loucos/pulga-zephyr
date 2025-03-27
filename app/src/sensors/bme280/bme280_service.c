@@ -45,7 +45,6 @@ static void read_sensor_values()
     SensorModelBME280 bme280_model;
     struct sensor_value val;
     int error;
-    void *bme280_data;
 
     assert(sizeof(bme280_model) <= (BME280_MODEL_WORDS * 4));
 
@@ -53,7 +52,7 @@ sample_fetch:
     error = sensor_sample_fetch(bme280);
     if (error == -EAGAIN)
     {
-        LOG_WRN("sensor_sample_fetch failed, trying again", error);
+        LOG_WRN("sensor_sample_fetch failed, trying again");
         goto sample_fetch;
     }
     else if (error)
@@ -86,16 +85,7 @@ sample_fetch:
     // Humidity in %RH
     bme280_model.humidity = val.val1;
 
-    bme280_data = calloc(BME280_MODEL_WORDS, 4);
-    if (!bme280_data)
-    {
-        LOG_ERR("could not allocate pointer");
-        return;
-    }
-    memcpy(bme280_data, &bme280_model, sizeof(SensorModelBME280));
-
-    error = insert_in_buffer(bme280_data, BME280_MODEL, error);
-    free(bme280_data);
+    error = insert_in_buffer(&app_buffer, (uint32_t*)&bme280_model, BME280_MODEL, error, BME280_MODEL_WORDS);
 
     if (error)
         LOG_ERR("Failed to insert data in ring buffer with error %d.", error);

@@ -11,8 +11,6 @@
 #define LORAWAN_PROCESSING_STACK_SIZE 8192
 #define LORAWAN_PROCESSING_PRIORITY 5 /* preemptible */
 
-// Create an internal buffer to be able to send multiple data readings in one packet
-#define LORAWAN_BUFFER_SIZE 2048
 #define LORAWAN_SEND_THREAD_STACK_SIZE 2048
 #define LORAWAN_SEND_THREAD_PRIORITY 5 /* preemptible */
 
@@ -39,5 +37,8 @@
 
 // Register lorawan callbacks
 ChannelAPI *register_lorawan_callbacks();
+
+// Configures and initializes lorawan connection, joining the network
+int lorawan_setup_connection();
 
 #endif /* LORAWAN_INTERFACE_H */

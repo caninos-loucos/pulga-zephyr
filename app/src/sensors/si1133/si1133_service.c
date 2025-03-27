@@ -91,7 +91,7 @@ sample_fetch:
     si1133_model.uv_index = (val.val1 * 100) + (val.val2 / 10000);
 
     // Si1133 model is already aligned to 32-bit words, no need for intermediate pointer
-    error = insert_in_buffer((uint32_t *)&si1133_model, SI1133_MODEL, error);
+    error = insert_in_buffer(&app_buffer, (uint32_t *)&si1133_model, SI1133_MODEL, error, SI1133_MODEL_WORDS);
     if (error)
         LOG_ERR("Failed to insert data in ring buffer with error %d.", error);
     return;

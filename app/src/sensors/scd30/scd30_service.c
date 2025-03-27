@@ -3,7 +3,10 @@
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 #include <sensors/scd30/scd30_service.h>
+<<<<<<< HEAD
 #include <assert.h>
+=======
+>>>>>>> origin/main
 
 LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
@@ -102,7 +105,7 @@ sample_fetch:
     }
 
     memcpy(scd30_data, &scd30_model, sizeof(scd30_model));
-    error = insert_in_buffer(scd30_data, SCD30_MODEL, error);
+    error = insert_in_buffer(&app_buffer, (uint32_t*)&scd30_data, SCD30_MODEL, error, SCD30_MODEL_WORDS);
     free(scd30_data);
 
     if (error)
