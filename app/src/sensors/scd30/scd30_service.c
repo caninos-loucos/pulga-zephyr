@@ -1,14 +1,18 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 #include <sensors/scd30/scd30_service.h>
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include <assert.h>
-=======
+    =======
 >>>>>>> origin/main
+=======
+>>>>>>> main
 
-LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
+    LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
 /**
  * DEFINITIONS
@@ -97,16 +101,11 @@ sample_fetch:
     // Humidity stored in %RH
     scd30_model.humidity = val.val1;
 
-    scd30_data = calloc(SCD30_MODEL_WORDS, 4);
-    if (!scd30_data)
-    {
-        LOG_ERR("could not to allocate pointer");
-        return;
-    }
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+    scd30_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
-    memcpy(scd30_data, &scd30_model, sizeof(scd30_model));
-    error = insert_in_buffer(&app_buffer, (uint32_t*)&scd30_data, SCD30_MODEL, error, SCD30_MODEL_WORDS);
-    free(scd30_data);
+    error = insert_in_buffer(&app_buffer, (uint32_t *)&scd30_model, SCD30_MODEL, error, SCD30_MODEL_WORDS);
 
     if (error)
         LOG_ERR("Failed to insert data in ring buffer with error %d.", error);
@@ -137,7 +136,7 @@ int set_valid_sample_time(int raw_sample_time)
 
     if (period.val1 != raw_sample_time)
     {
-        LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",
+        LOG_INF("Sampling period outside SCD30 specification, SCD30 set to sample every %d seconds.",
                 period.val1);
     }
 

@@ -32,6 +32,39 @@ config BUFFER_WORDS
 	default 45000 # Using 180 out of 256kB of memory
 	depends on RING_BUFFER
 
+choice EVENT_TIMESTAMP_SOURCE
+    prompt "Selects the source of the time reference used to timestamp events"
+    default EVENT_TIMESTAMP_NONE
+	help
+	   To ensure correct interpretation of data, it's recommended to enable 
+	   timestamping when joining LoRaWAN packets or when the sampling rate is much
+	   higher than the transmission rate. 
+
+config EVENT_TIMESTAMP_NONE
+    bool "No timestamp"
+    help
+        Events will not be timestamped, leaving the time interpretation to the end user.
+
+config EVENT_TIMESTAMP_UPTIME
+    bool "Use system uptime, which is reset when the system is powered off."
+    help
+        Use only the system uptime, so the end user may need to infer the correspondent real time.
+
+config EVENT_TIMESTAMP_LORAWAN
+    bool "Use LoRaWAN network time"
+    depends on LORAWAN
+    help
+        Get Posix time when joining LoRaWAN network and later infer 
+		the current time using system uptime.
+
+config EVENT_TIMESTAMP_GNSS
+    bool "Use GNSS satellite time"
+    depends on GNSS
+    help
+        Periodically gets Posix time from a GNSS module and, if needed,
+		later infer the current time using system uptime.
+endchoice
+
 ###
 # Transmission Configs
 ###
@@ -57,7 +90,7 @@ choice LORAWAN_ACTIVATION
 	depends on SEND_LORAWAN
 	default LORAWAN_ABP
 
-# TODO: Missing storing and updating nonce in no nvolatile memory
+# TODO: Missing storing and updating nonce in non volatile memory
 config LORAWAN_OTAA
 	bool "OTAA - more secure - dynamic key generation"
 

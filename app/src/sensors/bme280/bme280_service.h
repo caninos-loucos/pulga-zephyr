@@ -3,12 +3,14 @@
 
 #include <zephyr/drivers/sensor.h>
 #include <sensors/sensors_interface.h>
+#include <integration/data_buffer/buffer_service.h>
 
 typedef struct
 {
     int16_t temperature;
     uint16_t pressure;
     uint8_t humidity;
+    uint32_t timestamp;
 } SensorModelBME280;
 
 // Number of 32-bit words in each data item (model)

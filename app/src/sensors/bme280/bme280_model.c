@@ -21,8 +21,9 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "Temperature: %d.%02doC; Pressure: %d.%d hPa; "
+                    "Timestamp: %d; Temperature: %d.%02doC; Pressure: %d.%d hPa; "
                     "Humidity: %d %%RH;",
+                    bme280_model->timestamp,
                     bme280_model->temperature / 100,
                     bme280_model->temperature % 100,
                     bme280_model->pressure / 10,
@@ -38,7 +39,8 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "T%dP%dH%d",
+                    "TS%dT%dP%dH%d",
+                    bme280_model->timestamp,
                     bme280_model->temperature,
                     bme280_model->pressure,
                     bme280_model->humidity);

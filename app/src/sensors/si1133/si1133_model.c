@@ -21,7 +21,9 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "Light: %d lux; Infrared: %d lux; UV: %d; UVIndex: %d.%02d;",
+                    "Timestamp: %d; Light: %d lux; Infrared: %d lux; UV: %d; "
+                    "UVIndex: %d.%02d;",
+                    si1133_model->timestamp,
                     si1133_model->light,
                     si1133_model->infrared,
                     si1133_model->uv,
@@ -37,7 +39,8 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "L%dIR%dUV%dI%d.%02d",
+                    "TS%dL%dIR%dUV%dI%d.%02d",
+                    si1133_model->timestamp,
                     si1133_model->light,
                     si1133_model->infrared,
                     si1133_model->uv,

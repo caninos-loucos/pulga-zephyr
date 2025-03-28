@@ -1,3 +1,4 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/devicetree.h>
@@ -51,6 +52,7 @@ static void read_sensor_values()
 
 sample_fetch:
     error = sensor_sample_fetch(bmi160);
+
     if (error == -EAGAIN)
     {
         LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
@@ -82,7 +84,7 @@ sample_fetch:
         bmi160_model.rotation[i] = val[i].val1 * 1000 + val[i].val2 / 1000;
 
     // BMI160 is already aligned to 32-bit so there's no need to copy it to a temp pointer
-    error = insert_in_buffer(&app_buffer,(uint32_t *)&bmi160_model, BMI160_MODEL, error, BMI160_MODEL_WORDS);
+    error = insert_in_buffer(&app_buffer, (uint32_t *)&bmi160_model, BMI160_MODEL, error, BMI160_MODEL_WORDS);
     if (error)
         LOG_ERR("Failed to insert data in ring buffer with error %d.", error);
     return;

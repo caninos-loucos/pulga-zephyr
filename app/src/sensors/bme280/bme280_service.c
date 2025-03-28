@@ -1,3 +1,4 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
@@ -85,7 +86,11 @@ sample_fetch:
     // Humidity in %RH
     bme280_model.humidity = val.val1;
 
-    error = insert_in_buffer(&app_buffer, (uint32_t*)&bme280_model, BME280_MODEL, error, BME280_MODEL_WORDS);
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+    bme280_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
+
+    error = insert_in_buffer(&app_buffer, (uint32_t *)&bme280_model, BME280_MODEL, error, BME280_MODEL_WORDS);
 
     if (error)
         LOG_ERR("Failed to insert data in ring buffer with error %d.", error);

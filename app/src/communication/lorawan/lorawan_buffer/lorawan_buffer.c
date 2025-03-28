@@ -53,7 +53,6 @@ int get_item_word_size(uint8_t *item_size)
 	int header_size = 4;
 	uint8_t header_bytes[header_size];
 	memset(header_bytes, 0, sizeof(header_bytes));
-    
 	// Peek into the ring buffer to get next item size
 	int peeked_size = ring_buf_peek(&lorawan_internal_buffer, header_bytes, header_size);
 	if (peeked_size != header_size)

@@ -3,11 +3,13 @@
 
 #include <zephyr/drivers/sensor.h>
 #include <sensors/sensors_interface.h>
+#include <integration/data_buffer/buffer_service.h>
 
 typedef struct
 {
     int16_t acceleration[3];
     int16_t rotation[3];
+    uint32_t timestamp;
 } SensorModelBMI160;
 
 // Number of 32-bit words in each data item (model)

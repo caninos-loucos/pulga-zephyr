@@ -117,6 +117,10 @@ To deactivate sensors internal to Pulga Core, you simply need to change their st
   - Constraints:
     - LoRaWAN: transmission takes about 5s, so if the transmission interval is too large and the sampling period is too low, data might be lost. To prevent this, this application uses another buffer, internal to LoRaWAN.
 - `BUFFER_WORDS`: number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
+- `EVENT_TIMESTAMP_SOURCE`: this option allows the user to choose whether the application will timestamp the sampling events or not. In case it does, it's possible to configure the source of the time reference between the LoRaWAN network, GNSS satellite data or system uptime. As a choice configuration (available options found in KConfig file), selecting one option will automatically set all others to false.
+  - Constraints:
+    - `EVENT_TIMESTAMP_LORAWAN`: this option can only be set when using pulga-lora shield and if LoRaWAN is active.
+    - `EVENT_TIMESTAMP_GNSS`: this option can only be set when using pulga_gps shield.
 
 - `TRANSMISSION_INTERVAL`: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it.
 

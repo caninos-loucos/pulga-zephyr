@@ -1,3 +1,4 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
@@ -89,6 +90,10 @@ sample_fetch:
         goto channel_get_err;
 
     si1133_model.uv_index = (val.val1 * 100) + (val.val2 / 10000);
+
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+    si1133_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
     // Si1133 model is already aligned to 32-bit words, no need for intermediate pointer
     error = insert_in_buffer(&app_buffer, (uint32_t *)&si1133_model, SI1133_MODEL, error, SI1133_MODEL_WORDS);
