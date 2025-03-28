@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 3.13.1)
 # list(APPEND SHIELD pulga_gps)
 
 # Uncomment to activate LoRa shield, when Pulga-LoRa module is attached to the stack
-# list(APPEND SHIELD pulga_lora)
+list(APPEND SHIELD pulga_lora)
 
 # Uncomment to activate SCD30 shield, a CO2 concentration sensor
 # list(APPEND SHIELD scd30)
@@ -42,11 +42,15 @@ if(CONFIG_SHIELD_PULGA_GPS)
                         src/sensors/l86_m33/l86_m33_service.c)
 endif()
 
-if(CONFIG_SHIELD_PULGA_LORA)
+if(CONFIG_SEND_LORAWAN)
     target_sources(app PRIVATE  
                         src/communication/lorawan/lorawan_buffer/lorawan_buffer.c
                         src/communication/lorawan/lorawan_interface.c
-                        src/communication/lorawan/lorawan_setup.c
+                        src/communication/lorawan/lorawan_setup.c)
+endif()
+
+if(CONFIG_SEND_LORA_P2P)
+    target_sources(app PRIVATE
                         src/communication/lora_p2p/lora_p2p_interface.c)
 endif()
 

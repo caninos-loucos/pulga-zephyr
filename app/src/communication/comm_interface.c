@@ -41,17 +41,17 @@ int register_comm_callbacks()
 {
     LOG_DBG("Registering communication callbacks");
 
-#if defined(CONFIG_SEND_UART)
+#ifdef CONFIG_SEND_UART
     channel_apis[UART] = register_uart_callbacks();
 #endif /* CONFIG_SEND_UART */
 
-#if defined(CONFIG_SEND_LORAWAN)
+#ifdef CONFIG_SEND_LORAWAN
     channel_apis[LORAWAN] = register_lorawan_callbacks();
 #endif /* CONFIG_SEND_LORAWAN */
 
-#if defined(CONFIG_SEND_LORA_P2P)
+#ifdef CONFIG_SEND_LORA_P2P
     channel_apis[LORA_P2P] = register_lora_p2p_callbacks();
-#endif /* CONFIG_SEND_LORAWAN */
+#endif /* CONFIG_SEND_LORA_P2P */
 
     return 0;
 }

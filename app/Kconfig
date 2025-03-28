@@ -108,6 +108,7 @@ config LORAWAN_JOIN_PACKET
 config SEND_LORA_P2P
 	bool "LoRa Peer-to-Peer sending"
 	depends on !SEND_LORAWAN
+	select LORAWAN
 
 config RECEIVE_LORA_P2P
 	bool "LoRa Peer-to-Peer receiving"
