@@ -1,5 +1,6 @@
 #include <zephyr/logging/log.h>
-#include <data_processing/data_abstraction.h>
+#include <integration/data_abstraction/abstraction_service.h>
+#include <integration/data_abstraction/text_model/text_model.h>
 #include <sensors/sensors_interface.h>
 
 LOG_MODULE_REGISTER(data_abstraction, CONFIG_APP_LOG_LEVEL);
@@ -17,6 +18,7 @@ static DataAPI *data_apis[SENSOR_TYPE_OFFSET] = {0};
 
 int register_data_callbacks()
 {
+	data_apis[TEXT_DATA] = register_text_model_callbacks();
 	return 0;
 }
 
@@ -33,6 +35,9 @@ int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLeve
 		break;
 	case MINIMALIST:
 		return data_api->encode_minimalist(data_words, encoded_data, encoded_size);
+		break;
+	case RAW_BYTES:
+		return data_api->encode_raw_bytes(data_words, encoded_data, encoded_size);
 		break;
 	default:
 		LOG_ERR("Invalid encoding level");

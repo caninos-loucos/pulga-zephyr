@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2023 LSI-TEC
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&pinctrl {
+	i2c1_default: i2c1_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 29)>, 
+			        <NRF_PSEL(TWIM_SCL, 0, 11)>;
+		};
+	};
+
+	i2c1_sleep: i2c1_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 29)>, 
+			        <NRF_PSEL(TWIM_SCL, 0, 11)>;
+			low-power-enable;
+		};
+	};
+};
+
+&i2c1 {
+	compatible = "nordic,nrf-twi";
+	status = "okay";
+
+	pinctrl-0 = <&i2c1_default>;
+	pinctrl-1 = <&i2c1_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+
+	/* CO2 sensor */
+	scd30@61 {
+		compatible = "sensirion,scd30";
+		reg = <0x61>;   /* Address of sensor */
+		status = "okay";
+		sample-period = <2>; 
+		//zephyr,deferred-init;
+	};
+};

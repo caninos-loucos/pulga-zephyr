@@ -1,0 +1,9 @@
+# Copyright (c) 2024 LSI-TEC
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_SCD30
+
+config I2C
+	default y
+   
+endif # SHIELD_SCD30

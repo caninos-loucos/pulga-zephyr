@@ -1,68 +1,36 @@
 /*
 Lorawan Interface Module
 Authors: Ana Clara Forcelli <ana.forcelli@lsitec.org.br>
+		 Matheus de Almeida Orsi e Silva <matheus.almeida.silva@alumni.usp.br>
 
 This module is composed of four main elements:
 
 	- Internal Buffer
-	- Workqueue
 	- Initialization
+	- Process Data Thread
 	- Send Thread
 
 The order in which everything happens is the following:
 
-	1 - The Initialization will set the lorawan parameters such as region, datarate and authentication.
-		It will also get the internal structures ready for use, such as the thread functions and workqueue.
+	1 - The Initialization will set the lorawan parameters such as region, datarate and security configuration.
+		It will also get the internal structures ready for use, such as the thread that process data from
+		data module buffer and the thread that will effectively send the data via LoRaWAN.
 
-	2 - Immediately after being called, the Send Thread is started. It will check for the signal that data
-		is ready to be sent on the data module buffer. When data is available, it will encode it minimally,
-		using few characters. The encoded data is stored on the Internal Buffer for later transmission, then
-		the thread signals for the data module that the data is ready, in order to unblock the other channels.
+	2 - Immediately after being created, the Process Data Thread is started. It will check for the signal that a data
+		item was read on the data module buffer. When data is available, the thread will encode it minimally,
+		using few characters. The encoded data is stored on the Internal Buffer for later transmission, so the
+		LoRaWAN thread doesn't delay other transmissions because of its synchronous communication. Then,
+		the thread signals for the data module that the data was processed so it can continue reading other items.
 
-	3 - The Send Thread enqueues one instance of the Work Handler to the Workqueue, which will asynchronously
+	3 - The Send Data Thread is wakened up by the Process Data Thread, and will asynchronously
 		execute the actual transmission via Zephyr's send_lorawan() function.
 
 */
-
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/lorawan/lorawan.h>
 #include <zephyr/sys/ring_buffer.h>
-#include <math.h>
-#include "lorawan_interface.h"
-
-/* 	Get the LoraWAN keys from file in main directory, in the following format:
-
-	#define LORAWAN_DEV_EUI		{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01 }
-	#define LORAWAN_JOIN_EUI	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01 }
-	#define LORAWAN_DEV_ADDR	0xabcdef01
-	#define LORAWAN_NET_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
-	#define LORAWAN_APP_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
-*/
-#include <lorawan_keys.h>
-
-#if (CONFIG_LORAWAN_DR == 5)
-#define LORAWAN_DR LORAWAN_DR_5
-#elif (CONFIG_LORAWAN_DR == 4)
-#define LORAWAN_DR LORAWAN_DR_4
-#elif (CONFIG_LORAWAN_DR == 3)
-#define LORAWAN_DR LORAWAN_DR_3
-#elif (CONFIG_LORAWAN_DR == 2)
-#define LORAWAN_DR LORAWAN_DR_2
-#elif (CONFIG_LORAWAN_DR == 1)
-#define LORAWAN_DR LORAWAN_DR_1
-#elif (CONFIG_LORAWAN_DR == 0)
-#define LORAWAN_DR LORAWAN_DR_0
-#else
-#error "Datarate between 0 and 5 must be chosen"
-#endif
-
-// This is the region for American Tower's gateways, that's totally subject to change in the near future...
-#define LORAWAN_SELECTED_REGION LORAWAN_REGION_LA915
-
-// Defines the internal buffer for sending
-RING_BUF_ITEM_DECLARE(lorawan_internal_buffer, LORAWAN_BUFFER_SIZE);
+#include <communication/lorawan/lorawan_interface.h>
+#include <communication/lorawan/lorawan_buffer/lorawan_buffer.h>
 
 LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -73,206 +41,245 @@ LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 // Instance of ChannelAPI for lorawan channel
 static ChannelAPI lorawan_api;
 
-// Stack of lorawan communication thread
-static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_THREAD_STACK_SIZE);
-// Stack allocated to the internal workqueue
-static K_THREAD_STACK_DEFINE(lorawan_workqueue_thread_stack_area, LORAWAN_WORKQUEUE_THREAD_STACK_SIZE);
+// Stack of the thread that takes data read from general buffer and prepares them to send
+static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_PROCESSING_STACK_SIZE);
 // Thread control block - metadata
 static struct k_thread lorawan_thread_data;
 static k_tid_t lorawan_thread_id;
+// Stack of the thread that actually sends the data via LoRaWAN
+static K_THREAD_STACK_DEFINE(lorawan_send_thread_stack_area, LORAWAN_SEND_THREAD_STACK_SIZE);
+static struct k_thread lorawan_send_thread_data;
+static k_tid_t lorawan_send_thread_id;
 
-// Workqueue declarations
-struct k_work lorawan_send_work;
-struct k_work_q lorawan_workqueue;
-struct k_sem lorawan_workqueue_semaphore;
+// Initializes and starts thread to send data via LoRaWAN
+static void lorawan_init_channel();
+// Functions that receives data from application buffer and
+// inserts it in LoRaWAN internal buffer
+static void lorawan_process_data(void *, void *, void *);
+// Sends LoRaWAN package and handles errors
+static void send_package(uint8_t *package, uint8_t package_size);
+// This is the function executed by the thread that actually sends the data
+static void lorawan_send_data(void *, void *, void *);
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
+// Resets variables used to join packets into package
+static void reset_join_variables(uint8_t *max_payload_size, uint8_t *insert_index,
+								 uint8_t *available_package_size, uint8_t *joined_data);
+// Adds data item from buffer to package
+static void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payload_size,
+								uint8_t *available_package_size, uint8_t *joined_data,
+								uint8_t *insert_index, uint32_t *encoded_data);
+#endif // CONFIG_LORAWAN_JOIN_PACKET
 
 /**
  * Definitions
  */
 
-// Downlink callback, dumps the receiving data onto the log as debug, along with several reception parameters:
-// RSSI: Received Signal Strength Indicator
-// SNR: Signal-noise ratio
-void dl_callback(uint8_t port, bool data_pending,
-				 int16_t rssi, int8_t snr,
-				 uint8_t len, const uint8_t *hex_data)
+static void lorawan_init_channel()
 {
-	LOG_DBG("Port %d, Pending %d, RSSI %ddB, SNR %ddBm", port, data_pending, rssi, snr);
-	if (hex_data)
+	LOG_DBG("Initializing LoRaWAN channel");
+	int error = 0;
+
+	error = lorawan_setup_connection();
+
+	LOG_DBG("Initializing LoRaWAN processing data thread");
+	// After joining successfully, create the send thread.
+	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
+										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
+										lorawan_process_data, NULL, NULL, NULL,
+										LORAWAN_PROCESSING_PRIORITY, 0, K_NO_WAIT);
+	error = k_thread_name_set(lorawan_thread_id, "lorawan_process_data");
+	if (error)
 	{
-		LOG_HEXDUMP_INF(hex_data, len, "Payload: ");
+		LOG_ERR("Failed to set LoRaWAN processing data thread name: %d", error);
+		goto return_clause;
 	}
+
+	LOG_DBG("Initializing send via LoRaWAN thread");
+
+	// After joining successfully, create the send thread.
+	lorawan_send_thread_id = k_thread_create(&lorawan_send_thread_data, lorawan_send_thread_stack_area,
+											 K_THREAD_STACK_SIZEOF(lorawan_send_thread_stack_area),
+											 lorawan_send_data, NULL, NULL, NULL,
+											 LORAWAN_SEND_THREAD_PRIORITY, 0, K_NO_WAIT);
+	error = k_thread_name_set(lorawan_send_thread_id, "lorawan_send_data");
+	if (error)
+	{
+		LOG_ERR("Failed to set send via LoRaWAN thread name: %d", error);
+		goto return_clause;
+	}
+
+return_clause:
+	return;
 }
 
-// This is the function that actually sends the data
-void lorawan_send_work_handler(struct k_work *work)
+// Encoding and buffering Data thread
+void lorawan_process_data(void *param0, void *param1, void *param2)
 {
-	int error;
-	uint16_t type;
-	uint8_t value, size = 64;
-	uint32_t encoded_data[64];
+	LOG_INF("Processing LoRaWAN data started");
+	ARG_UNUSED(param0);
+	ARG_UNUSED(param1);
+	ARG_UNUSED(param2);
+	uint8_t max_payload_size;
+	uint8_t unused_arg;
 
-	error = ring_buf_is_empty(&lorawan_internal_buffer);
+	int error, buffered_items = 0;
 
-	if (!error)
+	while (1)
 	{
-		k_sem_take(&lorawan_workqueue_semaphore, K_FOREVER);
-
-		// Get the last message from the internal buffer
-		error = ring_buf_item_get(&lorawan_internal_buffer, &type, &value, encoded_data, &size);
-
-		k_sem_give(&lorawan_workqueue_semaphore);
-
-		if (!error)
-		{
-			LOG_DBG("Sending encoded data: \"%s\", with %d bytes", (char *)encoded_data, size * 4);
-
-			// Send using Zephyr's subsystem and check if the transmission was successful
-			error = lorawan_send(0, (uint8_t *)encoded_data, size * 4, LORAWAN_MSG_UNCONFIRMED);
-			if (error)
-				LOG_ERR("lorawan_send failed: %d.", error);
-			else
-				LOG_INF("lorawan_send successful");
-		}
+		// Waits for data to be ready
+		k_sem_take(&data_ready_sem[LORAWAN], K_FOREVER);
+		// Maximum payload size determined by datarate and region
+		lorawan_get_payload_sizes(&unused_arg, &max_payload_size);
+		// Encodes data item to be sent and inserts the encoded data in the internal buffer
+		error = encode_and_insert(data_unit);
+		if (error)
+			continue;
 		else
+			buffered_items++;
+
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
+		// If the application is joining packets into a larger package,
+		// it waits longer to wake up the sending thread, until a package with
+		// maximum payload size can be assembled
+		if (get_buffer_to_package_size(buffered_items) < max_payload_size)
 		{
-			LOG_ERR("read from ring buf failed: %d.", error);
+			LOG_DBG("Joining more data");
+			// Signals for the Communication Interface that Lorawan processing is complete
+			k_sem_give(&data_processed);
+			continue;
 		}
+#endif
+		LOG_DBG("Waking up sending thread");
+		k_wakeup(lorawan_send_thread_id);
+		// Signals for the Communication Interface that Lorawan processing is complete
+		k_sem_give(&data_processed);
 	}
 }
 
-// Send Data thread
+#ifdef CONFIG_LORAWAN_JOIN_PACKET
 void lorawan_send_data(void *param0, void *param1, void *param2)
 {
 	LOG_INF("Sending via lorawan started");
 	ARG_UNUSED(param0);
 	ARG_UNUSED(param1);
 	ARG_UNUSED(param2);
-	uint8_t max_size;
-	uint8_t unused;
-
-	int size, error;
-
+	
+	uint8_t max_payload_size, insert_index, available_package_size, error = 0;
+	// Maximum LoRaWAN package size won't surpass 256 B
+	uint8_t joined_data[256];
+	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data);
+	
 	while (1)
 	{
-		// Waits for data to be ready
-		k_sem_take(&data_ready_sem[LORAWAN], K_FOREVER);
+		// After waking up, transmits until buffer is empty
+		while (!lorawan_buffer_empty())
+		{
+			LOG_DBG("Resetting data item variables");
+			error = 0;
+			uint8_t encoded_data_word_size;
+			uint32_t encoded_data[MAX_32_WORDS];
+			memset(encoded_data, 0, sizeof(encoded_data));
+			// Peeking the size of the next item in the buffer
+			error = get_item_word_size(&encoded_data_word_size);
+			if (error)
+			{
+				encoded_data_word_size = MAX_32_WORDS;
+			}
 
-		lorawan_get_payload_sizes(&unused, &max_size);
-		uint8_t encoded_data[max_size];
-
-		// Encoding data to minimal string
-		size = encode_data(data_unit.data_words, data_unit.data_type, MINIMALIST,
-						   encoded_data, sizeof(encoded_data));
-
-		if (size >= 0)
-			LOG_DBG("Encoded data: \"%s\", size %d bytes", encoded_data, size);
-		else
-			LOG_ERR("Could not encode data");
-
-		// put string in internal buffer, casting it to 32-bit words
-		error = ring_buf_item_put(&lorawan_internal_buffer, 0, 0, (uint32_t *)encoded_data, ceil(size / 4.0));
-
-		if (error == -EMSGSIZE)
-			LOG_INF("lorawan internal buff full");
-
-		// Signals back that lorawan sending is complete
-		k_sem_give(&data_processed);
-
-		// Signals for async transmission
-		k_work_submit_to_queue(&lorawan_workqueue, &lorawan_send_work);
+			// Sends package as the new item wouldn't fit in it and resets package variables to form a new one
+			if (available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
+			{
+				send_package(joined_data, max_payload_size - available_package_size);
+				reset_join_variables(&max_payload_size, &insert_index,
+									 &available_package_size, joined_data);
+				continue;
+			}
+			// Get the next packet from the internal buffer
+			error = get_lorawan_item(encoded_data, &encoded_data_word_size);
+			if (error)
+			{
+				continue;
+			}
+			add_item_to_package(encoded_data_word_size, max_payload_size,
+								&available_package_size, joined_data,
+								&insert_index, encoded_data);
+		}
+		LOG_DBG("Buffer is empty, sleeping");
+		k_sleep(K_FOREVER);
 	}
 }
 
-static void lorawan_init_channel()
+void reset_join_variables(uint8_t *max_payload_size, uint8_t *insert_index,
+						  uint8_t *available_package_size, uint8_t *joined_data)
 {
-	const struct device *lora_dev;
-	struct lorawan_join_config join_cfg;
+	LOG_DBG("Resetting join variables");
+	uint8_t unused_arg;
+	*insert_index = 0;
+	// Resetting join package variables after last send
+	memset(joined_data, 0, 256);
+	lorawan_get_payload_sizes(&unused_arg, max_payload_size);
+	*available_package_size = *max_payload_size;
+	LOG_DBG("Maximum payload size for current datarate: %d B", *available_package_size);
+}
 
-	int error = 0;
+void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payload_size,
+						 uint8_t *available_package_size, uint8_t *joined_data,
+						 uint8_t *insert_index, uint32_t *encoded_data)
+{
+	uint8_t encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
+	// Adds packet to package
+	LOG_DBG("Adding item with size %d B to package with %d available bytes",
+			encoded_data_size, *available_package_size);
+	*insert_index = max_payload_size - *available_package_size;
+	bytecpy(joined_data + *insert_index, encoded_data, encoded_data_size);
+	*available_package_size -= encoded_data_size;
+}
+#else // CONFIG_LORAWAN_JOIN_PACKET
+void lorawan_send_data(void *param0, void *param1, void *param2)
+{
+	LOG_INF("Sending via lorawan started");
+	ARG_UNUSED(param0);
+	ARG_UNUSED(param1);
+	ARG_UNUSED(param2);
+	int error;
 
-	LOG_DBG("Initializing send via lorawan thread");
-
-	// Initialize the security parameters from the defined values
-	uint8_t dev_eui[] = LORAWAN_DEV_EUI;
-	uint8_t app_key[] = LORAWAN_APP_KEY;
-	uint8_t nwk_key[] = LORAWAN_NET_KEY;
-	uint8_t app_eui[] = LORAWAN_JOIN_EUI;
-	uint32_t dev_addr = LORAWAN_DEV_ADDR;
-
-	// Initialize the callback
-	struct lorawan_downlink_cb downlink_cb = {
-		.port = LW_RECV_PORT_ANY,
-		.cb = dl_callback};
-	lora_dev = DEVICE_DT_GET(DT_ALIAS(lora0));
-	if (!device_is_ready(lora_dev))
+	while (1)
 	{
-		LOG_ERR("%s: device not ready.", lora_dev->name);
-		goto err;
+		// After waking up, transmits until buffer is empty
+		while (!lorawan_buffer_empty())
+		{
+			LOG_DBG("Resetting data item variables");
+			error = 0;
+			uint8_t encoded_data_size, encoded_data_word_size;
+			uint32_t encoded_data[MAX_32_WORDS];
+
+			memset(encoded_data, 0, sizeof(encoded_data));
+			encoded_data_word_size = MAX_32_WORDS;
+			// Get the next packet from the internal buffer
+			error = get_lorawan_item(encoded_data, &encoded_data_word_size);
+			if (error)
+			{
+				continue;
+			}
+			encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
+			send_package((uint8_t *)encoded_data, encoded_data_size);
+		}
+		LOG_DBG("Buffer is empty, sleeping");
+		k_sleep(K_FOREVER);
 	}
-	// Set the chosen region, this MUST be the same as the gateway's!
-	error = lorawan_set_region(LORAWAN_SELECTED_REGION);
+}
+#endif // CONFIG_LORAWAN_JOIN_PACKET
+
+void send_package(uint8_t *package, uint8_t package_size)
+{
+	int error = lorawan_send(1, package, package_size, LORAWAN_MSG_UNCONFIRMED);
+	// Send using Zephyr's subsystem and check if the transmission was successful
 	if (error)
 	{
-		LOG_ERR("lorawan_set_region failed: %d", error);
-		goto err;
+		LOG_ERR("lorawan_send failed: %d.", error);
+		return;
 	}
-
-	// Starts the LoRaWAN backend, transmission does not start just yet
-	error = lorawan_start();
-	if (error)
-	{
-		LOG_ERR("lorawan_start failed: %d", error);
-		goto err;
-	}
-
-	// Register the callbacks before joining the network
-	lorawan_register_downlink_callback(&downlink_cb);
-
-	// Configure the authentication parameters and join the network
-	join_cfg.mode = LORAWAN_ACT_ABP;
-	join_cfg.dev_eui = dev_eui;
-	join_cfg.abp.app_skey = app_key;
-	join_cfg.abp.nwk_skey = nwk_key;
-	join_cfg.abp.app_eui = app_eui;
-	join_cfg.abp.dev_addr = dev_addr;
-
-	LOG_DBG("Joining network over abp");
-	error = lorawan_join(&join_cfg);
-	if (error)
-	{
-		LOG_ERR("lorawan_join_network failed: %d", error);
-		goto err;
-	}
-
-	// Set the initial or fixed datarate according to the config
-	error = lorawan_set_datarate(LORAWAN_DR);
-	if (error)
-	{
-		LOG_ERR("lorawan_set_datarate failed: %d", error);
-		goto err;
-	}
-	// After joining successfully, create the send thread.
-	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
-										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
-										lorawan_send_data, NULL, NULL, NULL,
-										LORAWAN_THREAD_PRIORITY, 0, K_NO_WAIT);
-	error = k_thread_name_set(lorawan_thread_id, "send_lorawan");
-	if (error)
-	{
-		LOG_ERR("Failed to set read buffer thread name: %d", error);
-	}
-
-	// Initialize the Workqueue and handler
-	k_work_queue_init(&lorawan_workqueue);
-	k_work_queue_start(&lorawan_workqueue, lorawan_workqueue_thread_stack_area,
-					   K_THREAD_STACK_SIZEOF(lorawan_workqueue_thread_stack_area),
-					   LORAWAN_THREAD_PRIORITY, NULL);
-	k_work_init(&lorawan_send_work, lorawan_send_work_handler);
-
-	k_sem_init(&lorawan_workqueue_semaphore, 1, 1);
-err:
-	return;
+	LOG_INF("lorawan_send successful");
 }
 
 // Register channels to the Communication Module

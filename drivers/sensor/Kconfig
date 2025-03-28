@@ -3,4 +3,5 @@
 
 if SENSOR
 rsource "si1133/Kconfig"
+rsource "scd30/Kconfig"
 endif # SENSOR
