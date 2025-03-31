@@ -231,10 +231,10 @@ struct tcs34725_config {
 };
 
 // Writes data to a register
-static int tcs34725_register_write(const struct device *dev, uint8_t buf, uint32_t size);
+static int tcs34725_register_write(const struct device *dev, uint8_t *buf, uint32_t size);
 
 // Reads data from a register
-static int tcs34725_register_read(const struct device *dev, uint8_t buf, uint32_t size);
+static int tcs34725_register_read(const struct device *dev, uint8_t *buf, uint32_t size);
 
 // Writes command in the command register
 // Maybe not useful
@@ -246,9 +246,9 @@ static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel c
 static int tcs34725_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
 
 // Gets desired attribute
-static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, struct sensor_attibute attribute, struct sensor_value *value);
+static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, const struct sensor_value *value);
 // Sets desired attribute 
-static int tcs34725_attr_set(const struct device *dev, enum sensor_channel channel, struct sensor_attibute attribute, struct sensor_value *value);
+static int tcs34725_attr_set(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, const struct sensor_value *value);
 
 /**
  * @}
@@ -348,7 +348,7 @@ uint8_t tcs34725_info(tcs34725_info_t *info);
  *            - 3 linked functions is NULL
  * @note      none
  */
-uint8_t tcs34725_init(tcs34725_handle_t *handle);
+uint8_t tcs34725_init(const struct device *dev);
 
 /**
  * @brief     close the chip
@@ -376,7 +376,9 @@ uint8_t tcs34725_deinit(tcs34725_handle_t *handle);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_read_rgbc(tcs34725_handle_t *handle, uint16_t *red, uint16_t *green, uint16_t *blue, uint16_t *clear);
+uint8_t tcs34725_read_rgbc(const struct device *dev, uint16_t *red, uint16_t *green, uint16_t *blue, uint16_t *clear);
+
+// uint8_t tcs34725_read_rgbc(tcs34725_handle_t *handle, uint16_t *red, uint16_t *green, uint16_t *blue, uint16_t *clear);
 
 /**
  * @brief      read the rgb data
