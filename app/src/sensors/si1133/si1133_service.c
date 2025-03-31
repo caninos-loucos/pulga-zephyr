@@ -50,6 +50,8 @@ static void read_sensor_values()
 
     assert(sizeof(si1133_model) <= (SI1133_MODEL_WORDS * 4));
 
+    si1133_model.dataType = (uint8_t)SI1133_MODEL;
+ 
 sample_fetch:
     error = sensor_sample_fetch(si1133);
     if (error == -EAGAIN)

@@ -132,7 +132,40 @@ To deactivate sensors internal to Pulga Core, you simply need to change their st
 ### Communication configurations
 
 - `SEND_UART`: Prints a verbose output to the configured terminal, such as screen, TeraTerm or MiniCOM.
-- `SEND_LORA`: Sends a compressed version of the output via LoRaWAN, requiring pulga-lora shield to be activated.
+- `SEND_LORA`: Sends a smaller version of the output via LoRaWAN, requiring pulga-lora shield to be activated.
+  - This sending mode uses raw byte encoding, which sends the structs from each sensor type to the buffer, thus the decoding application has to be aware of the formats:
+    - **BME280**
+      - DataType 05 (uint8)
+      - Temperature in centidegrees Celsius (int16);
+      - Pressure in hPa (uint16);
+      - Relative Humidity % (uint8);
+      - Timestamp (uint32);
+    - **BMI160**
+      - DataType 06(uint8);
+      - XYZ acceleration in cm/s² (one uint16 for each axis);
+      - XYZ rotation in milliradians/s (one uint16 per axis);
+      - Timestamp (uint32);
+    - **Si1133**
+      - DataType 07(uint8);
+      - Luminosity in lux (uint32);
+      - Infrared in lux (uint32);
+      - UV  in lux(uint16);
+      - UV Index, no unit (uint16);
+      - Timestamp (uint32);
+    - **SCD30**
+      - DataType 08(uint8);
+      - CO2 in ppm (uint16);
+      - Temperature in centidegrees (int16);
+      - Relative Humidity in %RH (uint8);
+      - Timestamp (uint32);
+    - **GNSS** 
+      - DataType 09(uint8);
+      - Latitude in microdegrees (int32);
+      - Longitude in microdegrees (int32);
+      - Bearing angle in centidegrees (uint16);
+      - Speed in cm/s (uint16); Altitude in cm (uint32);
+      - Real Time = [hour (uint8); minute(uint8); millisecond (uint16); day (uint8); month(uint8); year(uint8)];
+      - Timestamp (uint32);
 
 #### LoRaWAN configurations
 - `LORAWAN_DR`: Datarate used in LoRaWAN communication. This affects several communication parameters. The lower the datarate, the smaller the maximum payload size, the lower the range, the slower the communication and the higher the power consumption.

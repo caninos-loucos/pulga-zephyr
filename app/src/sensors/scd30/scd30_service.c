@@ -66,6 +66,8 @@ static void read_sensor_values()
 
     assert(sizeof(scd30_model) <= (SCD30_MODEL_WORDS * 4));
 
+    scd30_model.dataType = (uint8_t) SCD30_MODEL;
+
 sample_fetch:
     error = sensor_sample_fetch(scd30);
 

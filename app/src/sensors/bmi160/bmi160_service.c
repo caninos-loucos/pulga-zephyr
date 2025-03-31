@@ -50,6 +50,8 @@ static void read_sensor_values()
 
     assert(sizeof(bmi160_model) <= (BMI160_MODEL_WORDS * 4));
 
+    bmi160_model.dataType = (uint8_t) BMI160_MODEL;
+
 sample_fetch:
     error = sensor_sample_fetch(bmi160);
 
@@ -70,7 +72,7 @@ sample_fetch:
     if (error)
         goto channel_get_err;
 
-    // Acceleration in cm/s
+    // Acceleration in cm/s²
     for (i = 0; i < 3; i++)
         bmi160_model.acceleration[i] = val[i].val1 * 100 + val[i].val2 / 10000;
 
@@ -83,7 +85,6 @@ sample_fetch:
     for (i = 0; i < 3; i++)
         bmi160_model.rotation[i] = val[i].val1 * 1000 + val[i].val2 / 1000;
 
-    // BMI160 is already aligned to 32-bit so there's no need to copy it to a temp pointer
     error = insert_in_buffer(&app_buffer, (uint32_t *)&bmi160_model, BMI160_MODEL, error, BMI160_MODEL_WORDS);
     if (error)
         LOG_ERR("Failed to insert data in ring buffer with error %d.", error);

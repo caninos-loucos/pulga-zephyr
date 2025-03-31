@@ -85,6 +85,8 @@ void receive_fix_callback(const struct device *gnss_device,
 
     assert(sizeof(gnss_model) <= (GNSS_MODEL_WORDS * 4));
 
+    gnss_model.dataType = (uint8_t) GNSS_MODEL;
+
     // Only saves to buffer if it's a valid fix, it can take several minutes
     // to start gettting valid readings from the satellites
     if (gnss_data->info.fix_status == GNSS_FIX_STATUS_NO_FIX)

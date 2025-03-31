@@ -48,6 +48,8 @@ static void read_sensor_values()
     int error;
 
     assert(sizeof(bme280_model) <= (BME280_MODEL_WORDS * 4));
+    
+    bme280_model.dataType = (uint8_t) BME280_MODEL;
 
 sample_fetch:
     error = sensor_sample_fetch(bme280);
