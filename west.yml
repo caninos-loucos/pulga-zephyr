@@ -8,7 +8,7 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     
     - name: caninos
-      url-base: https://github.com/anacforcelli
+      url-base: https://github.com/caninos-loucos
 
   projects:
     - name: zephyr
