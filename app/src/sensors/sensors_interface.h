@@ -19,6 +19,7 @@ enum SensorType
 	SI1133,
 	SCD30,
 	L86_M33, // GNSS Sensor
+	TCS34725, // Color Sensor
 	MAX_SENSORS // Total number of sensors
 };
 

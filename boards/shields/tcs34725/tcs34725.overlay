@@ -32,7 +32,7 @@
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 
 	/* Color sensor */
-	tcs34725@61 {
+	tcs34725@29 {
 		compatible = "ams,tcs34725";
 		reg = <0x29>;   /* Address of sensor */ // Verificar depois esse endereço // No codigo é feito 0x29 << 1 
 		status = "okay";

@@ -37,11 +37,20 @@
  * </table>
  */
 
- #define DT_DRV_COMPAT ams_tcs34725
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/sys/__assert.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/logging/log.h>
+#include <drivers/tcs34725.h>
 
- #include "tsc34725_priv.h"
+#define DT_DRV_COMPAT ams_tcs34725
 
- #if DT_NUM_STATUS_OKAY(DT_DRV_COMPAT) == 0
+#include "tcs34725_priv.h"
+
+#if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
 #warning "TCS34725 driver enabled without any devices"
 #endif
 
@@ -1374,12 +1383,12 @@ uint8_t tcs34725_info(tcs34725_info_t *info)
     return 0;                                                       /* success return 0 */
 }
 
-#define TCS34725_DEFINE(inst)                                                               \                                \
+#define TCS34725_DEFINE(inst)                                                                    \
 	static const struct tcs34725_config tcs34725_config_##inst = {                                \
-		.bus = I2C_DT_SPEC_INST_GET(inst),                                                  \
+		.i2c = I2C_DT_SPEC_INST_GET(inst),                                                  \
 	};                                                                                      \
                                                                                             \
-	DEVICE_DT_INST_DEFINE(inst, tcs34725_init, NULL, &tcs_34725_data_##inst, &tcs34725_config_##inst, \
+	DEVICE_DT_INST_DEFINE(inst, tcs34725_init, NULL, &tcs34725_data_##inst, &tcs34725_config_##inst, \
 						  POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &tcs34725_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(TCS34725_DEFINE);

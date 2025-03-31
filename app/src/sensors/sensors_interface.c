@@ -5,6 +5,7 @@
 #include <sensors/bmi160/bmi160_service.h>
 #include <sensors/scd30/scd30_service.h>
 #include <sensors/l86_m33/l86_m33_service.h>
+#include <sensors/tcs34725/tcs34725_service.h>
 
 LOG_MODULE_REGISTER(sensors_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -57,6 +58,10 @@ int register_sensors_callbacks()
 #ifdef CONFIG_SHIELD_PULGA_GPS
 	sensor_apis[L86_M33] = register_l86_m33_callbacks();
 #endif /* CONFIG_SHIELD_PULGA_GPS */
+
+#ifdef CONFIG_TCS34725
+	sensor_apis[TCS34725] = register_tcs34725_callbacks();
+#endif /* CONFIG_TCS34725 */
 
 	return 0;
 }
