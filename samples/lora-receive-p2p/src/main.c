@@ -32,10 +32,11 @@ static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 // Receive callback, called everytime there is a packet reception.
 // Will print the packet and reception parameters in the log and then blink the LED
 void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
-	                 int16_t rssi, int8_t snr)
+	                 int16_t rssi, int8_t snr, void *user_data)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(size);
+	ARG_UNUSED(user_data);
 
 	// RSSI: Received Signal Strength Indicator
 	// SNR: Signal-noise ratio
@@ -101,7 +102,7 @@ int main(void)
 	// Enable asynchronous reception, so that the callback will
 	// execute everytime the LoRa device sends an RX interruption
 	LOG_INF("Starting reception...");
-	lora_recv_async(lora_dev, lora_receive_cb);
+	lora_recv_async(lora_dev, lora_receive_cb, NULL);
 	k_sleep(K_FOREVER);
 	return 0;
 }
