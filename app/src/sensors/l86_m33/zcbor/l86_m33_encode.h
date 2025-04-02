@@ -22,9 +22,9 @@ extern "C" {
 #endif
 
 
-int cbor_encode_ZcborPayloadL86_M33(
+int cbor_encode_L86_M33(
 		uint8_t *payload, size_t payload_len,
-		const struct ZcborPayloadL86_M33 *input,
+		const struct L86_M33 *input,
 		size_t *payload_len_out);
 
 

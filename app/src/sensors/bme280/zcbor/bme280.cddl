@@ -1,1 +1,1 @@
-ZcborPayloadBME280 = [ temperature: int ]
+BME280 = [ temperature: int ]

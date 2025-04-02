@@ -39,8 +39,14 @@ int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLeve
 	case RAW_BYTES:
 		return data_api->encode_raw_bytes(data_words, encoded_data, encoded_size);
 		break;
-	case ZCBOR:
-		return data_api->encode_zcbor(data_words, encoded_data, encoded_size);
+	case CBOR:
+		if (!data_api->encode_cbor)
+		{
+			LOG_ERR("Encoding not available");
+			return -ENOSYS;
+		}
+
+		return data_api->encode_cbor(data_words, encoded_data, encoded_size);
 		break;
 	default:
 		LOG_ERR("Invalid encoding level");

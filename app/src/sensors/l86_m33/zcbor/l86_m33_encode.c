@@ -25,11 +25,11 @@
 	} \
 } while(0)
 
-static bool encode_ZcborPayloadL86_M33(zcbor_state_t *state, const struct ZcborPayloadL86_M33 *input);
+static bool encode_L86_M33(zcbor_state_t *state, const struct L86_M33 *input);
 
 
-static bool encode_ZcborPayloadL86_M33(
-		zcbor_state_t *state, const struct ZcborPayloadL86_M33 *input)
+static bool encode_L86_M33(
+		zcbor_state_t *state, const struct L86_M33 *input)
 {
 	zcbor_log("%s\r\n", __func__);
 
@@ -43,13 +43,13 @@ static bool encode_ZcborPayloadL86_M33(
 
 
 
-int cbor_encode_ZcborPayloadL86_M33(
+int cbor_encode_L86_M33(
 		uint8_t *payload, size_t payload_len,
-		const struct ZcborPayloadL86_M33 *input,
+		const struct L86_M33 *input,
 		size_t *payload_len_out)
 {
 	zcbor_state_t states[3];
 
 	return zcbor_entry_function(payload, payload_len, (void *)input, payload_len_out, states,
-		(zcbor_decoder_t *)encode_ZcborPayloadL86_M33, sizeof(states) / sizeof(zcbor_state_t), 1);
+		(zcbor_decoder_t *)encode_L86_M33, sizeof(states) / sizeof(zcbor_state_t), 1);
 }

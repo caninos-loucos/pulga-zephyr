@@ -25,10 +25,10 @@
 	} \
 } while(0)
 
-static bool encode_ZcborPayloadBME280(zcbor_state_t *state, const int32_t *input);
+static bool encode_BME280(zcbor_state_t *state, const int32_t *input);
 
 
-static bool encode_ZcborPayloadBME280(
+static bool encode_BME280(
 		zcbor_state_t *state, const int32_t *input)
 {
 	zcbor_log("%s\r\n", __func__);
@@ -41,7 +41,7 @@ static bool encode_ZcborPayloadBME280(
 
 
 
-int cbor_encode_ZcborPayloadBME280(
+int cbor_encode_BME280(
 		uint8_t *payload, size_t payload_len,
 		const int32_t *input,
 		size_t *payload_len_out)
@@ -49,5 +49,5 @@ int cbor_encode_ZcborPayloadBME280(
 	zcbor_state_t states[3];
 
 	return zcbor_entry_function(payload, payload_len, (void *)input, payload_len_out, states,
-		(zcbor_decoder_t *)encode_ZcborPayloadBME280, sizeof(states) / sizeof(zcbor_state_t), 1);
+		(zcbor_decoder_t *)encode_BME280, sizeof(states) / sizeof(zcbor_state_t), 1);
 }

@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 
-int cbor_encode_ZcborPayloadBME280(
+int cbor_encode_BME280(
 		uint8_t *payload, size_t payload_len,
 		const int32_t *input,
 		size_t *payload_len_out);

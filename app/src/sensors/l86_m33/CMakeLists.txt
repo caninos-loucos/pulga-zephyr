@@ -9,7 +9,7 @@ if (REGENERATE_ZCBOR)
   set (zcbor_command
     zcbor code --encode --short-names 
     -c ${L86_M33_ZCBOR_DIR}/l86_m33.cddl 
-    -t ZcborPayloadL86_M33 
+    -t L86_M33 
     --output-cmake ${L86_M33_ZCBOR_DIR}/l86_m33.cmake 
     --output-h ${L86_M33_ZCBOR_DIR}/l86_m33_encode.h 
     --output-c ${L86_M33_ZCBOR_DIR}/l86_m33_encode.c

@@ -9,7 +9,7 @@ if (REGENERATE_ZCBOR)
   set (zcbor_command
     zcbor code --encode --short-names 
     -c ${BME280_ZCBOR_DIR}/bme280.cddl 
-    -t ZcborPayloadBME280 
+    -t BME280 
     --output-cmake ${BME280_ZCBOR_DIR}/bme280.cmake 
     --output-h ${BME280_ZCBOR_DIR}/bme280_encode.h 
     --output-c ${BME280_ZCBOR_DIR}/bme280_encode.c
