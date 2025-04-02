@@ -26,7 +26,8 @@ After completing the [Getting Started](https://github.com/caninos-loucos/pulga-z
 - First, open a virtual environment and synchronize it in the terminal using the following command:
 
   ``` console
-  cd path/to/where/venv/was/installed && source .venv/bin/activate && west update
+  cd path/to/where/venv/was/installed && source .venv/bin/activate
+  west update
   ```
 
 Now, it is possible to make changes inside the code.
