@@ -7,14 +7,14 @@
 
 typedef struct
 {
-    struct sensor_value temperature;
-    struct sensor_value pressure;
-    struct sensor_value humidity;
+    uint8_t dataType;
+    int16_t temperature; // centidegrees (1/100th of degree Celsius)
+    uint16_t pressure; // hectopascal (hPa)
+    uint8_t humidity; // %RH
     uint32_t timestamp;
 } SensorModelBME280;
 
 // Number of 32-bit words in each data item (model)
-// Each sensor_value has 2 words, bme280 has 3 measurements
 #define BME280_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelBME280))
 
 // Register BME280 sensor callbacks

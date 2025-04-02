@@ -4,6 +4,7 @@
 #include <zephyr/logging/log.h>
 #include <drivers/si1133.h>
 #include <sensors/si1133/si1133_service.h>
+#include <assert.h>
 
 LOG_MODULE_REGISTER(si1133_service, CONFIG_APP_LOG_LEVEL);
 
@@ -44,43 +45,66 @@ static void read_sensor_values()
     LOG_DBG("Reading Si1133");
 
     SensorModelSi1133 si1133_model;
-    uint32_t si1133_data[MAX_32_WORDS];
-    int error = 0;
+    struct sensor_value val;
+    int error;
 
+    assert(sizeof(si1133_model) <= (SI1133_MODEL_WORDS * 4));
+
+    si1133_model.dataType = (uint8_t)SI1133_MODEL;
+ 
 sample_fetch:
     error = sensor_sample_fetch(si1133);
-    if (!error)
+    if (error == -EAGAIN)
     {
-        sensor_channel_get(si1133, SENSOR_CHAN_LIGHT,
-                           &si1133_model.light);
-        sensor_channel_get(si1133, SENSOR_CHAN_IR,
-                           &si1133_model.infrared);
-        sensor_channel_get(si1133, SENSOR_CHAN_UV,
-                           &si1133_model.uv);
-        sensor_channel_get(si1133, SENSOR_CHAN_UVI,
-                           &si1133_model.uv_index);
-#ifndef CONFIG_EVENT_TIMESTAMP_NONE
-        si1133_model.timestamp = get_current_timestamp();
-#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
-
-        memcpy(&si1133_data, &si1133_model, sizeof(SensorModelSi1133));
-
-        if (insert_in_buffer(&app_buffer, si1133_data, SI1133_MODEL, error, SI1133_MODEL_WORDS) != 0)
-        {
-            LOG_ERR("Failed to insert data in ring buffer.");
-        }
-    }
-    else if (error == -EAGAIN)
-    {
-        LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
-                si1133->name, error);
+        LOG_WRN("sensor_sample_fetch failed with error %d, trying again", error);
         goto sample_fetch;
     }
-    else
+    else if (error)
     {
-        LOG_ERR("fetch sample from \"%s\" failed: %d",
-                si1133->name, error);
+        LOG_ERR("sensor_sample_fetch failed with error %d", error);
+        return;
     }
+
+    error = sensor_channel_get(si1133, SENSOR_CHAN_LIGHT,
+                               &val);
+    if (error)
+        goto channel_get_err;
+
+    si1133_model.light = val.val1;
+
+    error = sensor_channel_get(si1133, SENSOR_CHAN_IR,
+                               &val);
+    if (error)
+        goto channel_get_err;
+
+    si1133_model.infrared = val.val1;
+
+    error = sensor_channel_get(si1133, SENSOR_CHAN_UV,
+                               &val);
+    if (error)
+        goto channel_get_err;
+
+    si1133_model.uv = val.val1;
+
+    error = sensor_channel_get(si1133, SENSOR_CHAN_UVI,
+                               &val);
+    if (error)
+        goto channel_get_err;
+
+    si1133_model.uv_index = (val.val1 * 100) + (val.val2 / 10000);
+
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+    si1133_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
+
+    // Si1133 model is already aligned to 32-bit words, no need for intermediate pointer
+    error = insert_in_buffer(&app_buffer, (uint32_t *)&si1133_model, SI1133_MODEL, error, SI1133_MODEL_WORDS);
+    if (error)
+        LOG_ERR("Failed to insert data in ring buffer with error %d.", error);
+    return;
+
+channel_get_err:
+    LOG_ERR("sensor_channel_get failed with error %d", error);
 }
 
 // Register Si1133 sensor callbacks

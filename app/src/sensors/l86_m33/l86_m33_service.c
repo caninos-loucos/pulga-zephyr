@@ -5,6 +5,8 @@
 #include <zephyr/sys/timeutil.h>
 #include <integration/timestamp/timestamp_service.h>
 #include <sensors/l86_m33/l86_m33_service.h>
+#include <stdlib.h>
+#include <assert.h>
 
 LOG_MODULE_REGISTER(l86_m33_service, CONFIG_APP_LOG_LEVEL);
 
@@ -12,25 +14,24 @@ LOG_MODULE_REGISTER(l86_m33_service, CONFIG_APP_LOG_LEVEL);
  * DEFINITIONS
  */
 
-static const struct device *const l86_m33 = DEVICE_DT_GET(DT_ALIAS(gnss));
+const struct device *const l86_m33 = DEVICE_DT_GET(DT_ALIAS(gnss));
 // API that concentrates the methods to deal with GNSS (GPS) module
 static SensorAPI l86_m33_api = {0};
 // Semaphore that allows for the received data to be inserted in the buffer
-static struct k_sem process_fix_data;
+struct k_sem process_fix_data;
 
 // Handles the incoming reading from the satellites, but only saves to
 // buffer according to overall sampling time
-static void receive_fix_callback(const struct device *gnss_device,
-                                 const struct gnss_data *gnss_data);
+void receive_fix_callback(const struct device *gnss_device,
+                          const struct gnss_data *gnss_data);
 // Sets the fix interval of GNSS model to a valid number according to device's restrictions
-static int set_valid_fix_interval(int raw_fix_interval);
+int set_valid_fix_interval(int raw_fix_interval);
 // Rounds the value to the closest multiple of 1000
 static int round_closest_1000_multiple(int number);
 #if defined(CONFIG_EVENT_TIMESTAMP_GNSS)
 // Converts the GNSS time to a timestamp and sets it as the synchronization time
 static void convert_and_set_sync_time(const struct gnss_data *gnss_data);
 #endif
-
 /**
  * IMPLEMENTATIONS
  */
@@ -44,7 +45,7 @@ static int init_sensor()
     if (!l86_m33)
     {
         LOG_ERR("l86_m33 not declared at device tree");
-        return -1;
+        return -ENODEV;
     }
     error = device_init(l86_m33);
     if (error)
@@ -78,63 +79,65 @@ static void read_sensor_values()
 void receive_fix_callback(const struct device *gnss_device,
                           const struct gnss_data *gnss_data)
 {
+    SensorModelGNSS gnss_model;
+    void *l86_m33_data;
+    int error;
+
+    assert(sizeof(gnss_model) <= (GNSS_MODEL_WORDS * 4));
+
+    gnss_model.dataType = (uint8_t) GNSS_MODEL;
+
+    // Only saves to buffer if it's a valid fix, it can take several minutes
+    // to start gettting valid readings from the satellites
+    if (gnss_data->info.fix_status == GNSS_FIX_STATUS_NO_FIX)
+        return;
 
     // Returns if it's not supposed to save data to buffer
     if (k_sem_take(&process_fix_data, K_NO_WAIT))
-    {
         return;
-    }
-    // Only saves to buffer if it's a valid fix, it can take several minutes
-    // to start gettting valid readings from the satellites
-    if (gnss_data->info.fix_status != GNSS_FIX_STATUS_NO_FIX)
-    {
-        SensorModelGNSS gnss_model;
-        uint32_t l86_m33_data[MAX_32_WORDS] = {0};
 
-#if defined(CONFIG_EVENT_TIMESTAMP_GNSS)
-        convert_and_set_sync_time(gnss_data);
-#endif
+    // Latitude and Longitude in microdegrees (-180E6 to 180E6)
+    gnss_model.latitude = gnss_data->nav_data.latitude / 1000;
+    gnss_model.longitude = gnss_data->nav_data.longitude / 1000;
 
-        gnss_model.navigation = gnss_data->nav_data;
-        gnss_model.real_time = gnss_data->utc;
+    // Altitude in decimeters (1/10th of meter)
+    gnss_model.altitude = gnss_data->nav_data.altitude / 10;
+
+    // Speed in cm/s
+    gnss_model.speed = gnss_data->nav_data.speed / 10;
+
+    // Bearing angle in decidegrees (1/10th of a degree)
+    gnss_model.bearing = gnss_data->nav_data.bearing / 10;
+
+    gnss_model.real_time = gnss_data->utc;
 
 #ifndef CONFIG_EVENT_TIMESTAMP_NONE
-        gnss_model.timestamp = get_current_timestamp();
+    gnss_model.timestamp = get_current_timestamp();
 #endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
-        memcpy(&l86_m33_data, &gnss_model, sizeof(SensorModelGNSS));
-
-        if (insert_in_buffer(&app_buffer, l86_m33_data, GNSS_MODEL, 0, GNSS_MODEL_WORDS) != 0)
-        {
-            LOG_ERR("Failed to insert data in ring buffer.");
-        }
+    if (insert_in_buffer(&app_buffer, (uint32_t *)&gnss_model, GNSS_MODEL, 0, GNSS_MODEL_WORDS) != 0)
+    {
+        LOG_ERR("Failed to insert data in ring buffer.");
     }
 }
 
 int set_valid_fix_interval(int raw_fix_interval)
 {
-    int error = 0;
+    int error, clamped_fix_interval;
 
     // Device only allows 100 ms to 10000 ms update rate
-    if (raw_fix_interval < 100)
-    {
-        raw_fix_interval = 100;
-    }
-    else if (raw_fix_interval > 10000)
-    {
-        raw_fix_interval = 10000;
-    }
+    clamped_fix_interval = CLAMP(raw_fix_interval, 100, 10000);
     // If it's greater than 1000, fix rate must be a multiple of 1000
-    else if (raw_fix_interval > 1000 && raw_fix_interval % 1000 != 0)
-    {
-        raw_fix_interval = round_closest_1000_multiple(raw_fix_interval);
-    }
+    if (clamped_fix_interval > 1000)
+        clamped_fix_interval -= clamped_fix_interval % 1000;
 
-    error = gnss_set_fix_rate(l86_m33, raw_fix_interval);
-    if (error != 0)
-    {
+    if (clamped_fix_interval != raw_fix_interval)
+        LOG_WRN("Invalid fix interval provided (%d), clamping to [100, 10000]ms interval (%d)", raw_fix_interval, clamped_fix_interval);
+
+    error = gnss_set_fix_rate(l86_m33, clamped_fix_interval);
+    if (error)
         LOG_ERR("Couldn't set L86-M33 fix rate");
-    }
+
     return error;
 }
 

@@ -22,21 +22,15 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
     // Formats the string
     return snprintf(encoded_data, encoded_size,
                     "Timestamp: %d; "
-                    "Acceleration [m/s²]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z); "
-                    "Rotation [radian/s]: %d.%02d (X) %d.%02d (Y) %d.%02d (Z);",
+                    "Acceleration [cm/s²]: %d (X) %d (Y) %d (Z); "
+                    "Rotation [milliradian/s]: %d (X) %d (Y) %d (Z);",
                     bmi160_model->timestamp,
-                    bmi160_model->acceleration[0].val1,
-                    bmi160_model->acceleration[0].val2 / 10000,
-                    bmi160_model->acceleration[1].val1,
-                    bmi160_model->acceleration[1].val2 / 10000,
-                    bmi160_model->acceleration[2].val1,
-                    bmi160_model->acceleration[2].val2 / 10000,
-                    bmi160_model->rotation[0].val1,
-                    bmi160_model->rotation[0].val2 / 10000,
-                    bmi160_model->rotation[1].val1,
-                    bmi160_model->rotation[1].val2 / 10000,
-                    bmi160_model->rotation[2].val1,
-                    bmi160_model->rotation[2].val2 / 10000);
+                    bmi160_model->acceleration[0],
+                    bmi160_model->acceleration[1],
+                    bmi160_model->acceleration[2],
+                    bmi160_model->rotation[0],
+                    bmi160_model->rotation[1],
+                    bmi160_model->rotation[2]);
 }
 
 // Encodes all values of data model into a minimalist string
@@ -47,20 +41,14 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "TS%dAC%d.%02d %d.%02d %d.%02dR%d.%02d %d.%02d %d.%02d",
+                    "TS%dAC%d %d %d.R%d %d %d",
                     bmi160_model->timestamp,
-                    bmi160_model->acceleration[0].val1,
-                    bmi160_model->acceleration[0].val2 / 10000,
-                    bmi160_model->acceleration[1].val1,
-                    bmi160_model->acceleration[1].val2 / 10000,
-                    bmi160_model->acceleration[2].val1,
-                    bmi160_model->acceleration[2].val2 / 10000,
-                    bmi160_model->rotation[0].val1,
-                    bmi160_model->rotation[0].val2 / 10000,
-                    bmi160_model->rotation[1].val1,
-                    bmi160_model->rotation[1].val2 / 10000,
-                    bmi160_model->rotation[2].val1,
-                    bmi160_model->rotation[2].val2 / 10000);
+                    bmi160_model->acceleration[0],
+                    bmi160_model->acceleration[1],
+                    bmi160_model->acceleration[2],
+                    bmi160_model->rotation[0],
+                    bmi160_model->rotation[1],
+                    bmi160_model->rotation[2]);
 }
 
 static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)

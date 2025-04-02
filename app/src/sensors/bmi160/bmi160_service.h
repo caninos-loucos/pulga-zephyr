@@ -7,14 +7,13 @@
 
 typedef struct
 {
-    struct sensor_value acceleration[3];
-    struct sensor_value rotation[3];
-    uint32_t timestamp;
+    uint8_t dataType;
+    int16_t acceleration[3]; // cm/s²
+    int16_t rotation[3]; // milliradians/s
+    uint32_t timestamp; 
 } SensorModelBMI160;
 
 // Number of 32-bit words in each data item (model)
-// Each sensor_value has 2 words, bmi160 has 2 measurements
-// with 3 axis each
 #define BMI160_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelBMI160))
 
 // Register BMI160 sensor callbacks

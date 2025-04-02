@@ -7,15 +7,15 @@
 
 typedef struct
 {
-    struct sensor_value light;
-    struct sensor_value infrared;
-    struct sensor_value uv;
-    struct sensor_value uv_index;
+    uint8_t dataType;    
+    uint32_t light; // All values are in Lux
+    uint32_t infrared;
+    uint16_t uv;
+    uint16_t uv_index; // Has no measurement unit
     uint32_t timestamp;
 } SensorModelSi1133;
 
 // Number of 32-bit words in each data item (model)
-// Each sensor_value has 2 words, si1133 has 4 measurements
 #define SI1133_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelSi1133))
 
 // Registers Si1133 model callbacks

@@ -295,6 +295,7 @@ static int si1133_channel_get(const struct device *dev,
 	case SENSOR_CHAN_UVI:
 		val->val1 = (int32_t)(data->chan_uvi / 100);
 		val->val2 = (int32_t)(data->chan_uvi % 100 * 10000);
+		break;
 	default:
 		return -ENOTSUP;
 	}
