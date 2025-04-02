@@ -32,6 +32,9 @@ static int init_sensor()
     }
     else if (!device_is_ready(tcs34725))
     {
+        printk("init response: %d\n\t",tcs34725->state->init_res);
+        printk("initialized?: %d\n\t",tcs34725->state->initialized);
+        
         LOG_ERR("device \"%s\" is not ready", tcs34725->name);
         return -EAGAIN;
     }

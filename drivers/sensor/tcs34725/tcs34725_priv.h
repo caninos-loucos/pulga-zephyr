@@ -246,7 +246,7 @@ static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel c
 static int tcs34725_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
 
 // Gets desired attribute
-static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, const struct sensor_value *value);
+static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, struct sensor_value *value);
 // Sets desired attribute 
 static int tcs34725_attr_set(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, const struct sensor_value *value);
 
@@ -348,7 +348,7 @@ uint8_t tcs34725_info(tcs34725_info_t *info);
  *            - 3 linked functions is NULL
  * @note      none
  */
-uint8_t tcs34725_init(const struct device *dev);
+static int tcs34725_init(const struct device *dev);
 
 /**
  * @brief     close the chip

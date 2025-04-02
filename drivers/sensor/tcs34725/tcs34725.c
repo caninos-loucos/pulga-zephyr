@@ -93,6 +93,8 @@ static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel c
     {
         return ret; // Verificar depois a lógica do retorno
     }
+    
+    return o;
 }
 
 static int tcs34725_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val)
@@ -101,7 +103,7 @@ static int tcs34725_channel_get(const struct device *dev, enum sensor_channel ch
 }
 
 // Gets desired attribute
-static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, const struct sensor_value *value)
+static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, struct sensor_value *value)
 {
     return 0; // Temporary return
 }
@@ -1147,9 +1149,11 @@ static const struct sensor_driver_api tcs34725_driver_api = {
  *            - 3 linked functions is NULL
  * @note      none
  */
-uint8_t tcs34725_init(const struct device *dev)
+static int tcs34725_init(const struct device *dev)
 {
     LOG_DBG("Initializing TCS34725");
+
+    printk("This is the device init function\n\t");
 
     uint8_t ret, id;
     // tcs34725_handle_t *handle = dev->data.handle; // not sure if ill use
@@ -1162,6 +1166,8 @@ uint8_t tcs34725_init(const struct device *dev)
         LOG_ERR("I2C device %s is not ready", cfg->i2c.bus->name);
         return -ENODEV;
     }
+
+    printk("Device ready do driver check \n\t");
     
     // if (handle == NULL)                                                                  /* check handle */
     // {
@@ -1214,6 +1220,7 @@ uint8_t tcs34725_init(const struct device *dev)
     ret = tcs34725_register_read(dev, (uint8_t *)&id, TCS34725_REG_ID);                    /* read id */
     if (ret != 0)                                                                        /* check result */
     {
+        printk("Erro na aquisição do ID. Return code: %d \n\t", ret);
         //handle->debug_print("tcs34725: read id failed.\n");                              /* read id failed */
         LOG_DBG("read id failed");
         // (void)handle->i2c_deinit();                                                      /* i2c deinit */
