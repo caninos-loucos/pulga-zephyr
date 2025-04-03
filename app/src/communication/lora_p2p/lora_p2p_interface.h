@@ -7,7 +7,7 @@
  * Refer to:
  * https://docs.zephyrproject.org/latest/kernel/services/threads/index.html
  */
-#define LORA_P2P_THREAD_STACK_SIZE 8192
+#define LORA_P2P_THREAD_STACK_SIZE 2048
 #define LORA_P2P_THREAD_PRIORITY 5 /* preemptible */
 
 // Create an internal buffer to be able to send multiple data readings in one packet

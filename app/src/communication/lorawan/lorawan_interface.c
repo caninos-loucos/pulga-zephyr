@@ -133,7 +133,10 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 		// Encodes data item to be sent and inserts the encoded data in the internal buffer
 		error = encode_and_insert(data_unit);
 		if (error)
+		{
+			k_sem_give(&data_processed);
 			continue;
+		}
 		else
 			buffered_items++;
 
