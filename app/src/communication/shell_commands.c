@@ -30,7 +30,8 @@ SHELL_CMD_REGISTER(sampling_interval, &sampling_interval_subcmds, HELP_SAMPLING_
 
 // ** Trasmission command handlers **
 
-#define HELP_FORWARD_DATA "Insert a text item in the application buffer."
+#define HELP_FORWARD_DATA "Insert a text item in the application buffer." \
+                          "Usage: \"forward_data -c <communication_channel> <payload>\"."
 #define HELP_TRANSMISSION_INTERVAL "Get or set communication interface's transmission interval in milliseconds."
 #define HELP_TRANSMISSION_INTERVAL_GET "Get communication interface's transmission interval. " \
                                        "Usage: \"transmission_interval get\"."
@@ -158,16 +159,39 @@ static int get_transmission_interval_cmd_handler(const struct shell *sh, size_t 
     return 0;
 }
 
+// argv: "forward_data -c <channel> <payload>"
 static int forward_data_cmd_handler(const struct shell *sh, size_t argc, char **argv)
 {
-    if (argc != 2)
+    if (argc != 4 || strcmp(argv[1], "-c"))
     {
-        shell_error(sh, "Must provide a payload.\n%s", HELP_FORWARD_DATA);
+        shell_error(sh, "Must provide a chanel and a payload.");
         return -EINVAL;
     }
 
+    enum ChannelType channel = -1;
+    if (!strcmp(argv[2], "lorawan"))
+        channel = LORAWAN;
+    else if (!strcmp(argv[2], "lorap2p"))
+        channel = LORAP2P;
+    else if (!strcmp(argv[2], "bt"))
+        channel = BLE;
+    else
+    {
+        shell_error(sh, "No such channel.");
+        return -EINVAL;
+    }
+
+    switch (channel)
+    {
+    case LORAWAN:
+        break;
+    default:
+        shell_warn(sh, "Channel not configured.");
+        return -ENETDOWN;
+    }
+
     char payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS))] = {0};
-    snprintf(payload, sizeof(payload), "%s", argv[1]);
+    snprintf(payload, sizeof(payload), "%s", argv[3]);
 
     if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA, 0, MAX_32_WORDS) != 0)
     {
