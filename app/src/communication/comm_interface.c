@@ -2,8 +2,8 @@
 #include <zephyr/logging/log.h>
 #include <communication/comm_interface.h>
 #include <communication/uart/uart_interface.h>
-#include <communication/lorawan/lorawan_interface.h>
-#include <communication/lora_p2p/lora_p2p_interface.h>
+#include <communication/lora/lorawan/lorawan_interface.h>
+#include <communication/lora/lora_p2p/lora_p2p_interface.h>
 
 LOG_MODULE_REGISTER(comm_interface, CONFIG_APP_LOG_LEVEL);
 
