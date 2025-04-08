@@ -17,7 +17,7 @@ static struct k_thread uart_thread_data;
 static k_tid_t uart_thread_id;
 
 // Initializes and starts thread to send data via UART
-static void uart_init_channel();
+static int uart_init_channel();
 // Functions that prints data to UART in separate thread
 static void uart_send_data(void *, void *, void *);
 
@@ -25,7 +25,7 @@ static void uart_send_data(void *, void *, void *);
  * IMPLEMENTATIONS
  */
 
-static void uart_init_channel()
+static int uart_init_channel()
 {
     LOG_DBG("Initializing send via UART thread");
     int ret = 0;
@@ -39,6 +39,7 @@ static void uart_init_channel()
     {
         LOG_ERR("Failed to set read buffer thread name: %d", ret);
     }
+    return ret;
 }
 
 static void uart_send_data(void *param0, void *param1, void *param2)

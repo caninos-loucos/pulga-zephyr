@@ -24,7 +24,7 @@ enum ChannelType
 typedef struct
 {
     // Initializes channel and starts communication
-    void (*init_channel)();
+    int (*init_channel)();
 } ChannelAPI;
 
 // Data unit that will be served to communication channels

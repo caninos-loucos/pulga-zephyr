@@ -56,7 +56,7 @@ static struct k_thread lorawan_send_thread_data;
 static k_tid_t lorawan_send_thread_id;
 
 // Initializes and starts thread to send data via LoRaWAN
-static void lorawan_init_channel();
+static int lorawan_init_channel();
 // Functions that receives data from application buffer and
 // inserts it in LoRaWAN internal buffer
 static void lorawan_process_data(void *, void *, void *);
@@ -78,12 +78,17 @@ static void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payl
  * Definitions
  */
 
-static void lorawan_init_channel()
+static int lorawan_init_channel()
 {
 	LOG_DBG("Initializing LoRaWAN channel");
 	int error = 0;
 
 	error = lorawan_setup_connection();
+	if (error)
+	{
+		LOG_ERR("Failed to setup LoRaWAN connection: %d", error);
+		goto return_clause;
+	}
 
 	LOG_DBG("Initializing LoRaWAN processing data thread");
 	// After joining successfully, create the send thread.
@@ -113,7 +118,7 @@ static void lorawan_init_channel()
 	}
 
 return_clause:
-	return;
+	return error;
 }
 
 // Encoding and buffering Data thread

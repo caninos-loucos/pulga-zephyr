@@ -127,7 +127,6 @@ static void lora_p2p_send_data(void *__lora_dev__, void *param1, void *param2)
 			continue;
 		}
 		LOG_INF("lorawan_send successful");
-
 #endif // CONFIG_RECEIVE_LORA_P2P
 
 		// Signals back that sending is complete
@@ -135,7 +134,7 @@ static void lora_p2p_send_data(void *__lora_dev__, void *param1, void *param2)
 	}
 }
 
-static void lora_p2p_init_channel(void)
+static int lora_p2p_init_channel(void)
 {
 	// It is most important to get the device struct from the devicetree node
 	// they are not the same thing!
@@ -148,14 +147,14 @@ static void lora_p2p_init_channel(void)
 	if (!device_is_ready(lora_device))
 	{
 		LOG_ERR("%s: device not ready.", lora_device->name);
-		goto return_clause;
+		return -EAGAIN;
 	}
 
 	error = lora_config(lora_device, &lora_modem_config);
 	if (error < 0)
 	{
 		LOG_ERR("lora_config failed");
-		return;
+		goto return_clause;
 	}
 
 	lora_recv_async(lora_device, lora_receive_cb, NULL);
@@ -169,7 +168,7 @@ static void lora_p2p_init_channel(void)
 		LOG_ERR("Failed to set read buffer thread name: %d", error);
 
 return_clause:
-	return;
+	return error;
 }
 
 void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,

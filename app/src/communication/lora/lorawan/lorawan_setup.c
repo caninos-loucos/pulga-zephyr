@@ -61,7 +61,7 @@ int lorawan_setup_connection()
     if (!device_is_ready(lora_device))
     {
         LOG_ERR("%s: device not ready.", lora_device->name);
-        goto return_clause;
+        return -EAGAIN;
     }
 
     // Set the chosen region, this MUST be the same as the gateway's!

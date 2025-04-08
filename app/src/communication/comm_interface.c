@@ -85,7 +85,12 @@ int init_channels()
                 LOG_ERR("Failed to initialize data ready semaphore: %d", error);
                 return error;
             }
-            channel_apis[i]->init_channel();
+            error = channel_apis[i]->init_channel();
+            if (error)
+            {
+                channel_apis[i] = NULL;
+                continue;
+            }
             registered_comm_channels++;
         }
     }

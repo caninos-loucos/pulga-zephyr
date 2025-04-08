@@ -44,14 +44,14 @@ endif()
 
 if(CONFIG_SEND_LORAWAN)
     target_sources(app PRIVATE  
-                        src/communication/lorawan/lorawan_buffer/lorawan_buffer.c
-                        src/communication/lorawan/lorawan_interface.c
-                        src/communication/lorawan/lorawan_setup.c)
+                        src/communication/lora/internal_buffer/internal_buffer.c
+                        src/communication/lora/lorawan/lorawan_interface.c
+                        src/communication/lora/lorawan/lorawan_setup.c)
 endif()
 
 if(CONFIG_SEND_LORA_P2P)
     target_sources(app PRIVATE
-                        src/communication/lora_p2p/lora_p2p_interface.c)
+                        src/communication/lora/lora_p2p/lora_p2p_interface.c)
 endif()
 
 if(CONFIG_SHIELD_SCD30)
