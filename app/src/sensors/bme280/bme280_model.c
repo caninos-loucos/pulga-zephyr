@@ -63,7 +63,7 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
 static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     SensorModelBME280 *bme280_model = (SensorModelBME280 *)data_words;
-    uint32_t zcbor_input = bme280_model->temperature.val1;
+    uint32_t zcbor_input = bme280_model->temperature.val1 * 100 + bme280_model->temperature.val1 / 10000;
     uint8_t zcbor_output[MAX_32_WORDS];
     size_t zcbor_output_size;
 
