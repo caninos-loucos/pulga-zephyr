@@ -33,7 +33,7 @@ static bool encode_L86_M33(
 {
 	zcbor_log("%s\r\n", __func__);
 
-	bool res = (((zcbor_list_start_encode(state, 3) && ((((zcbor_int32_encode(state, (&(*input).timestamp))))
+	bool res = (((zcbor_list_start_encode(state, 3) && ((((zcbor_int64_encode(state, (&(*input).timestamp))))
 	&& ((zcbor_float64_encode(state, (&(*input).latitude))))
 	&& ((zcbor_float64_encode(state, (&(*input).longitude))))) || (zcbor_list_map_end_force_encode(state), false)) && zcbor_list_end_encode(state, 3))));
 

@@ -94,8 +94,8 @@ static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encod
         .tm_mon = gnss_model->real_time.month - 1,
         .tm_year = gnss_model->real_time.century_year + 2000 - TIME_UTILS_BASE_YEAR,
     };
-    uint32_t gps_epoch = timeutil_timegm64(&structured_time);
-    LOG_INF("GNSS time: %d", gps_epoch);
+    int64_t gps_epoch = timeutil_timegm64(&structured_time);
+    LOG_INF("GNSS time: %lld", gps_epoch);
 
     zcbor_input.latitude = gnss_model->navigation.latitude;
     zcbor_input.longitude = gnss_model->navigation.longitude;

@@ -26,7 +26,7 @@ extern "C" {
 #define DEFAULT_MAX_QTY 3
 
 struct L86_M33 {
-	int32_t timestamp;
+	int64_t timestamp;
 	double latitude;
 	double longitude;
 };
