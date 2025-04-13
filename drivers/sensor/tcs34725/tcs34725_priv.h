@@ -66,8 +66,8 @@ extern "C"{
 /**
  * @brief chip register definition
  */
-#define TCS34725_REG_ENABLE         0x80        /**< enable register */
-#define TCS34725_REG_ATIME          0x81        /**< atime register */
+#define TCS34725_REG_ENABLE         0x00        /**< enable register */ // Changed to 0x0
+#define TCS34725_REG_ATIME          0x01        /**< atime register */
 #define TCS34725_REG_WTIME          0x83        /**< wtime register */
 #define TCS34725_REG_AILTL          0xA4        /**< ailtl register */
 #define TCS34725_REG_AILTH          0xA5        /**< ailth register */
@@ -76,17 +76,29 @@ extern "C"{
 #define TCS34725_REG_PERS           0x8C        /**< pers register */
 #define TCS34725_REG_CONFIG         0x8D        /**< config register */
 #define TCS34725_REG_CONTROL        0x8F        /**< control register */
-#define TCS34725_REG_ID             0x92        /**< id register */
-#define TCS34725_REG_STATUS         0x93        /**< status register */
-#define TCS34725_REG_CDATAL         0xB4        /**< cdatal register */
-#define TCS34725_REG_CDATAH         0xB5        /**< cdatah register */
-#define TCS34725_REG_RDATAL         0xB6        /**< rdatal register */
-#define TCS34725_REG_RDATAH         0xB7        /**< rdatah register */
-#define TCS34725_REG_GDATAL         0xB8        /**< gdatal register */
-#define TCS34725_REG_GDATAH         0xB9        /**< gdatah register */
-#define TCS34725_REG_BDATAL         0xBA        /**< bdatal register */
-#define TCS34725_REG_BDATAH         0xBB        /**< bdatah register */
+#define TCS34725_REG_ID             0x12        /**< id register */       // Changed to 0x12, as specified in datasheet
+#define TCS34725_REG_STATUS         0x13        /**< status register */ // Changed
+#define TCS34725_REG_CDATAL         0x14        /**< cdatal register */
+#define TCS34725_REG_CDATAH         0x15        /**< cdatah register */
+#define TCS34725_REG_RDATAL         0x16        /**< rdatal register */
+#define TCS34725_REG_RDATAH         0x17        /**< rdatah register */
+#define TCS34725_REG_GDATAL         0x18        /**< gdatal register */
+#define TCS34725_REG_GDATAH         0x19        /**< gdatah register */
+#define TCS34725_REG_BDATAL         0x1A        /**< bdatal register */
+#define TCS34725_REG_BDATAH         0x1B        /**< bdatah register */
 #define TCS34725_REG_CLEAR          0xE6        /**< clear register */
+
+// Individual bits used to specify data to be written
+#define COMMAND_BIT                 0x80       // command bit in hex
+#define TCS34725_ENABLE_AIEN                0x10       // RGBC interrupt enable. When asserted, permits RGBC interrupts to be generated. 
+#define TCS34725_ENABLE_WEN                 0x08       // Wait enable. Writing a 1 activates the wait timer. 
+#define TCS34725_ENABLE_AEN                 0x02       // RGBC enable. Writing a 1 activates the RGBC.
+#define TCS34725_ENABLE_PON                 0x01       // Power ON. Writing a 1 activates the internal oscillator.
+#define TCS34725_STATUS_AINT                0x10       // Clear channel Interrupt
+#define TCS34725_STATUS_AVALID              0x01       // RGBC valid
+
+
+#define MAX_TRIES_I2C_WRITES_AT_WAKE_UP       5          // Maximum tries to contact i2c
 
 /**
  * @defgroup tcs34725_driver tcs34725 driver function
@@ -227,18 +239,21 @@ struct tcs34725_data {
 };
 
 struct tcs34725_config {
-	struct i2c_dt_spec i2c;
+	const struct i2c_dt_spec i2c;
 };
 
 // Writes data to a register
-static int tcs34725_register_write(const struct device *dev, uint8_t *buf, uint32_t size);
+static int tcs34725_register_write(const struct device *dev, uint8_t reg, uint8_t data);
 
 // Reads data from a register
-static int tcs34725_register_read(const struct device *dev, uint8_t *buf, uint32_t size);
+static int tcs34725_register_read(const struct device *dev, uint8_t reg, uint8_t *buf, uint32_t size);
 
 // Writes command in the command register
 // Maybe not useful
 static int tcs34725_command_write(const struct device *dev,  uint8_t cmd);
+
+// Função chip enable: acorda o chip --> escrevre no registrador enable os dados necessários pra ele sair do modo sleep
+static int tcs34725_chip_enable(const struct device *dev);
 
 // Fetches sample data
 static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel channel);
@@ -376,7 +391,7 @@ uint8_t tcs34725_deinit(tcs34725_handle_t *handle);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_read_rgbc(const struct device *dev, uint16_t *red, uint16_t *green, uint16_t *blue, uint16_t *clear);
+uint8_t tcs34725_read_rgbc(const struct device *dev);
 
 // uint8_t tcs34725_read_rgbc(tcs34725_handle_t *handle, uint16_t *red, uint16_t *green, uint16_t *blue, uint16_t *clear);
 

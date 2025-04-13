@@ -54,7 +54,11 @@ static void read_sensor_values()
  sample_fetch:
     error = sensor_sample_fetch(tcs34725);
 
-    if (error) LOG_DBG("Error at sample fetch");
+    if (error) 
+    {
+        LOG_DBG("Error at sample fetch");
+        return;
+    } 
 
     // In production yet. Will implement channels later
     // if (!error)
