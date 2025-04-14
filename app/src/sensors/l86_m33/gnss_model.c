@@ -109,7 +109,7 @@ static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encod
     }
 
     zcbor_output[zcbor_output_size] = '\0';
-    return snprintf(encoded_data, zcbor_output_size + 5, "{g%c%s}", zcbor_output_size, zcbor_output);
+    return snprintf(encoded_data, encoded_size, "{g%c%s}", zcbor_output_size, zcbor_output);
 }
 
 // Registers GNSS model callbacks

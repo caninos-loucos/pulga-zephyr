@@ -75,7 +75,11 @@ static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encod
     }
 
     zcbor_output[zcbor_output_size] = '\0';
-    return snprintf(encoded_data, zcbor_output_size + 5, "{t%c%s}", zcbor_output_size, zcbor_output);
+    encoded_data = "{t";
+    memcpy(encoded_data + 2, zcbor_output_size, 1);
+    memcpy(encoded_data + 3, zcbor_output, zcbor_output_size);
+    memcpy(encoded_data + 3 + zcbor_output_size, "}\0", 2);
+    return encoded_data;
 }
 
 // Registers BME280 model callbacks
