@@ -31,6 +31,7 @@ The order in which everything happens is the following:
 #include <zephyr/sys/ring_buffer.h>
 #include <communication/lora/lorawan/lorawan_interface.h>
 #include <communication/lora/internal_buffer/internal_buffer.h>
+#include <integration/data_buffer/buffer_service.h>
 
 LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -40,7 +41,8 @@ LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 // Create an internal buffer to be able to send multiple data readings in one packet
 #define LORAWAN_BUFFER_SIZE 2048
 // Defines the internal buffer for used to store data while waiting a previous package to be sent
-RING_BUF_ITEM_DECLARE(lorawan_buffer, LORAWAN_BUFFER_SIZE);
+RING_BUF_ITEM_DECLARE(lorawan_ring_buffer, LORAWAN_BUFFER_SIZE);
+PulgaRingBuffer lorawan_buffer;
 
 // Instance of ChannelAPI for lorawan channel
 static ChannelAPI lorawan_api;
@@ -82,6 +84,8 @@ static int lorawan_init_channel()
 {
 	LOG_DBG("Initializing LoRaWAN channel");
 	int error = 0;
+
+	init_pulga_buffer(&lorawan_buffer, &lorawan_ring_buffer);
 
 	error = lorawan_setup_connection();
 	if (error)
@@ -131,7 +135,7 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 	uint8_t max_payload_size;
 	uint8_t unused_arg;
 
-	int error, buffered_items = 0;
+	int error;
 
 	while (1)
 	{
@@ -146,14 +150,12 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 			k_sem_give(&data_processed);
 			continue;
 		}
-		else
-			buffered_items++;
 
 #ifdef CONFIG_LORAWAN_JOIN_PACKET
 		// If the application is joining packets into a larger package,
 		// it waits longer to wake up the sending thread, until a package with
 		// maximum payload size can be assembled
-		if (get_buffer_to_package_size(&lorawan_buffer, buffered_items) < max_payload_size)
+		if (get_buffer_size_without_headers(&lorawan_buffer) < max_payload_size)
 		{
 			LOG_DBG("Joining more data");
 			// Signals for the Communication Interface that Lorawan processing is complete
@@ -184,7 +186,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	while (1)
 	{
 		// After waking up, transmits until buffer is empty
-		while (!internal_buffer_empty(&lorawan_buffer))
+		while (!buffer_is_empty(&lorawan_buffer))
 		{
 			LOG_DBG("Resetting data item variables");
 			error = 0;
@@ -206,8 +208,9 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 									 &available_package_size, joined_data);
 				continue;
 			}
+			enum DataType data_type;
 			// Get the next packet from the internal buffer
-			error = get_internal_buffer_item(&lorawan_buffer, encoded_data, &encoded_data_word_size);
+			error = get_from_buffer(&lorawan_buffer, encoded_data, &data_type, &encoded_data_word_size);
 			if (error)
 			{
 				continue;
@@ -258,7 +261,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	while (1)
 	{
 		// After waking up, transmits until buffer is empty
-		while (!internal_buffer_empty(&lorawan_buffer))
+		while (!buffer_is_empty(&lorawan_buffer))
 		{
 			LOG_DBG("Resetting data item variables");
 			error = 0;
@@ -267,8 +270,9 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 
 			memset(encoded_data, 0, sizeof(encoded_data));
 			encoded_data_word_size = MAX_32_WORDS;
+			enum DataType data_type;
 			// Get the next packet from the internal buffer
-			error = get_internal_buffer_item(&lorawan_buffer, encoded_data, &encoded_data_word_size);
+			error = get_from_buffer(&lorawan_buffer, encoded_data, &data_type, &encoded_data_word_size);
 			if (error)
 			{
 				continue;

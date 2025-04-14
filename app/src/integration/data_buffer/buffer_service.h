@@ -11,17 +11,31 @@
 // Maximum number of 32-bit words an item of the application buffer can have
 #define MAX_32_WORDS 16
 
+struct PulgaRingBufferPrivate;
+
+typedef struct
+{
+    // Actual ring buffer
+    struct ring_buf *buffer;
+    // Number of data items in the buffer
+    int num_data_items;
+} PulgaRingBuffer;
+
 // Declares ring buffer that will store data until it is read and sent
-extern struct ring_buf app_buffer;
+extern PulgaRingBuffer app_buffer;
 
+// Initializes a ring buffer
+void init_pulga_buffer(PulgaRingBuffer *pulga_buffer, struct ring_buf *ring_buffer);
 // Gets item from buffer
-int get_from_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType *data_type, uint8_t *num_words);
-
+int get_from_buffer(PulgaRingBuffer *pulga_buffer, uint32_t *data_words, enum DataType *data_type, uint8_t *num_words);
 // Inserts data in buffer
-int insert_in_buffer(struct ring_buf *buffer, uint32_t *data_words, enum DataType data_type,
+int insert_in_buffer(PulgaRingBuffer *pulga_buffer, uint32_t *data_words, enum DataType data_type,
                      uint8_t custom_value, uint8_t num_words);
-
 // Verifies if buffer is empty
-int buffer_is_empty(struct ring_buf *buffer);
+bool buffer_is_empty(PulgaRingBuffer *pulga_buffer);
+// Gets size of buffer without headers
+int get_buffer_size_without_headers(PulgaRingBuffer *pulga_buffer);
+// Peeks into buffer to return size of item in 32-bit words
+int get_item_word_size(PulgaRingBuffer *pulga_buffer, uint8_t *item_size);
 
 #endif /* BUFFER_SERVICE_H */

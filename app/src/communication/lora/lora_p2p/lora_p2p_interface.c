@@ -51,7 +51,13 @@ LOG_MODULE_REGISTER(lora_p2p_interface, CONFIG_APP_LOG_LEVEL);
  * Declarations
  */
 static ChannelAPI lora_p2p_api;
-
+// Initializes LoRa Peer-to-Peer channel
+static int lora_p2p_init_channel(void);
+// Callback function to be used whenever data is received.
+static void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
+					 int16_t rssi, int8_t snr, void *user_data);
+// Function executed by thread that sends data using LoRa Peer-to-Peer
+static void lora_p2p_send_data(void *__lora_dev__, void *param1, void *param2);
 // Stack of lora_p2p communication thread
 static K_THREAD_STACK_DEFINE(lora_p2p_thread_stack_area, LORA_P2P_THREAD_STACK_SIZE);
 // Thread control block - metadata
@@ -74,9 +80,6 @@ struct lora_modem_config lora_modem_config = {
 int toggle_reception_and_send(struct device *lora_device, uint8_t *payload_data, int payload_size);
 #endif // CONFIG_RECEIVE_LORA_P2P
 
-void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
-					 int16_t rssi, int8_t snr, void *user_data);
-
 // Get the devicetree node for the LoRa hardware.
 // It should have an alias declared as lora0 to be properly found!
 #define DEFAULT_RADIO_NODE DT_ALIAS(lora0)
@@ -85,6 +88,55 @@ BUILD_ASSERT(DT_NODE_HAS_STATUS(DEFAULT_RADIO_NODE, okay),
 
 // Define the maximum string size that will be sent
 #define MAX_DATA_LEN 256
+
+static int lora_p2p_init_channel(void)
+{
+	// It is most important to get the device struct from the devicetree node
+	// they are not the same thing!
+	LOG_DBG("Setting up LoRa Peer-to-Peer connection");
+
+	const struct device *lora_device;
+	int error = 0;
+
+	lora_device = DEVICE_DT_GET(DT_ALIAS(lora0));
+	if (!device_is_ready(lora_device))
+	{
+		LOG_ERR("%s: device not ready.", lora_device->name);
+		return -EAGAIN;
+	}
+
+	error = lora_config(lora_device, &lora_modem_config);
+	if (error < 0)
+	{
+		LOG_ERR("lora_config failed");
+		goto return_clause;
+	}
+
+	lora_recv_async(lora_device, lora_receive_cb, NULL);
+
+	lora_p2p_thread_id = k_thread_create(&lora_p2p_thread_data, lora_p2p_thread_stack_area,
+										 K_THREAD_STACK_SIZEOF(lora_p2p_thread_stack_area),
+										 lora_p2p_send_data, (void *)lora_device, NULL, NULL,
+										 LORA_P2P_THREAD_PRIORITY, 0, K_NO_WAIT);
+	error = k_thread_name_set(lora_p2p_thread_id, "send_lora_p2p");
+	if (error)
+		LOG_ERR("Failed to set read buffer thread name: %d", error);
+
+return_clause:
+	return error;
+}
+
+void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
+					 int16_t rssi, int8_t snr, void *user_data)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(size);
+	ARG_UNUSED(user_data);
+
+	LOG_INF("LoRa RX RSSI: %d dBm, SNR: %d dB", rssi, snr);
+	LOG_HEXDUMP_INF(data, size, "LoRa RX payload");
+}
+
 
 static void lora_p2p_send_data(void *__lora_dev__, void *param1, void *param2)
 {
@@ -134,53 +186,6 @@ static void lora_p2p_send_data(void *__lora_dev__, void *param1, void *param2)
 	}
 }
 
-static int lora_p2p_init_channel(void)
-{
-	// It is most important to get the device struct from the devicetree node
-	// they are not the same thing!
-	LOG_DBG("Setting up LoRa Peer-to-Peer connection");
-
-	const struct device *lora_device;
-	int error = 0;
-
-	lora_device = DEVICE_DT_GET(DT_ALIAS(lora0));
-	if (!device_is_ready(lora_device))
-	{
-		LOG_ERR("%s: device not ready.", lora_device->name);
-		return -EAGAIN;
-	}
-
-	error = lora_config(lora_device, &lora_modem_config);
-	if (error < 0)
-	{
-		LOG_ERR("lora_config failed");
-		goto return_clause;
-	}
-
-	lora_recv_async(lora_device, lora_receive_cb, NULL);
-
-	lora_p2p_thread_id = k_thread_create(&lora_p2p_thread_data, lora_p2p_thread_stack_area,
-										 K_THREAD_STACK_SIZEOF(lora_p2p_thread_stack_area),
-										 lora_p2p_send_data, (void *)lora_device, NULL, NULL,
-										 LORA_P2P_THREAD_PRIORITY, 0, K_NO_WAIT);
-	error = k_thread_name_set(lora_p2p_thread_id, "send_lora_p2p");
-	if (error)
-		LOG_ERR("Failed to set read buffer thread name: %d", error);
-
-return_clause:
-	return error;
-}
-
-void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
-					 int16_t rssi, int8_t snr, void *user_data)
-{
-	ARG_UNUSED(dev);
-	ARG_UNUSED(size);
-	ARG_UNUSED(user_data);
-
-	LOG_INF("LoRa RX RSSI: %d dBm, SNR: %d dB", rssi, snr);
-	LOG_HEXDUMP_INF(data, size, "LoRa RX payload");
-}
 
 #ifdef CONFIG_RECEIVE_LORA_P2P
 int toggle_reception_and_send(struct device *lora_device, uint8_t *payload_data, int payload_size)
