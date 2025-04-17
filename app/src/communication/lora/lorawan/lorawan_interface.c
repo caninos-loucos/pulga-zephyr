@@ -109,7 +109,6 @@ static int lorawan_init_channel()
 	}
 
 	LOG_DBG("Initializing send via LoRaWAN thread");
-
 	// After joining successfully, create the send thread.
 	lorawan_send_thread_id = k_thread_create(&lorawan_send_thread_data, lorawan_send_thread_stack_area,
 											 K_THREAD_STACK_SIZEOF(lorawan_send_thread_stack_area),
@@ -291,9 +290,9 @@ void send_package(uint8_t *package, uint8_t package_size)
 {
 	// Waits for access to the LoRa device
 	k_sem_take(lora_device.device_sem, K_FOREVER);
+	// Send using Zephyr's subsystem and check if the transmission was successful
 	int error = lorawan_send(1, package, package_size, LORAWAN_MSG_UNCONFIRMED);
 	k_sem_give(lora_device.device_sem);
-	// Send using Zephyr's subsystem and check if the transmission was successful
 	if (error)
 	{
 		LOG_ERR("lorawan_send failed: %d.", error);

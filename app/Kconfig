@@ -100,7 +100,7 @@ config LORAWAN_ABP
 endchoice
 
 config LORAWAN_JOIN_PACKET
-	bool "Join data in the buffer to make the most of a packet size"
+	bool "Join data in the lorawan buffer to make the most of a packet size"
 	default n
 	depends on SEND_LORAWAN
 
@@ -114,6 +114,11 @@ config RECEIVE_LORA_P2P
 	bool "LoRa Peer-to-Peer receiving"
 	depends on !SEND_LORAWAN
 	
+config LORA_P2P_JOIN_PACKET
+	bool "Join data in the lora_p2p buffer to make the most of a packet size"
+	default n
+	depends on SEND_LORA_P2P || RECEIVE_LORA_P2P
+
 config LORA_P2P_SF
 	int "LoRa Peer-to-Peer Spreading Factor"
 	default 7
