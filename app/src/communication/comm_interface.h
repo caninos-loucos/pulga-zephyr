@@ -16,7 +16,7 @@ enum ChannelType
     UART,
     BLE,
     LORAWAN,
-    LORA_P2P,
+    LORA_P2P, // Needs to be initialized after LORAWAN if receiving P2P
     MAX_CHANNELS // Total number of channels
 };
 

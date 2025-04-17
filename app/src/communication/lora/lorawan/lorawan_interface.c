@@ -30,7 +30,7 @@ The order in which everything happens is the following:
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/ring_buffer.h>
 #include <communication/lora/lorawan/lorawan_interface.h>
-#include <communication/lora/internal_buffer/internal_buffer.h>
+#include <communication/lora/lora_common.h>
 #include <integration/data_buffer/buffer_service.h>
 
 LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
@@ -38,6 +38,7 @@ LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 /**
  * Declarations
  */
+
 // Create an internal buffer to be able to send multiple data readings in one packet
 #define LORAWAN_BUFFER_SIZE 2048
 // Defines the internal buffer for used to store data while waiting a previous package to be sent
@@ -87,7 +88,7 @@ static int lorawan_init_channel()
 
 	init_pulga_buffer(&lorawan_buffer, &lorawan_ring_buffer);
 
-	error = lorawan_setup_connection();
+	error = init_lorawan_connection();
 	if (error)
 	{
 		LOG_ERR("Failed to setup LoRaWAN connection: %d", error);
@@ -288,7 +289,10 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 
 void send_package(uint8_t *package, uint8_t package_size)
 {
+	// Waits for access to the LoRa device
+	k_sem_take(lora_device.device_sem, K_FOREVER);
 	int error = lorawan_send(1, package, package_size, LORAWAN_MSG_UNCONFIRMED);
+	k_sem_give(lora_device.device_sem);
 	// Send using Zephyr's subsystem and check if the transmission was successful
 	if (error)
 	{

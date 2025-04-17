@@ -1,6 +1,9 @@
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <communication/lora/lora_common.h>
+#include <communication/lora/lorawan/lorawan_interface.h>
+#include <integration/timestamp/timestamp_service.h>
 
 /* 	Get the LoraWAN keys from file in main directory, in the following format:
 
@@ -11,8 +14,6 @@
     #define LORAWAN_APP_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
 */
 #include <communication/lora/lorawan/lorawan_keys_example.h>
-#include <communication/lora/lorawan/lorawan_interface.h>
-#include <integration/timestamp/timestamp_service.h>
 
 LOG_MODULE_REGISTER(lorawan_setup, CONFIG_APP_LOG_LEVEL);
 
@@ -49,18 +50,18 @@ static K_WORK_DELAYABLE_DEFINE(sync_work, sync_work_handler);
  * Definitions
  */
 
-// Configures and initializes lorawan connection, joining the network
-int lorawan_setup_connection()
+// Checks readiness of the LoRa device, configures lorawan backend and timestamp synchronization
+int init_lorawan_connection()
 {
-    LOG_DBG("Setting up LoRaWAN connection");
-
-    const struct device *lora_device;
+    LOG_DBG("Initializing LoRaWAN connection");
     int error = 0;
 
-    lora_device = DEVICE_DT_GET(DT_ALIAS(lora0));
-    if (!device_is_ready(lora_device))
+    k_sem_take(lora_device.device_sem, K_FOREVER);
+    error = !device_is_ready(lora_device.device);
+    k_sem_give(lora_device.device_sem);
+    if (error)
     {
-        LOG_ERR("%s: device not ready.", lora_device->name);
+        LOG_ERR("%s: device not ready.", lora_device.device->name);
         return -EAGAIN;
     }
 
@@ -94,16 +95,11 @@ int lorawan_setup_connection()
         goto return_clause;
     }
 
-    // Configuration structure to join network
-    struct lorawan_join_config join_config;
-    lorawan_config_activation(&join_config);
-    error = lorawan_join(&join_config);
+    error = setup_lorawan_connection();
     if (error)
     {
-        LOG_ERR("lorawan_join_network failed: %d", error);
         goto return_clause;
     }
-
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
     // Request network time until it succeeds and schedule periodic requests
     do
@@ -114,6 +110,29 @@ int lorawan_setup_connection()
 #endif
 
 return_clause:
+    return error;
+}
+
+// Configures lorawan connection, joining the network
+int setup_lorawan_connection()
+{
+    LOG_DBG("Setting up LoRaWAN connection");
+    int error = 0;
+
+    // Configuration structure to join network
+    struct lorawan_join_config join_config;
+    lorawan_config_activation(&join_config);
+
+    k_sem_take(lora_device.device_sem, K_FOREVER);
+    error = lorawan_join(&join_config);
+    if (error)
+    {
+        LOG_ERR("lorawan_join_network failed: %d", error);
+        goto return_clause;
+    }
+
+return_clause:
+    k_sem_give(lora_device.device_sem);
     return error;
 }
 
@@ -169,6 +188,7 @@ int get_network_time(bool force_request)
 {
     int error = 0;
     uint32_t gps_epoch = 0;
+    k_sem_take(lora_device.device_sem, K_FOREVER);
     // Request network time
     error = lorawan_request_device_time(force_request);
     if (error)
@@ -182,6 +202,7 @@ int get_network_time(bool force_request)
         LOG_ERR("Error getting LoRaWAN network time: %d", error);
         return error;
     }
+    k_sem_give(lora_device.device_sem);
     // Converts the GPS epoch to Unix epoch
     gps_epoch = GPS_EPOCH_TO_POSIX(gps_epoch);
     LOG_INF("LoRaWAN network time: %d", gps_epoch);

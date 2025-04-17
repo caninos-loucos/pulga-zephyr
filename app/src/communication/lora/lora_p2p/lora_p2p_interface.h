@@ -16,5 +16,7 @@
 
 // Register lora_p2p callbacks
 ChannelAPI *register_lora_p2p_callbacks();
+// Configures lora_p2p connection parameters and starts listening if needed
+int setup_lora_p2p_connection();
 
 #endif /* LORA_P2P_INTERFACE_H */

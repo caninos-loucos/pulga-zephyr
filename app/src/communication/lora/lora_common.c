@@ -1,12 +1,27 @@
-#include <zephyr/sys/ring_buffer.h>
 #include <zephyr/logging/log.h>
-#include <communication/lora/internal_buffer/internal_buffer.h>
+#include <communication/lora/lora_common.h>
 
-LOG_MODULE_REGISTER(internal_buffer, CONFIG_APP_LOG_LEVEL);
+LOG_MODULE_REGISTER(lora_common, CONFIG_APP_LOG_LEVEL);
+
+/**
+ * Declarations
+ */
 
 /**
  * Definitions
  */
+
+// Get the devicetree node for the LoRa hardware.
+// It should have an alias declared as lora0 to be properly found!
+#define DEFAULT_RADIO_NODE DT_ALIAS(lora0)
+BUILD_ASSERT(DT_NODE_HAS_STATUS(DEFAULT_RADIO_NODE, okay),
+             "No default LoRa radio specified in DT");
+
+K_SEM_DEFINE(lora_sem, 1, 1);
+PulgaLoraDevice lora_device = {
+    .device = DEVICE_DT_GET(DT_ALIAS(lora0)),
+    .device_sem = &lora_sem,
+};
 
 int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum EncodingLevel encoding)
 {
