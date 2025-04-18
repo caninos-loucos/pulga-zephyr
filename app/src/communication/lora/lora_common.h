@@ -25,6 +25,10 @@ int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum
 // Resets variables used to join packets into package
 void reset_join_variables(int *max_payload_size, uint8_t *insert_index,
                           int *available_package_size, uint8_t *joined_data, enum ChannelType channel_type);
+// Adds data item from buffer to package
+void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,
+                                int *available_package_size, uint8_t *joined_data,
+                                uint8_t *insert_index, uint32_t *encoded_data);
 #endif // Any of the two join packets configurations
 
 #endif // LORA_COMMON_H

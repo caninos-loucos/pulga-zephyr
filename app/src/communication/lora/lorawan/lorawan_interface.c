@@ -67,12 +67,6 @@ static void lorawan_process_data(void *, void *, void *);
 static void send_package(uint8_t *package, uint8_t package_size);
 // This is the function executed by the thread that actually sends the data
 static void lorawan_send_data(void *, void *, void *);
-#ifdef CONFIG_LORAWAN_JOIN_PACKET
-// Adds data item from buffer to package
-static void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,
-								int *available_package_size, uint8_t *joined_data,
-								uint8_t *insert_index, uint32_t *encoded_data);
-#endif // CONFIG_LORAWAN_JOIN_PACKET
 
 /**
  * Definitions
@@ -221,19 +215,6 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 		LOG_DBG("Buffer is empty, sleeping");
 		k_sleep(K_FOREVER);
 	}
-}
-
-void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,
-						 int *available_package_size, uint8_t *joined_data,
-						 uint8_t *insert_index, uint32_t *encoded_data)
-{
-	uint8_t encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
-	// Adds packet to package
-	LOG_DBG("Adding item with size %d B to package with %d available bytes",
-			encoded_data_size, *available_package_size);
-	*insert_index = max_payload_size - *available_package_size;
-	bytecpy(joined_data + *insert_index, encoded_data, encoded_data_size);
-	*available_package_size -= encoded_data_size;
 }
 #else // CONFIG_LORAWAN_JOIN_PACKET
 void lorawan_send_data(void *param0, void *param1, void *param2)

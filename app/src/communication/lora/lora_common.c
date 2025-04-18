@@ -47,7 +47,6 @@ int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum
     return error;
 }
 
-
 #if defined(CONFIG_LORA_P2P_JOIN_PACKET) || defined(CONFIG_LORAWAN_JOIN_PACKET)
 void reset_join_variables(int *max_payload_size, uint8_t *insert_index,
                           int *available_package_size, uint8_t *joined_data, enum ChannelType channel_type)
@@ -68,5 +67,18 @@ void reset_join_variables(int *max_payload_size, uint8_t *insert_index,
     }
     *available_package_size = *max_payload_size;
     LOG_DBG("Maximum payload size for current datarate: %d B", *available_package_size);
+}
+
+void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,
+                         int *available_package_size, uint8_t *joined_data,
+                         uint8_t *insert_index, uint32_t *encoded_data)
+{
+    uint8_t encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
+    // Adds packet to package
+    LOG_DBG("Adding item with size %d B to package with %d available bytes",
+            encoded_data_size, *available_package_size);
+    *insert_index = max_payload_size - *available_package_size;
+    bytecpy(joined_data + *insert_index, encoded_data, encoded_data_size);
+    *available_package_size -= encoded_data_size;
 }
 #endif // Any of the two join packets configurations
