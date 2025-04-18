@@ -31,7 +31,7 @@ static K_THREAD_STACK_DEFINE(lora_p2p_send_thread_stack_area, LORA_P2P_SEND_THRE
 static struct k_thread lora_p2p_send_thread_data;
 static k_tid_t lora_p2p_send_thread_id;
 
-// Initializes LoRa Peer-to-Peer channel
+// Configures connection, initializes internal buffer and thread to send data via LoRa Peer-to-Peer
 static int lora_p2p_init_channel(void);
 // Callback function to be used whenever data is received.
 static void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
@@ -43,9 +43,6 @@ static void lora_p2p_send_data(void *, void *, void *);
 static void lora_p2p_process_data(void *, void *, void *);
 
 #ifdef CONFIG_LORA_P2P_JOIN_PACKET
-// Resets variables used to join packets into package
-static void reset_join_variables(int *max_payload_size, uint8_t *insert_index,
-								 int *available_package_size, uint8_t *joined_data);
 // Adds data item from buffer to package
 static void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,
 								int *available_package_size, uint8_t *joined_data,
@@ -71,9 +68,6 @@ int toggle_reception_and_send(uint8_t *payload_data, int payload_size);
 // Sends LoRa Peer-to-Peer package and handles errors
 static void send_package(uint8_t *package, uint8_t package_size);
 #endif // CONFIG_RECEIVE_LORA_P2P
-
-// Define the maximum string size that will be sent
-#define MAX_DATA_LEN 256
 
 static int lora_p2p_init_channel(void)
 {
@@ -214,7 +208,7 @@ void lora_p2p_send_data(void *param0, void *param1, void *param2)
 	int max_payload_size, available_package_size;
 	uint8_t insert_index, error = 0;
 	uint8_t joined_data[MAX_DATA_LEN];
-	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data);
+	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data, LORA_P2P);
 
 	while (1)
 	{
@@ -247,7 +241,7 @@ void lora_p2p_send_data(void *param0, void *param1, void *param2)
 #endif // CONFIG_RECEIVE_LORA_P2P
 
 				reset_join_variables(&max_payload_size, &insert_index,
-									 &available_package_size, joined_data);
+									 &available_package_size, joined_data, LORA_P2P);
 				continue;
 			}
 			enum DataType data_type;
@@ -264,18 +258,6 @@ void lora_p2p_send_data(void *param0, void *param1, void *param2)
 		LOG_DBG("Buffer is empty, sleeping");
 		k_sleep(K_FOREVER);
 	}
-}
-
-void reset_join_variables(int *max_payload_size, uint8_t *insert_index,
-						  int *available_package_size, uint8_t *joined_data)
-{
-	LOG_DBG("Resetting join variables");
-	*insert_index = 0;
-	// Resetting join package variables after last send
-	memset(joined_data, 0, 256);
-	*max_payload_size = MAX_DATA_LEN;
-	*available_package_size = *max_payload_size;
-	LOG_DBG("Maximum payload size for current datarate: %d B", *available_package_size);
 }
 
 void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,

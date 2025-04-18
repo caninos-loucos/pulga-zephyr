@@ -1,4 +1,5 @@
 #include <zephyr/logging/log.h>
+#include <zephyr/lorawan/lorawan.h>
 #include <communication/lora/lora_common.h>
 
 LOG_MODULE_REGISTER(lora_common, CONFIG_APP_LOG_LEVEL);
@@ -45,3 +46,27 @@ int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum
                              data_unit.data_type, 0, SIZE_BYTES_TO_32_BIT_WORDS(encoded_size));
     return error;
 }
+
+
+#if defined(CONFIG_LORA_P2P_JOIN_PACKET) || defined(CONFIG_LORAWAN_JOIN_PACKET)
+void reset_join_variables(int *max_payload_size, uint8_t *insert_index,
+                          int *available_package_size, uint8_t *joined_data, enum ChannelType channel_type)
+{
+    LOG_DBG("Resetting join variables");
+    *insert_index = 0;
+    // Resetting join package variables after last send
+    memset(joined_data, 0, 256);
+    if (channel_type == LORAWAN)
+    {
+        uint8_t unused_arg, temp_max_payload;
+        lorawan_get_payload_sizes(&unused_arg, &temp_max_payload);
+        *max_payload_size = temp_max_payload;
+    }
+    else if (channel_type == LORA_P2P)
+    {
+        *max_payload_size = MAX_DATA_LEN;
+    }
+    *available_package_size = *max_payload_size;
+    LOG_DBG("Maximum payload size for current datarate: %d B", *available_package_size);
+}
+#endif // Any of the two join packets configurations

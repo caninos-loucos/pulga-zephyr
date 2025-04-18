@@ -68,12 +68,9 @@ static void send_package(uint8_t *package, uint8_t package_size);
 // This is the function executed by the thread that actually sends the data
 static void lorawan_send_data(void *, void *, void *);
 #ifdef CONFIG_LORAWAN_JOIN_PACKET
-// Resets variables used to join packets into package
-static void reset_join_variables(uint8_t *max_payload_size, uint8_t *insert_index,
-								 uint8_t *available_package_size, uint8_t *joined_data);
 // Adds data item from buffer to package
-static void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payload_size,
-								uint8_t *available_package_size, uint8_t *joined_data,
+static void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,
+								int *available_package_size, uint8_t *joined_data,
 								uint8_t *insert_index, uint32_t *encoded_data);
 #endif // CONFIG_LORAWAN_JOIN_PACKET
 
@@ -132,8 +129,8 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 	ARG_UNUSED(param0);
 	ARG_UNUSED(param1);
 	ARG_UNUSED(param2);
-	uint8_t max_payload_size;
-	uint8_t unused_arg;
+	int max_payload_size;
+	uint8_t unused_arg, temp_max_payload;
 
 	int error;
 
@@ -142,7 +139,8 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 		// Waits for data to be ready
 		k_sem_take(&data_ready_sem[LORAWAN], K_FOREVER);
 		// Maximum payload size determined by datarate and region
-		lorawan_get_payload_sizes(&unused_arg, &max_payload_size);
+		lorawan_get_payload_sizes(&unused_arg, &temp_max_payload);
+        max_payload_size = temp_max_payload;
 		// Encodes data item to be sent and inserts the encoded data in the internal buffer
 		error = encode_and_insert(&lorawan_buffer, data_unit, MINIMALIST);
 		if (error)
@@ -178,10 +176,11 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	ARG_UNUSED(param1);
 	ARG_UNUSED(param2);
 
-	uint8_t max_payload_size, insert_index, available_package_size, error = 0;
+	int max_payload_size, available_package_size;
+	uint8_t insert_index, error = 0;
 	// Maximum LoRaWAN package size won't surpass 256 B
 	uint8_t joined_data[256];
-	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data);
+	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data, LORAWAN);
 
 	while (1)
 	{
@@ -205,7 +204,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			{
 				send_package(joined_data, max_payload_size - available_package_size);
 				reset_join_variables(&max_payload_size, &insert_index,
-									 &available_package_size, joined_data);
+									 &available_package_size, joined_data, LORAWAN);
 				continue;
 			}
 			enum DataType data_type;
@@ -224,21 +223,8 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	}
 }
 
-void reset_join_variables(uint8_t *max_payload_size, uint8_t *insert_index,
-						  uint8_t *available_package_size, uint8_t *joined_data)
-{
-	LOG_DBG("Resetting join variables");
-	uint8_t unused_arg;
-	*insert_index = 0;
-	// Resetting join package variables after last send
-	memset(joined_data, 0, 256);
-	lorawan_get_payload_sizes(&unused_arg, max_payload_size);
-	*available_package_size = *max_payload_size;
-	LOG_DBG("Maximum payload size for current datarate: %d B", *available_package_size);
-}
-
-void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payload_size,
-						 uint8_t *available_package_size, uint8_t *joined_data,
+void add_item_to_package(uint8_t encoded_data_word_size, int max_payload_size,
+						 int *available_package_size, uint8_t *joined_data,
 						 uint8_t *insert_index, uint32_t *encoded_data)
 {
 	uint8_t encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
