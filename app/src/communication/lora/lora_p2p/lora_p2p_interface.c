@@ -38,9 +38,6 @@ static void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t si
 							int16_t rssi, int8_t snr, void *user_data);
 // Function executed by thread that sends data using LoRa Peer-to-Peer
 static void lora_p2p_send_data(void *, void *, void *);
-// Functions that receives data from application buffer and
-// inserts it in LoRa Peer-to-Peer internal buffer
-static void lora_p2p_process_data(void *, void *, void *);
 
 // Configure the LoRa transmission parameters.
 // Such parameters must match between the transmitter and
@@ -89,7 +86,7 @@ static int lora_p2p_init_channel(void)
 	// After joining successfully, create the send thread.
 	lora_p2p_thread_id = k_thread_create(&lora_p2p_thread_data, lora_p2p_thread_stack_area,
 										 K_THREAD_STACK_SIZEOF(lora_p2p_thread_stack_area),
-										 lora_p2p_process_data, NULL, NULL, NULL,
+										 lora_process_data, (void *)(uintptr_t)LORA_P2P, &lora_p2p_buffer, &lora_p2p_send_thread_id,
 										 LORA_P2P_PROCESSING_PRIORITY, 0, K_NO_WAIT);
 	error = k_thread_name_set(lora_p2p_thread_id, "lora_p2p_process_data");
 	if (error)
@@ -148,46 +145,6 @@ void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
 
 	LOG_INF("LoRa RX RSSI: %d dBm, SNR: %d dB", rssi, snr);
 	LOG_HEXDUMP_INF(data, size, "LoRa RX payload");
-}
-
-// Encoding and buffering Data thread
-void lora_p2p_process_data(void *param0, void *param1, void *param2)
-{
-	LOG_INF("Processing Lora Peer-to-Peer data started");
-	ARG_UNUSED(param0);
-	ARG_UNUSED(param1);
-	ARG_UNUSED(param2);
-	int error;
-
-	while (1)
-	{
-		// Waits for data to be ready
-		k_sem_take(&data_ready_sem[LORA_P2P], K_FOREVER);
-		// Encodes data item to be sent and inserts the encoded data in the internal buffer
-		error = encode_and_insert(&lora_p2p_buffer, data_unit, MINIMALIST);
-		if (error)
-		{
-			k_sem_give(&data_processed);
-			continue;
-		}
-
-#ifdef CONFIG_LORA_P2P_JOIN_PACKET
-		// If the application is joining packets into a larger package,
-		// it waits longer to wake up the sending thread, until a package with
-		// maximum payload size can be assembled
-		if (get_buffer_size_without_headers(&lora_p2p_buffer) < MAX_DATA_LEN)
-		{
-			LOG_DBG("Joining more data");
-			// Signals for the Communication Interface that Lorawan processing is complete
-			k_sem_give(&data_processed);
-			continue;
-		}
-#endif // CONFIG_LORA_P2P_JOIN_PACKET
-		LOG_DBG("Waking up sending thread");
-		k_wakeup(lora_p2p_send_thread_id);
-		// Signals for the Communication Interface that Lorawan processing is complete
-		k_sem_give(&data_processed);
-	}
 }
 
 #ifdef CONFIG_LORA_P2P_JOIN_PACKET

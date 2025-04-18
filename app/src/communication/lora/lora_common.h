@@ -18,6 +18,8 @@ typedef struct
 
 extern PulgaLoraDevice lora_device;
 
+// Encoding and buffering data thread
+void lora_process_data(void *channel, void *buffer, void *send_thread);
 // Encodes data and inserts it into the internal buffer
 int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum EncodingLevel encoding);
 

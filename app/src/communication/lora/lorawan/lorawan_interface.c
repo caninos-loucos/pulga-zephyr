@@ -60,9 +60,6 @@ static k_tid_t lorawan_send_thread_id;
 
 // Initializes and starts thread to send data via LoRaWAN
 static int lorawan_init_channel();
-// Functions that receives data from application buffer and
-// inserts it in LoRaWAN internal buffer
-static void lorawan_process_data(void *, void *, void *);
 // Sends LoRaWAN package and handles errors
 static void send_package(uint8_t *package, uint8_t package_size);
 // This is the function executed by the thread that actually sends the data
@@ -90,7 +87,7 @@ static int lorawan_init_channel()
 	// After joining successfully, create the send thread.
 	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
 										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
-										lorawan_process_data, NULL, NULL, NULL,
+										lora_process_data, (void *)(uintptr_t) LORAWAN, &lorawan_buffer, &lorawan_send_thread_id,
 										LORAWAN_PROCESSING_PRIORITY, 0, K_NO_WAIT);
 	error = k_thread_name_set(lorawan_thread_id, "lorawan_process_data");
 	if (error)
@@ -114,52 +111,6 @@ static int lorawan_init_channel()
 
 return_clause:
 	return error;
-}
-
-// Encoding and buffering Data thread
-void lorawan_process_data(void *param0, void *param1, void *param2)
-{
-	LOG_INF("Processing LoRaWAN data started");
-	ARG_UNUSED(param0);
-	ARG_UNUSED(param1);
-	ARG_UNUSED(param2);
-	int max_payload_size;
-	uint8_t unused_arg, temp_max_payload;
-
-	int error;
-
-	while (1)
-	{
-		// Waits for data to be ready
-		k_sem_take(&data_ready_sem[LORAWAN], K_FOREVER);
-		// Maximum payload size determined by datarate and region
-		lorawan_get_payload_sizes(&unused_arg, &temp_max_payload);
-        max_payload_size = temp_max_payload;
-		// Encodes data item to be sent and inserts the encoded data in the internal buffer
-		error = encode_and_insert(&lorawan_buffer, data_unit, MINIMALIST);
-		if (error)
-		{
-			k_sem_give(&data_processed);
-			continue;
-		}
-
-#ifdef CONFIG_LORAWAN_JOIN_PACKET
-		// If the application is joining packets into a larger package,
-		// it waits longer to wake up the sending thread, until a package with
-		// maximum payload size can be assembled
-		if (get_buffer_size_without_headers(&lorawan_buffer) < max_payload_size)
-		{
-			LOG_DBG("Joining more data");
-			// Signals for the Communication Interface that Lorawan processing is complete
-			k_sem_give(&data_processed);
-			continue;
-		}
-#endif
-		LOG_DBG("Waking up sending thread");
-		k_wakeup(lorawan_send_thread_id);
-		// Signals for the Communication Interface that Lorawan processing is complete
-		k_sem_give(&data_processed);
-	}
 }
 
 #ifdef CONFIG_LORAWAN_JOIN_PACKET

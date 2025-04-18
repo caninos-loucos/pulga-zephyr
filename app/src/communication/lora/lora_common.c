@@ -24,6 +24,57 @@ PulgaLoraDevice lora_device = {
     .device_sem = &lora_sem,
 };
 
+// Encoding and buffering Data thread
+void lora_process_data(void *channel, void *buffer, void *send_thread)
+{
+    LOG_INF("Processing LoRa data started");
+
+    int error;
+    enum ChannelType channel_type = (enum ChannelType)(uintptr_t)channel;
+    PulgaRingBuffer *pulga_buffer = (PulgaRingBuffer *)buffer;
+    k_tid_t *send_thread_id = (k_tid_t *)send_thread;
+    enum EncodingLevel encoding = MINIMALIST;
+
+    while (1)
+    {
+        // Waits for data to be ready
+        k_sem_take(&data_ready_sem[channel_type], K_FOREVER);
+        int max_payload_size = MAX_DATA_LEN;
+        if (channel_type == LORAWAN && IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET))
+        {
+            uint8_t unused_arg, temp_max_payload;
+            // Maximum payload size determined by datarate and region
+            lorawan_get_payload_sizes(&unused_arg, &temp_max_payload);
+            max_payload_size = temp_max_payload;
+        }
+        // Encodes data item to be sent and inserts the encoded data in the internal buffer
+        error = encode_and_insert(pulga_buffer, data_unit, encoding);
+        if (error)
+        {
+            k_sem_give(&data_processed);
+            continue;
+        }
+
+        if ((channel_type == LORAWAN && IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)) ||
+            (channel_type == LORA_P2P && IS_ENABLED(CONFIG_LORA_P2P_JOIN_PACKET)))
+        {
+            // If the application is joining packets into a larger package,
+            // it waits longer to wake up the sending thread, until a package with
+            // maximum payload size can be assembled
+            if (get_buffer_size_without_headers(pulga_buffer) < max_payload_size)
+            {
+                LOG_DBG("Joining more data");
+                // Signals for the Communication Interface that processing is complete
+                k_sem_give(&data_processed);
+                continue;
+            }
+        }
+        LOG_DBG("Waking up sending thread on channel %d", channel_type);
+        k_wakeup(*send_thread_id);
+        k_sem_give(&data_processed);
+    }
+}
+
 int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum EncodingLevel encoding)
 {
     LOG_DBG("Encoding data item");
