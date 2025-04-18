@@ -194,21 +194,23 @@ int get_network_time(bool force_request)
     if (error)
     {
         LOG_ERR("Error requesting LoRaWAN network time: %d", error);
-        return error;
+        goto return_clause;
     }
     error = lorawan_device_time_get(&gps_epoch);
     if (error)
     {
         LOG_ERR("Error getting LoRaWAN network time: %d", error);
-        return error;
+        goto return_clause;
     }
-    k_sem_give(lora_device.device_sem);
     // Converts the GPS epoch to Unix epoch
     gps_epoch = GPS_EPOCH_TO_POSIX(gps_epoch);
     LOG_INF("LoRaWAN network time: %d", gps_epoch);
     // Sets the timestamp as the synchronization time
     set_sync_time_seconds(gps_epoch);
-    return 0;
+
+return_clause:
+    k_sem_give(lora_device.device_sem);
+    return error;
 }
 
 void sync_work_handler(struct k_work *work)
