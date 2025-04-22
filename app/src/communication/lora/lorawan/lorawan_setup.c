@@ -1,19 +1,8 @@
-#include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <communication/lora/lora_common.h>
+#include <communication/lora/lora_device/lora_device.h>
 #include <communication/lora/lorawan/lorawan_interface.h>
-#include <integration/timestamp/timestamp_service.h>
-
-/* 	Get the LoraWAN keys from file in main directory, in the following format:
-
-    #define LORAWAN_DEV_EUI		{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01 }
-    #define LORAWAN_APP_EUI  	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01 }
-    #define LORAWAN_DEV_ADDR	0xabcdef01
-    #define LORAWAN_NET_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
-    #define LORAWAN_APP_KEY 	{ 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 }
-*/
-#include <communication/lora/lorawan/lorawan_keys_example.h>
 
 LOG_MODULE_REGISTER(lorawan_setup, CONFIG_APP_LOG_LEVEL);
 
@@ -28,15 +17,10 @@ static void downlink_callback(uint8_t port, uint8_t flags, int16_t rssi, int8_t 
                               const uint8_t *hex_data);
 // Callback to be used whenever datarate changes. When CONFIG_LORAWAN_COMPRESS_PACKET is set, adjusts the expected compression level.
 static void dr_changed_callback(enum lorawan_datarate dr);
-// Set security configuration parameters for joining network
-static void lorawan_config_activation(struct lorawan_join_config *join_config);
 // Initialize the downlink callback
 static struct lorawan_downlink_cb downlink_cb;
 
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
-// Sends a request to the network to get the current time and
-// sets it as the synchronization time
-static int get_network_time(bool force_request);
 // Handles requesting network time and retrying if it fails
 static void sync_work_handler(struct k_work *work);
 // Work to be queued and executed when the delay expires
@@ -56,12 +40,8 @@ int init_lorawan_connection()
     LOG_DBG("Initializing LoRaWAN connection");
     int error = 0;
 
-    k_sem_take(lora_device.device_sem, K_FOREVER);
-    error = !device_is_ready(lora_device.device);
-    k_sem_give(lora_device.device_sem);
-    if (error)
+    if (!lora_device.is_ready(&lora_device))
     {
-        LOG_ERR("%s: device not ready.", lora_device.device->name);
         return -EAGAIN;
     }
 
@@ -95,44 +75,16 @@ int init_lorawan_connection()
         goto return_clause;
     }
 
-    error = setup_lorawan_connection();
+    error = lora_device.setup_lora_connection(&lora_device, LORAWAN);
     if (error)
     {
         goto return_clause;
     }
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
-    // Request network time until it succeeds and schedule periodic requests
-    do
-    {
-        error = get_network_time(true);
-    } while (error);
     k_work_schedule(&sync_work, SYNC_PERIOD);
 #endif
 
 return_clause:
-    return error;
-}
-
-// Configures lorawan connection, joining the network
-int setup_lorawan_connection()
-{
-    LOG_DBG("Setting up LoRaWAN connection");
-    int error = 0;
-
-    // Configuration structure to join network
-    struct lorawan_join_config join_config;
-    lorawan_config_activation(&join_config);
-
-    k_sem_take(lora_device.device_sem, K_FOREVER);
-    error = lorawan_join(&join_config);
-    if (error)
-    {
-        LOG_ERR("lorawan_join_network failed: %d", error);
-        goto return_clause;
-    }
-
-return_clause:
-    k_sem_give(lora_device.device_sem);
     return error;
 }
 
@@ -155,69 +107,12 @@ void dr_changed_callback(enum lorawan_datarate new_dr)
     LOG_INF("Datarate changed to DR_%d", (int)new_dr);
 }
 
-// Set security configuration parameters for joining network
-void lorawan_config_activation(struct lorawan_join_config *join_config)
-{
-    // Initialize the security parameters from the defined values
-    static uint8_t device_id[] = LORAWAN_DEV_EUI;
-    static uint8_t application_key[] = LORAWAN_APP_KEY;
-    static uint8_t network_key[] = LORAWAN_NET_KEY;
-    static uint8_t application_id[] = LORAWAN_APP_EUI;
-    static uint32_t device_address = LORAWAN_DEV_ADDR;
-
-    join_config->dev_eui = device_id;
-#if defined(CONFIG_LORAWAN_OTAA)
-    join_config->mode = LORAWAN_ACT_OTAA;
-    join_config->otaa.join_eui = application_id;
-    join_config->otaa.app_key = application_key;
-    join_config->otaa.nwk_key = network_key;
-    join_config->otaa.dev_nonce = 0u;
-    LOG_DBG("Joining network over OTAA");
-#elif defined(CONFIG_LORAWAN_ABP)
-    join_config->mode = LORAWAN_ACT_ABP;
-    join_config->abp.app_eui = application_id;
-    join_config->abp.app_skey = application_key;
-    join_config->abp.nwk_skey = network_key;
-    join_config->abp.dev_addr = device_address;
-    LOG_DBG("Joining network over ABP");
-#endif
-}
-
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
-int get_network_time(bool force_request)
-{
-    int error = 0;
-    uint32_t gps_epoch = 0;
-    k_sem_take(lora_device.device_sem, K_FOREVER);
-    // Request network time
-    error = lorawan_request_device_time(force_request);
-    if (error)
-    {
-        LOG_ERR("Error requesting LoRaWAN network time: %d", error);
-        goto return_clause;
-    }
-    error = lorawan_device_time_get(&gps_epoch);
-    if (error)
-    {
-        LOG_ERR("Error getting LoRaWAN network time: %d", error);
-        goto return_clause;
-    }
-    // Converts the GPS epoch to Unix epoch
-    gps_epoch = GPS_EPOCH_TO_POSIX(gps_epoch);
-    LOG_INF("LoRaWAN network time: %d", gps_epoch);
-    // Sets the timestamp as the synchronization time
-    set_sync_time_seconds(gps_epoch);
-
-return_clause:
-    k_sem_give(lora_device.device_sem);
-    return error;
-}
-
 void sync_work_handler(struct k_work *work)
 {
     int error = 0;
 
-    error = get_network_time(false);
+    error = lora_device.sync_timestamp(&lora_device, LORAWAN);
     // Retry after some time if it fails
     if (error)
     {

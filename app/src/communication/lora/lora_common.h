@@ -1,22 +1,9 @@
 #ifndef LORA_COMMON_H
 #define LORA_COMMON_H
-
-#include <zephyr/kernel.h>
 #include <communication/comm_interface.h>
-#include <zephyr/device.h>
 
 // Maximum size of a LoRa package that can be sent
 #define MAX_DATA_LEN 256
-
-typedef struct
-{
-    // LoRa device used for communication by LoRaWAN and LoRa P2P channels
-    const struct device *device;
-    // This semaphore is used to prevent multiple threads from accessing the LoRa device at the same time
-    struct k_sem *device_sem;
-} PulgaLoraDevice;
-
-extern PulgaLoraDevice lora_device;
 
 // Encoding and buffering data thread
 void lora_process_data(void *channel, void *buffer, void *send_thread);

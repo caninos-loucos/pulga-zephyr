@@ -1,3 +1,4 @@
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/lorawan/lorawan.h>
 #include <communication/lora/lora_common.h>
@@ -11,18 +12,6 @@ LOG_MODULE_REGISTER(lora_common, CONFIG_APP_LOG_LEVEL);
 /**
  * Definitions
  */
-
-// Get the devicetree node for the LoRa hardware.
-// It should have an alias declared as lora0 to be properly found!
-#define DEFAULT_RADIO_NODE DT_ALIAS(lora0)
-BUILD_ASSERT(DT_NODE_HAS_STATUS(DEFAULT_RADIO_NODE, okay),
-             "No default LoRa radio specified in DT");
-
-K_SEM_DEFINE(lora_sem, 1, 1);
-PulgaLoraDevice lora_device = {
-    .device = DEVICE_DT_GET(DT_ALIAS(lora0)),
-    .device_sem = &lora_sem,
-};
 
 // Encoding and buffering Data thread
 void lora_process_data(void *channel, void *buffer, void *send_thread)

@@ -29,8 +29,9 @@ The order in which everything happens is the following:
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/ring_buffer.h>
-#include <communication/lora/lorawan/lorawan_interface.h>
 #include <communication/lora/lora_common.h>
+#include <communication/lora/lora_device/lora_device.h>
+#include <communication/lora/lorawan/lorawan_interface.h>
 #include <integration/data_buffer/buffer_service.h>
 
 LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
@@ -60,8 +61,6 @@ static k_tid_t lorawan_send_thread_id;
 
 // Initializes and starts thread to send data via LoRaWAN
 static int lorawan_init_channel();
-// Sends LoRaWAN package and handles errors
-static void send_package(uint8_t *package, uint8_t package_size);
 // This is the function executed by the thread that actually sends the data
 static void lorawan_send_data(void *, void *, void *);
 
@@ -147,7 +146,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			// Sends package as the new item wouldn't fit in it and resets package variables to form a new one
 			if (available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
 			{
-				send_package(joined_data, max_payload_size - available_package_size);
+				lora_device.send_package(&lora_device, LORAWAN, joined_data, max_payload_size - available_package_size);
 				reset_join_variables(&max_payload_size, &insert_index,
 									 &available_package_size, joined_data, LORAWAN);
 				continue;
@@ -196,28 +195,13 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 				continue;
 			}
 			encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
-			send_package((uint8_t *)encoded_data, encoded_data_size);
+			lora_device.send_package(&lora_device, LORAWAN, (uint8_t *)encoded_data, encoded_data_size);
 		}
 		LOG_DBG("Buffer is empty, sleeping");
 		k_sleep(K_FOREVER);
 	}
 }
 #endif // CONFIG_LORAWAN_JOIN_PACKET
-
-void send_package(uint8_t *package, uint8_t package_size)
-{
-	// Waits for access to the LoRa device
-	k_sem_take(lora_device.device_sem, K_FOREVER);
-	// Send using Zephyr's subsystem and check if the transmission was successful
-	int error = lorawan_send(1, package, package_size, LORAWAN_MSG_UNCONFIRMED);
-	k_sem_give(lora_device.device_sem);
-	if (error)
-	{
-		LOG_ERR("lorawan_send failed: %d.", error);
-		return;
-	}
-	LOG_INF("lorawan_send successful");
-}
 
 // Register channels to the Communication Module
 ChannelAPI *register_lorawan_callbacks()

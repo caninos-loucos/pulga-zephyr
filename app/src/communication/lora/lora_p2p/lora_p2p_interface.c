@@ -1,9 +1,8 @@
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/ring_buffer.h>
 #include <communication/lora/lora_common.h>
+#include <communication/lora/lora_device/lora_device.h>
 #include <communication/lora/lora_p2p/lora_p2p_interface.h>
 #include <integration/data_buffer/buffer_service.h>
 
@@ -33,52 +32,28 @@ static k_tid_t lora_p2p_send_thread_id;
 
 // Configures connection, initializes internal buffer and thread to send data via LoRa Peer-to-Peer
 static int lora_p2p_init_channel(void);
-// Callback function to be used whenever data is received.
-static void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
-							int16_t rssi, int8_t snr, void *user_data);
 // Function executed by thread that sends data using LoRa Peer-to-Peer
 static void lora_p2p_send_data(void *, void *, void *);
 
-// Configure the LoRa transmission parameters.
-// Such parameters must match between the transmitter and
-// receiver for communication to occur.
-struct lora_modem_config lora_modem_config = {
-	.frequency = 915000000,
-	.bandwidth = LORA_BW,
-	.datarate = LORA_SF,
-	.preamble_len = 8,
-	.coding_rate = LORA_CR,
-	.iq_inverted = false,
-	.public_network = false,
-	.tx_power = 20,
-	.tx = (CONFIG_SEND_LORA_P2P && !CONFIG_RECEIVE_LORA_P2P)};
-#ifdef CONFIG_RECEIVE_LORA_P2P
-int toggle_reception_and_send(uint8_t *payload_data, int payload_size);
-#else
-// Sends LoRa Peer-to-Peer package and handles errors
-static void send_package(uint8_t *package, uint8_t package_size);
-#endif // CONFIG_RECEIVE_LORA_P2P
+/**
+ * Definitions
+ */
 
 static int lora_p2p_init_channel(void)
 {
 	LOG_DBG("Initializing LoRa Peer-to-Peer channel");
 	int error = 0;
 
-	k_sem_take(lora_device.device_sem, K_FOREVER);
-	error = !device_is_ready(lora_device.device);
-	k_sem_give(lora_device.device_sem);
-	if (error)
-	{
-		LOG_ERR("%s: device not ready.", lora_device.device->name);
-		return -EAGAIN;
-	}
+	if (!lora_device.is_ready(&lora_device))
+    {
+        return -EAGAIN;
+    }
 
 	init_pulga_buffer(&lora_p2p_buffer, &lora_p2p_ring_buffer);
 
-	error = setup_lora_p2p_connection();
+	error = lora_device.setup_lora_connection(&lora_device, LORA_P2P);
 	if (error)
 	{
-		LOG_ERR("Failed to setup LoRa Peer-to-Peer connection: %d", error);
 		goto return_clause;
 	}
 
@@ -105,46 +80,6 @@ static int lora_p2p_init_channel(void)
 
 return_clause:
 	return error;
-}
-
-int setup_lora_p2p_connection()
-{
-	LOG_DBG("Setting up LoRa Peer-to-Peer connection");
-	int error = 0;
-
-	k_sem_take(lora_device.device_sem, K_FOREVER);
-
-	error = lora_config(lora_device.device, &lora_modem_config);
-	if (error < 0)
-	{
-		LOG_ERR("lora_config failed");
-		goto return_clause;
-	}
-#ifdef CONFIG_RECEIVE_LORA_P2P
-	// Start reception
-	error = lora_recv_async(lora_device.device, lora_receive_cb, NULL);
-	if (error < 0)
-	{
-		LOG_ERR("Starting LoRa Peer-to-Peer reception failed");
-		goto return_clause;
-	}
-#endif // CONFIG_RECEIVE_LORA_P2P
-	LOG_INF("LoRa Peer-to-Peer connection setup complete");
-
-return_clause:
-	k_sem_give(lora_device.device_sem);
-	return error;
-}
-
-void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
-					 int16_t rssi, int8_t snr, void *user_data)
-{
-	ARG_UNUSED(dev);
-	ARG_UNUSED(size);
-	ARG_UNUSED(user_data);
-
-	LOG_INF("LoRa RX RSSI: %d dBm, SNR: %d dB", rssi, snr);
-	LOG_HEXDUMP_INF(data, size, "LoRa RX payload");
 }
 
 #ifdef CONFIG_LORA_P2P_JOIN_PACKET
@@ -180,16 +115,7 @@ void lora_p2p_send_data(void *param0, void *param1, void *param2)
 			// Sends package as the new item wouldn't fit in it and resets package variables to form a new one
 			if (available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
 			{
-#ifdef CONFIG_RECEIVE_LORA_P2P
-				error = toggle_reception_and_send(joined_data, max_payload_size - available_package_size);
-				if (error)
-				{
-					continue;
-				}
-#else
-				send_package(joined_data, max_payload_size - available_package_size);
-#endif // CONFIG_RECEIVE_LORA_P2P
-
+				lora_device.send_package(&lora_device, LORA_P2P, (uint8_t *)joined_data, SIZE_32_BIT_WORDS_TO_BYTES(insert_index));
 				reset_join_variables(&max_payload_size, &insert_index,
 									 &available_package_size, joined_data, LORA_P2P);
 				continue;
@@ -238,15 +164,7 @@ static void lora_p2p_send_data(void *param0, void *param1, void *param2)
 				continue;
 			}
 			encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
-#ifdef CONFIG_RECEIVE_LORA_P2P
-			error = toggle_reception_and_send((uint8_t *)encoded_data, encoded_data_size);
-			if (error)
-			{
-				continue;
-			}
-#else
-			send_package((uint8_t *)encoded_data, encoded_data_size);
-#endif // CONFIG_RECEIVE_LORA_P2P
+			lora_device.send_package(&lora_device, LORA_P2P, (uint8_t *)encoded_data, encoded_data_size);
 		}
 		LOG_DBG("Buffer is empty, sleeping");
 		k_sleep(K_FOREVER);
@@ -254,60 +172,6 @@ static void lora_p2p_send_data(void *param0, void *param1, void *param2)
 }
 
 #endif // CONFIG_LORA_P2P_JOIN_PACKET
-
-#ifdef CONFIG_RECEIVE_LORA_P2P
-int toggle_reception_and_send(uint8_t *payload_data, int payload_size)
-{
-	int error = 0;
-
-	k_sem_take(lora_device.device_sem, K_FOREVER);
-	// Stop receiving and configure the modem for transmission
-	lora_recv_async(lora_device.device, NULL, NULL);
-	lora_modem_config.tx = true;
-	error = lora_config(lora_device.device, &lora_modem_config);
-	if (error < 0)
-	{
-		LOG_ERR("lora_config failed");
-		goto return_clause;
-	}
-	k_sleep(K_SECONDS(2));
-	// Send using Zephyr's subsystem and check if the transmission was successful
-	error = lora_send(lora_device.device, payload_data, payload_size);
-	if (error < 0)
-	{
-		LOG_ERR("lora_send failed");
-		goto return_clause;
-	}
-	LOG_INF("lora_send successful");
-	// Reconfigure the modem for reception
-	lora_modem_config.tx = false;
-	error = lora_config(lora_device.device, &lora_modem_config);
-	if (error < 0)
-	{
-		LOG_ERR("lora_config failed");
-		goto return_clause;
-	}
-	lora_recv_async(lora_device.device, lora_receive_cb, NULL);
-
-return_clause:
-	k_sem_give(lora_device.device_sem);
-	return error;
-}
-#else
-void send_package(uint8_t *package, uint8_t package_size)
-{
-	k_sem_take(lora_device.device_sem, K_FOREVER);
-	// Send using Zephyr's subsystem and check if the transmission was successful
-	int error = lora_send(lora_device.device, package, package_size);
-	k_sem_give(lora_device.device_sem);
-	if (error)
-	{
-		LOG_ERR("lora_p2p_send failed: %d.", error);
-		return;
-	}
-	LOG_INF("lora_p2p_send successful");
-}
-#endif // CONFIG_RECEIVE_LORA_P2P
 
 ChannelAPI *register_lora_p2p_callbacks()
 {

@@ -39,7 +39,5 @@
 ChannelAPI *register_lorawan_callbacks();
 // Checks readiness of the LoRa device, configures lorawan backend and timestamp synchronization
 int init_lorawan_connection();
-// Configures lorawan connection, joining the network
-int setup_lorawan_connection();
 
 #endif /* LORAWAN_INTERFACE_H */

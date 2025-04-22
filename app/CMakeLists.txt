@@ -45,6 +45,8 @@ endif()
 if(CONFIG_SEND_LORAWAN)
     target_sources(app PRIVATE  
                         src/communication/lora/lora_common.c
+                        src/communication/lora/lora_device/lora_device.c
+                        src/communication/lora/lora_device/lorawan_device/lorawan_device.c
                         src/communication/lora/lorawan/lorawan_interface.c
                         src/communication/lora/lorawan/lorawan_setup.c)
 endif()
@@ -52,6 +54,8 @@ endif()
 if(CONFIG_SEND_LORA_P2P)
     target_sources(app PRIVATE
                         src/communication/lora/lora_common.c
+                        src/communication/lora/lora_device/lora_device.c
+                        src/communication/lora/lora_device/lora_p2p_device/lora_p2p_device.c
                         src/communication/lora/lora_p2p/lora_p2p_interface.c)
 endif()
 
