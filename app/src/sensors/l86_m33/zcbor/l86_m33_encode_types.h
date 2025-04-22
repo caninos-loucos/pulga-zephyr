@@ -11,9 +11,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** Which value for --default-max-qty this file was created with.
@@ -25,13 +25,11 @@ extern "C"
  */
 #define DEFAULT_MAX_QTY 3
 
-	struct L86_M33
-	{
-
-		int64_t timestamp;
-		int64_t latitude;
-		int64_t longitude;
-	};
+struct L86_M33 {
+	int64_t timestamp;
+	int64_t latitude;
+	int64_t longitude;
+};
 
 #ifdef __cplusplus
 }

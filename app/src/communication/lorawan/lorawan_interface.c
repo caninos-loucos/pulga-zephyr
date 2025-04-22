@@ -163,12 +163,12 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 	ARG_UNUSED(param0);
 	ARG_UNUSED(param1);
 	ARG_UNUSED(param2);
-	
+
 	uint8_t max_payload_size, insert_index, available_package_size, error = 0;
 	// Maximum LoRaWAN package size won't surpass 256 B
 	uint8_t joined_data[256];
 	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data);
-	
+
 	while (1)
 	{
 		// After waking up, transmits until buffer is empty
@@ -234,7 +234,7 @@ void add_item_to_package(uint8_t encoded_data_word_size, uint8_t max_payload_siz
 	bytecpy(joined_data + *insert_index, encoded_data, encoded_data_size);
 	*available_package_size -= encoded_data_size;
 }
-#else // CONFIG_LORAWAN_JOIN_PACKET
+#else  // CONFIG_LORAWAN_JOIN_PACKET
 void lorawan_send_data(void *param0, void *param1, void *param2)
 {
 	LOG_INF("Sending via lorawan started");
@@ -279,7 +279,7 @@ void send_package(uint8_t *package, uint8_t package_size)
 		LOG_ERR("lorawan_send failed: %d.", error);
 		return;
 	}
-	LOG_INF("lorawan_send successful");
+	LOG_DBG("lorawan_send successful");
 }
 
 // Register channels to the Communication Module

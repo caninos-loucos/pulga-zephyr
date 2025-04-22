@@ -68,7 +68,10 @@ static void uart_send_data(void *param0, void *param1, void *param2)
 #endif
 
         if (size >= 0)
-            printk("%s\n", encoded_data);
+        {
+            fwrite(encoded_data, sizeof(uint8_t), size, stdout);
+            fwrite("\n", sizeof(uint8_t), 1, stdout);
+        }
         else
             LOG_ERR("Could not encode data");
 

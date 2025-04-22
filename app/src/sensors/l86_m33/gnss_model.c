@@ -83,8 +83,8 @@ static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encod
 {
     SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
     struct L86_M33 zcbor_input;
-    uint8_t zcbor_output[MAX_32_WORDS];
-    int zcbor_output_size;
+    uint8_t zcbor_output[SIZE_32_BIT_WORDS_TO_BYTES(8)];
+    size_t zcbor_output_size;
 
     struct tm structured_time = {
         .tm_sec = gnss_model->real_time.millisecond / 1000,
@@ -95,7 +95,7 @@ static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encod
         .tm_year = gnss_model->real_time.century_year + 2000 - TIME_UTILS_BASE_YEAR,
     };
     int64_t gps_epoch = timeutil_timegm64(&structured_time);
-    LOG_INF("GNSS time: %lld", gps_epoch);
+    LOG_DBG("GNSS time: %lld", gps_epoch);
 
     zcbor_input.latitude = gnss_model->navigation.latitude;
     zcbor_input.longitude = gnss_model->navigation.longitude;
@@ -108,8 +108,11 @@ static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encod
         return -1;
     }
 
-    zcbor_output[zcbor_output_size] = '\0';
-    return snprintf(encoded_data, encoded_size, "{g%c%s}", zcbor_output_size, zcbor_output);
+    memcpy(encoded_data, "{g", 2);
+    memcpy(encoded_data + 2, &zcbor_output_size, 1);
+    memcpy(encoded_data + 3, zcbor_output, zcbor_output_size);
+    memcpy(encoded_data + 3 + zcbor_output_size, "}\0", 2);
+    return zcbor_output_size + 5;
 }
 
 // Registers GNSS model callbacks

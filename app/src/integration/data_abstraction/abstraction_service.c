@@ -42,8 +42,8 @@ int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLeve
 	case CBOR:
 		if (!data_api->encode_cbor)
 		{
-			LOG_ERR("Encoding not available");
-			return -ENOSYS;
+			return data_api->encode_minimalist(data_words, encoded_data, encoded_size);
+			break;
 		}
 
 		return data_api->encode_cbor(data_words, encoded_data, encoded_size);

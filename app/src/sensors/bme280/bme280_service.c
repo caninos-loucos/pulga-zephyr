@@ -69,7 +69,7 @@ sample_fetch:
     }
     else if (error == -EAGAIN)
     {
-        LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
+        LOG_DBG("fetch sample from \"%s\" failed: %d, trying again",
                 bme280->name, error);
         goto sample_fetch;
     }

@@ -63,8 +63,8 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
 static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
 {
     SensorModelBME280 *bme280_model = (SensorModelBME280 *)data_words;
-    uint32_t zcbor_input = bme280_model->temperature.val1 * 100 + bme280_model->temperature.val1 / 10000;
-    uint8_t zcbor_output[MAX_32_WORDS];
+    uint32_t zcbor_input = bme280_model->temperature.val1 * 100 + bme280_model->temperature.val2 / 10000;
+    uint8_t zcbor_output[SIZE_32_BIT_WORDS_TO_BYTES(2)];
     size_t zcbor_output_size;
 
     int err = cbor_encode_BME280(zcbor_output, sizeof(zcbor_output), &zcbor_input, &zcbor_output_size);
@@ -74,12 +74,11 @@ static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encod
         return -1;
     }
 
-    zcbor_output[zcbor_output_size] = '\0';
-    encoded_data = "{t";
-    memcpy(encoded_data + 2, zcbor_output_size, 1);
+    memcpy(encoded_data, "{t", 2);
+    memcpy(encoded_data + 2, &zcbor_output_size, 1);
     memcpy(encoded_data + 3, zcbor_output, zcbor_output_size);
     memcpy(encoded_data + 3 + zcbor_output_size, "}\0", 2);
-    return encoded_data;
+    return zcbor_output_size + 5;
 }
 
 // Registers BME280 model callbacks
