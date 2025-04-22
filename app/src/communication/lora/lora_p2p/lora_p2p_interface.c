@@ -32,8 +32,6 @@ static k_tid_t lora_p2p_send_thread_id;
 
 // Configures connection, initializes internal buffer and thread to send data via LoRa Peer-to-Peer
 static int lora_p2p_init_channel(void);
-// Function executed by thread that sends data using LoRa Peer-to-Peer
-static void lora_p2p_send_data(void *, void *, void *);
 
 /**
  * Definitions
@@ -72,7 +70,7 @@ static int lora_p2p_init_channel(void)
 	LOG_DBG("Initializing send via LoRa Peer-to-Peer thread");
 	lora_p2p_send_thread_id = k_thread_create(&lora_p2p_send_thread_data, lora_p2p_send_thread_stack_area,
 											  K_THREAD_STACK_SIZEOF(lora_p2p_send_thread_stack_area),
-											  lora_p2p_send_data, NULL, NULL, NULL,
+											  lora_send_data, (void *)(uintptr_t)LORA_P2P, &lora_p2p_buffer, NULL,
 											  LORA_P2P_SEND_THREAD_PRIORITY, 0, K_NO_WAIT);
 	error = k_thread_name_set(lora_p2p_thread_id, "send_lora_p2p");
 	if (error)
@@ -81,97 +79,6 @@ static int lora_p2p_init_channel(void)
 return_clause:
 	return error;
 }
-
-#ifdef CONFIG_LORA_P2P_JOIN_PACKET
-void lora_p2p_send_data(void *param0, void *param1, void *param2)
-{
-	LOG_INF("Sending via lora_p2p started");
-	ARG_UNUSED(param0);
-	ARG_UNUSED(param1);
-	ARG_UNUSED(param2);
-
-	int max_payload_size, available_package_size;
-	uint8_t insert_index, error = 0;
-	uint8_t joined_data[MAX_DATA_LEN];
-	reset_join_variables(&max_payload_size, &insert_index, &available_package_size, joined_data, LORA_P2P);
-
-	while (1)
-	{
-		// After waking up, transmits until buffer is empty
-		while (!buffer_is_empty(&lora_p2p_buffer))
-		{
-			LOG_DBG("Resetting data item variables");
-			error = 0;
-			uint8_t encoded_data_word_size;
-			uint32_t encoded_data[MAX_32_WORDS];
-			memset(encoded_data, 0, sizeof(encoded_data));
-			// Peeking the size of the next item in the buffer
-			error = get_item_word_size(&lora_p2p_buffer, &encoded_data_word_size);
-			if (error)
-			{
-				encoded_data_word_size = MAX_32_WORDS;
-			}
-
-			// Sends package as the new item wouldn't fit in it and resets package variables to form a new one
-			if (available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
-			{
-				lora_device.send_package(&lora_device, LORA_P2P, (uint8_t *)joined_data, SIZE_32_BIT_WORDS_TO_BYTES(insert_index));
-				reset_join_variables(&max_payload_size, &insert_index,
-									 &available_package_size, joined_data, LORA_P2P);
-				continue;
-			}
-			enum DataType data_type;
-			// Get the next packet from the internal buffer
-			error = get_from_buffer(&lora_p2p_buffer, encoded_data, &data_type, &encoded_data_word_size);
-			if (error)
-			{
-				continue;
-			}
-			add_item_to_package(encoded_data_word_size, max_payload_size,
-								&available_package_size, joined_data,
-								&insert_index, encoded_data);
-		}
-		LOG_DBG("Buffer is empty, sleeping");
-		k_sleep(K_FOREVER);
-	}
-}
-#else
-static void lora_p2p_send_data(void *param0, void *param1, void *param2)
-{
-	LOG_INF("Sending via lora-p2p");
-	ARG_UNUSED(param0);
-	ARG_UNUSED(param1);
-	ARG_UNUSED(param2);
-	int error;
-
-	while (1)
-	{
-		// After waking up, transmits until buffer is empty
-		while (!buffer_is_empty(&lora_p2p_buffer))
-		{
-			LOG_DBG("Resetting data item variables");
-			error = 0;
-			uint8_t encoded_data_size, encoded_data_word_size;
-			uint32_t encoded_data[MAX_32_WORDS];
-
-			memset(encoded_data, 0, sizeof(encoded_data));
-			encoded_data_word_size = MAX_32_WORDS;
-			enum DataType data_type;
-			// Get the next packet from the internal buffer
-			error = get_from_buffer(&lora_p2p_buffer, encoded_data, &data_type, &encoded_data_word_size);
-			if (error)
-			{
-				continue;
-			}
-			encoded_data_size = SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size);
-			lora_device.send_package(&lora_device, LORA_P2P, (uint8_t *)encoded_data, encoded_data_size);
-		}
-		LOG_DBG("Buffer is empty, sleeping");
-		k_sleep(K_FOREVER);
-	}
-}
-
-#endif // CONFIG_LORA_P2P_JOIN_PACKET
 
 ChannelAPI *register_lora_p2p_callbacks()
 {
