@@ -21,15 +21,16 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     //  In production. Will change this later!
     // Formats the string
-    // return snprintf(encoded_data, encoded_size,
-    //                 "Timestamp: %d; CO2: %d ppm; Temperature: %d.%02d oC; "
-    //                 "Humidity: %d.%02d %% RH;",
-    //                 tcs34725_model->timestamp,
-    //                 tcs34725_model->co2.val1,
-    //                 tcs34725_model->temperature.val1,
-    //                 tcs34725_model->temperature.val2 / 10000,
-    //                 tcs34725_model->humidity.val1,
-    //                 tcs34725_model->humidity.val2 / 10000);
+    return snprintf(encoded_data, encoded_size,
+                    "Clear: %04X; Red: %04X; Green: %04X; "
+                    "Blue: %04X; Luminosity: %d.%02d lux; Color Temperature: %d K",
+                    tcs34725_model->clear.val1,
+                    tcs34725_model->red.val1,
+                    tcs34725_model->green.val1,
+                    tcs34725_model->blue.val1,
+                    tcs34725_model->luminosity.val1,
+                    tcs34725_model->luminosity.val2 / 10000,
+                    tcs34725_model->color_temperature.val1);
     return 0;
 }
 
@@ -41,14 +42,15 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
 
     // In production. Will change this later!
     // Formats the string
-    // return snprintf(encoded_data, encoded_size,
-    //                 "TS%dCO2%dT%d.%02dH%d.%02d",
-    //                 tcs34725_model->timestamp,
-    //                 tcs34725_model->co2.val1,
-    //                 tcs34725_model->temperature.val1,
-    //                 tcs34725_model->temperature.val2 / 10000,
-    //                 tcs34725_model->humidity.val1,
-    //                 tcs34725_model->humidity.val2 / 10000);
+    return snprintf(encoded_data, encoded_size,
+                    "C%04XR%04XG%04XB%04XL%d.%02dCT%d",
+                    tcs34725_model->clear.val1,
+                    tcs34725_model->red.val1,
+                    tcs34725_model->green.val1,
+                    tcs34725_model->blue.val1,
+                    tcs34725_model->luminosity.val1,
+                    tcs34725_model->luminosity.val2 / 10000,
+                    tcs34725_model->color_temperature.val1);
     return 0;
 }
 

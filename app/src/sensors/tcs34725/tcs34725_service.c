@@ -32,8 +32,8 @@ static int init_sensor()
     }
     else if (!device_is_ready(tcs34725))
     {
-        printk("init response: %d\n\t",tcs34725->state->init_res);
-        printk("initialized?: %d\n\t",tcs34725->state->initialized);
+        // printk("init response: %d\n\t",tcs34725->state->init_res);
+        // printk("initialized?: %d\n\t",tcs34725->state->initialized);
         
         LOG_ERR("device \"%s\" is not ready", tcs34725->name);
         return -EAGAIN;
@@ -61,31 +61,37 @@ static void read_sensor_values()
     } 
 
     // In production yet. Will implement channels later
-    // if (!error)
-    // {
-    //     sensor_channel_get(tcs34725, SENSOR_CHAN_CO2,
-    //                        &tcs34725_model.co2);
-    //     sensor_channel_get(tcs34725, SENSOR_CHAN_AMBIENT_TEMP,
-    //                        &tcs34725_model.temperature);
-    //     sensor_channel_get(tcs34725, SENSOR_CHAN_HUMIDITY,
-    //                        &tcs34725_model.humidity);
+    if (!error)
+    {
+        sensor_channel_get(tcs34725, SENSOR_CHAN_CLEAR_RAW,
+                           &tcs34725_model.clear);
+        sensor_channel_get(tcs34725, SENSOR_CHAN_RED_RAW,
+                           &tcs34725_model.red);
+        sensor_channel_get(tcs34725, SENSOR_CHAN_GREEN_RAW,
+                           &tcs34725_model.green);
+        sensor_channel_get(tcs34725, SENSOR_CHAN_BLUE_RAW,
+                           &tcs34725_model.blue);
+        sensor_channel_get(tcs34725, SENSOR_CHAN_LIGHT,
+                           &tcs34725_model.luminosity);         
+        sensor_channel_get(tcs34725, SENSOR_CHAN_COLOR_TEMP,
+                           &tcs34725_model.color_temperature);            
 
-    //     memcpy(&tcs34725_data, &tcs34725_model, sizeof(SensorModelTCS34725));
+        memcpy(&tcs34725_data, &tcs34725_model, sizeof(SensorModelTCS34725));
 
-    //     if (insert_in_buffer(&app_buffer, tcs34725_data, TCS34725_MODEL, error, TCS34725_MODEL_WORDS) != 0)
-    //     {
-    //         LOG_ERR("Failed to insert data in ring buffer.");
-    //     }
-    // }
-    // else if (error == -EAGAIN)
-    // {
-    //     LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
-    //             tcs34725->name, error);
-    //     goto sample_fetch;
-    // }
-    // else
-    //     LOG_ERR("fetch sample from \"%s\" failed: %d",
-    //             tcs34725->name, error);
+        if (insert_in_buffer(&app_buffer, tcs34725_data, TCS34725_MODEL, error, TCS34725_MODEL_WORDS) != 0)
+        {
+            LOG_ERR("Failed to insert data in ring buffer.");
+        }
+    }
+    else if (error == -EAGAIN)
+    {
+        LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
+                tcs34725->name, error);
+        goto sample_fetch;
+    }
+    else
+        LOG_ERR("fetch sample from \"%s\" failed: %d",
+                tcs34725->name, error);
 }
 
 // Register TCS34725 sensor callbacks

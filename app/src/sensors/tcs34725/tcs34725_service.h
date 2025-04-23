@@ -8,9 +8,12 @@
 
 typedef struct
 {
+	struct sensor_value clear;
 	struct sensor_value red;
 	struct sensor_value green;
 	struct sensor_value blue;
+	struct sensor_value luminosity;
+	struct sensor_value color_temperature;
 } SensorModelTCS34725;
 
 // Number of 32-bit words in each data item (model)

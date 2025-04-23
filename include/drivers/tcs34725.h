@@ -11,8 +11,12 @@
 
 /* TCS34725 specific channels */
 enum sensor_channel_tcs34725 {
-    // Not sure yet if will be needed
-	SENSOR_CHAN_TEMPORARY = SENSOR_CHAN_PRIV_START,
+    // Raw reffers to the value read by the sensor, ie. a 2 byte value.
+	SENSOR_CHAN_CLEAR_RAW = SENSOR_CHAN_PRIV_START,
+    SENSOR_CHAN_RED_RAW,
+    SENSOR_CHAN_GREEN_RAW,
+    SENSOR_CHAN_BLUE_RAW,
+    SENSOR_CHAN_COLOR_TEMP,
 };
 
 /* TCS34725 specific attribute */

@@ -62,9 +62,9 @@ static int tcs34725_command_write(const struct device *dev,  uint8_t cmd)
     const struct tcs34725_config *cfg = dev->config;
 
     uint8_t cmd_reg[1]; 
-    cmd_reg[0] = cmd | COMMAND_BIT;
+    cmd_reg[0] = cmd | TCS34725_COMMAND;
 
-    printk("Comando enviado: %.2X\n\t", cmd_reg[0]);
+    // printk("Comando enviado: %.2X\n\t", cmd_reg[0]);
     // printk("I2C address: %.2X\n\t", cfg->i2c.addr);
 
     return i2c_write_dt(&cfg->i2c, (uint8_t *)cmd_reg, 1);
@@ -80,16 +80,24 @@ static int tcs34725_register_write(const struct device *dev, uint8_t reg, uint8_
     int ret = 0;
     uint8_t buf[2];
 
-    buf[0] = reg;
-    buf[1] = data;
+    if (data == NULL) {
+        buf[0] = reg;
+        ret = i2c_write_dt(&cfg->i2c, buf, 1);
+    }
+    else {
+        buf[0] = reg;
+        buf[1] = data;
+        ret = i2c_write_dt(&cfg->i2c, buf, 2);
+    }
+    
 
-    return i2c_write_dt(&cfg->i2c, buf, sizeof(buf)); // sizeof ou 2 direto?
+    return ret; 
 }
 
 // Reads data from a register
 static int tcs34725_register_read(const struct device *dev, uint8_t reg, uint8_t *buf, uint32_t size)
 {
-    ARG_UNUSED(size); // Maybe ill mantain like this or pass the responsa to set the size to the fuction caller
+    // ARG_UNUSED(size); // Maybe ill mantain like this or pass the responsa to set the size to the fuction caller
 
     // slave_adress, reg_adress, buf_guarda_dados, byte_quantity
     const struct tcs34725_config *cfg = dev->config;
@@ -102,7 +110,7 @@ static int tcs34725_register_read(const struct device *dev, uint8_t reg, uint8_t
         return ret;
     }
 
-    ret = i2c_read_dt(&cfg->i2c, buf, sizeof(buf));
+    ret = i2c_read_dt(&cfg->i2c, buf, size);
     if (ret != 0) {
         printk("Escreveu o comando, mas não conseguiu fazer a leitura!\n\t");
         return ret;
@@ -116,6 +124,18 @@ static int tcs34725_register_read(const struct device *dev, uint8_t reg, uint8_t
     // return i2c_burst_read_dt(&cfg->i2c, reg, buf, size);
 }
 
+// static float tcs34725_bytes_to_float(const uint8_t *value) {
+
+//     union {
+//         uint16_t unsigned16;
+//         float float16;
+//     } temp;
+
+//     temp.unsigned16 = sys_get_be16(value);
+
+//     return temp.float16;
+// }
+
 
 // Fetches sample data
 static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel channel)
@@ -127,24 +147,64 @@ static int tcs34725_sample_fetch(const struct device *dev, enum sensor_channel c
     // Pegar o struct data do device
     struct tcs34725_data *data = dev->data;
 
-    printk("Sample fetch ...\n\t");
+    // printk("Sample fetch ...\n\t");
 
 
     // chamar a read_rgbc
     uint8_t ret = tcs34725_read_rgbc(dev);
-    if (!ret)
+    if (ret != 0)
     {
         LOG_DBG("Error at reading RGBC");
         return ret; // Verificar depois a lógica do retorno
     }
 
+    // Calculates color temperature and lux. Stores in data structure
+    tcs34725_calculate_lux_and_temp(dev);
+
     // // Temporary prints
-    printk("Red: %d\n\t Green: %d \n\t Blue: %d \n\t Clear: %d \n\t", data->red, data->green, data->blue, data->clear);
+    // printk("Red: %d\n\t Green: %d \n\t Blue: %d \n\t Clear: %d \n\t", data->red, data->green, data->blue, data->clear);
     return 0;
 }
 
 static int tcs34725_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val)
 {
+
+    const struct tcs34725_data *data = dev->data;
+
+    switch (chan)
+    {
+    case SENSOR_CHAN_CLEAR_RAW:
+        val->val1 = data->clear;
+        val->val2 = 0;
+        break;
+    
+    case SENSOR_CHAN_RED_RAW:
+        val->val1 = data->red;
+        val->val2 = 0;
+        break;
+
+    case SENSOR_CHAN_GREEN_RAW:
+        val->val1 = data->green;
+        val->val2 = 0;
+        break;
+
+    case SENSOR_CHAN_BLUE_RAW:
+        val->val1 = data->blue;
+        val->val2 = 0;
+        break;
+
+    case SENSOR_CHAN_LIGHT:
+        val->val1 = (uint32_t)(data->luminosity / 100);
+        val->val2 = (uint32_t)(data->luminosity % 100 * 10000); // Maybe will adjust this later
+
+    case SENSOR_CHAN_COLOR_TEMP:
+        val->val1 = (uint32_t)(data->color_temperature);
+        val->val2 = 0;
+    
+    default:
+        return -1;
+    }
+
     return 0; // Temporary return
 }
 
@@ -160,6 +220,87 @@ static int tcs34725_attr_set(const struct device *dev, enum sensor_channel chann
     return 0; // Temporary return
 }
 
+static int tcs34725_hex_to_gain(uint8_t gain_hex)
+{
+    int gain;
+
+    switch (gain_hex)
+    {
+    case 0X00:
+        return gain = 1;
+    
+    case 0X01:
+        return gain = 4;
+
+    case 0X02:
+        return gain = 16;
+
+    case 0X03:
+        return gain = 60;
+    
+    default:
+        return gain = 1;
+    } 
+}
+
+// Adapted from https://github.com/hideakitai/TCS34725/blob/master/TCS34725.h
+// See if any copyrigth info is nedded after
+static const void tcs34725_calculate_lux_and_temp(const struct device *dev)
+{
+    struct tcs34725_data *data = dev->data;
+    int ret = 0;
+
+    ret = tcs34725_get_rgbc_integration_time(dev);
+    if (ret) { 
+        return;
+    }
+    ret = tcs34725_get_gain(dev);
+    if (ret) {
+        return;
+    }
+
+    int gain_value = tcs34725_hex_to_gain((uint8_t)data->gain); 
+
+    const uint8_t atime = data->integration_time;
+    const float integration_time = (256 - atime)*2.4f; // Integration time in ms
+
+    // Device specific values (DN40 Table 1 in Appendix I)
+    static const float GA = 1.f;                      // Glass Attenuation Factor
+    static const float DF = 310.f;             // Device Factor
+    static const float R_Coef = 0.136f;        //
+    static const float G_Coef = 1.f;           // used in lux computation
+    static const float B_Coef = -0.444f;       //
+    static const float CT_Coef = 3810.f;       // Color Temperature Coefficient
+    static const float CT_Offset = 1391.f;     // Color Temperatuer Offset
+
+    // Analog/Digital saturation (DN40 3.5)
+    float saturation = (256 - atime > 63) ? 65535 : 1024 * (256 - atime);
+
+    // Ripple saturation (DN40 3.7)
+    if (integration_time < 150)
+        saturation -= saturation / 4;
+
+    // Check for saturation and mark the sample as invalid if true
+    if (data->clear >= saturation)
+        return;
+
+    // IR Rejection (DN40 3.1)
+    float sum = data->red + data->green + data->blue;
+    float c = data->clear;
+    float ir = (sum > c) ? ((sum - c) / 2.f) : 0.f;
+    float r2 = data->red - ir;
+    float g2 = data->green - ir;
+    float b2 = data->blue - ir;
+
+    // Lux Calculation (DN40 3.2)
+    float g1 = R_Coef * r2 + G_Coef * g2 + B_Coef * b2;
+    float cpl = (integration_time * gain_value) / (GA * DF);
+    data->luminosity = (uint64_t) g1 / cpl;
+
+    // CT Calculations (DN40 3.4)
+    data->color_temperature = (uint64_t)(CT_Coef * b2 / r2 + CT_Offset);
+    
+}
 
 /**
  * @brief i2c address definition
@@ -536,27 +677,23 @@ uint8_t tcs34725_set_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_i
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_integration_time_t *t)
+uint8_t tcs34725_get_rgbc_integration_time(const struct device *dev)
 {
-    uint8_t res;
-    
-    if (handle == NULL)                                                                      /* check handle */
+    struct tcs34725_data *data = dev->data;
+    int ret = 0;
+
+    tcs34725_integration_time_t time;
+
+    // res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ATIME, (uint8_t *)t, 1);           /* read config */
+    ret = tcs34725_register_read(dev, TCS34725_REG_ATIME, (uint8_t *)&time, 1);
+    if (ret)                                                                            /* check the result */
     {
-        return 2;                                                                            /* return error */
+        LOG_DBG("Fail at getting rgbc integration time");                           /* write register failed */
+        return ret;                                                                            /* return error */
     }
-    if (handle->inited != 1)                                                                 /* check handle initialization */
-    {
-        return 3;                                                                            /* return error */
-    }
-    
-    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_ATIME, (uint8_t *)t, 1);           /* read config */
-    if (res != 0)                                                                            /* check the result */
-    {
-        handle->debug_print("tcs34725: write register failed.\n");                           /* write register failed */
-        
-        return 1;                                                                            /* return error */
-    }
-    
+
+    data->integration_time = time;
+
     return 0;                                                                                /* success return 0 */
 }
 
@@ -900,7 +1037,7 @@ uint8_t tcs34725_get_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrup
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_gain(tcs34725_handle_t *handle, tcs34725_gain_t gain)
+uint8_t tcs34725_set_gain(const struct device *dev)
 {
     uint8_t res, prev;
     
@@ -944,28 +1081,23 @@ uint8_t tcs34725_set_gain(tcs34725_handle_t *handle, tcs34725_gain_t gain)
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_gain(tcs34725_handle_t *handle, tcs34725_gain_t *gain)
+uint8_t tcs34725_get_gain(const struct device *dev)
 {
-    uint8_t res, prev;
+    struct tcs34725_data *data = dev->data;
+
+    int ret = 0; 
+    uint8_t prev;
     
-    if (handle == NULL)                                                                         /* check handle */
+    // res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);        /* read config */
+    ret = tcs34725_register_read(dev, TCS34725_REG_CONTROL, &prev, 1);
+    if (ret)                                                                               /* check result */
     {
-        return 2;                                                                               /* return error */
+        LOG_DBG("Error at getting gain");                               /* read register failed */
+        return ret;                                                                               /* return error */
     }
-    if (handle->inited != 1)                                                                    /* check handle initialization */
-    {
-        return 3;                                                                               /* return error */
-    }
-    
-    res = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CONTROL, (uint8_t *)&prev, 1);        /* read config */
-    if (res != 0)                                                                               /* check result */
-    {
-        handle->debug_print("tcs34725: read register failed.\n");                               /* read register failed */
-        
-        return 1;                                                                               /* return error */
-    }
+
     prev &= 0x03;                                                                               /* get gain bits */
-    *gain = (tcs34725_gain_t)(prev & 0x03);                                                     /* get gain */
+    data->gain = (tcs34725_gain_t)(prev & 0x03);                                                     /* get gain */
     
     return 0;                                                                                   /* success return 0 */
 }
@@ -993,10 +1125,10 @@ uint8_t tcs34725_read_rgbc(const struct device *dev)
 
     // uint8_t buf[8];
 
-    printk("Status antes: %x\n\t", status);
+    // printk("Status antes: %x\n\t", status);
 
 
-    struct tcs34725_rx_data {
+    struct __attribute__((packed)) tcs34725_rx_data {
         uint8_t clear[2];
         uint8_t red[2];
         uint8_t green[2];
@@ -1028,57 +1160,89 @@ uint8_t tcs34725_read_rgbc(const struct device *dev)
         return ret;                                                                                /* return error */
     }
 
-    printk("Status: %x\n\t", status);
+    // printk("Status: %x\n\t", status);
 
-    if ((status & TCS34725_STATUS_AINT) != 0)  // Sei la. Vejo depois                                             /* find interrupt */
+    if ((status & TCS34725_STATUS_AINT) != 0)  // Sei la. Vejo depois                        /* find interrupt */
     {
-        // //ret = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
-        // ret = tcs34725_register_write(dev, TCS34725_REG_CLEAR, TCS34725_REG_CLEAR);                          /* clear interrupt */
-        // if (ret != 0)                                                                            /* check result */
-        // {
-        //     LOG_DBG("tcs34725: clear interrupt failed.\n");                          /* clear interrupt failed */
+        // Se tem interrupt ele limpa o interrupt
+        //ret = handle->i2c_write(TCS34725_ADDRESS, TCS34725_REG_CLEAR, NULL, 0);                  /* clear interrupt */
+        ret = tcs34725_register_write(dev, TCS34725_COMMAND_SPECIAL_FUNCTION | TCS34725_COMMAND_CLEAR_FUNCTION,
+                                      NULL);                          /* clear interrupt */
+        if (ret) {                                                                     /* check result */
+            LOG_DBG("tcs34725: clear interrupt failed.\n");                          /* clear interrupt failed */
             
-        //     return 1;                                                                            /* return error */
-        // }
+            return ret;                                                                            /* return error */
+        }
 
-        LOG_DBG("Deu AINT, mas sera ignorado ...\n\t");
+        // LOG_DBG("Deu AINT, mas sera ignorado ...\n\t");
 
         //return 1;
     }
     if ((status & TCS34725_STATUS_AVALID) != 0)                                                                      /* if data ready */
     {
         //ret = handle->i2c_read(TCS34725_ADDRESS, TCS34725_REG_CDATAL, (uint8_t *)buf, 8);        /* read data */
-        ret = tcs34725_register_read(dev, TCS34725_REG_CDATAL, &raw_data.clear[0], 1);                 /* read data */
-        ret = tcs34725_register_read(dev, TCS34725_REG_CDATAH, &raw_data.clear[1], 1); 
-        ret = tcs34725_register_read(dev, TCS34725_REG_RDATAL, &raw_data.red[0], 1); 
-        ret = tcs34725_register_read(dev, TCS34725_REG_RDATAH, &raw_data.red[1], 1); 
-        ret = tcs34725_register_read(dev, TCS34725_REG_GDATAL, &raw_data.green[0], 1); 
-        ret = tcs34725_register_read(dev, TCS34725_REG_GDATAH, &raw_data.green[1], 1); 
-        ret = tcs34725_register_read(dev, TCS34725_REG_BDATAL, &raw_data.blue[0], 1); 
-        ret = tcs34725_register_read(dev, TCS34725_REG_BDATAH, &raw_data.blue[1], 1); 
 
-        if (ret != 0)                                                                            /* check result */
-        {
-            LOG_DBG("tcs34725: read failed.\n");                                     /* read failed */
-            
-            return 1;                                                                            /* return error */
+        // Will read 8 consecutive bytes of data
+        ret = tcs34725_register_read(dev, TCS34725_COMMAND_AUTO_INCREMENT | TCS34725_REG_CDATAL,
+                                     (uint8_t *)&raw_data, sizeof(raw_data));
+        if (ret) {
+            LOG_DBG("Error at reading RGC data");
+            return ret;
         }
 
-        printk("0 ... \n\t");
-        data->clear = sys_get_be16(raw_data.clear); //(raw_data.clear[2] << 8) | raw_data.clear[0]; 
-        printk("1 ... \n\t");                                              /* get clear */
-        data->red = sys_get_be16(raw_data.red); //(raw_data.red[2] << 8) | raw_data.red[0];        
-        printk("2 ... \n\t");                                       /* get red */
-        data->green = sys_get_be16(raw_data.green); //(raw_data.green[2] << 8) | raw_data.green[0];  
-        printk("3 ... \n\t");                                              /* get green */
-        data->blue = sys_get_be16(raw_data.blue); //(raw_data.blue[2] << 8) | raw_data.blue[0];       // Temp attr                                         /* get blue */
+
+        // ret = tcs34725_register_read(dev, TCS34725_REG_CDATAL, &raw_data.clear[0], 1);                 /* read data */
+        // if (ret) {
+        //     LOG_DBG("Error at reading lower byte of clear");
+        //     return ret;
+        // }
+        // ret = tcs34725_register_read(dev, TCS34725_REG_CDATAH, &raw_data.clear[1], 1); 
+        // if (ret) {
+        //     LOG_DBG("Error at reading higher byte of clear");
+        //     return ret;
+        // }
+        // ret = tcs34725_register_read(dev, TCS34725_REG_RDATAL, &raw_data.red[0], 1); 
+        // if (ret) {
+        //     LOG_DBG("Error at reading lower byte of red");
+        //     return ret;
+        // }
+        // ret = tcs34725_register_read(dev, TCS34725_REG_RDATAH, &raw_data.red[1], 1); 
+        // if (ret) {
+        //     LOG_DBG("Error at reading higher byte of red");
+        //     return ret;
+        // }
+        // ret = tcs34725_register_read(dev, TCS34725_REG_GDATAL, &raw_data.green[0], 1); 
+        // if (ret) {
+        //     LOG_DBG("Error at reading lower byte of green");
+        //     return ret;
+        // }
+        // ret = tcs34725_register_read(dev, TCS34725_REG_GDATAH, &raw_data.green[1], 1); 
+        // if (ret) {
+        //     LOG_DBG("Error at reading higher byte of green");
+        //     return ret;
+        // }
+        // ret = tcs34725_register_read(dev, TCS34725_REG_BDATAL, &raw_data.blue[0], 1); 
+        // if (ret) {
+        //     LOG_DBG("Error at reading lower byte of blue");
+        //     return ret;
+        // }
+        // ret = tcs34725_register_read(dev, TCS34725_REG_BDATAH, &raw_data.blue[1], 1); 
+        // if (ret) {
+        //     LOG_DBG("Error at reading higher byte of blue");
+        //     return ret;
+        // }
+
+        data->clear = sys_get_be16(raw_data.clear);
+        data->red = sys_get_be16(raw_data.red);
+        data->green = sys_get_be16(raw_data.green);
+        data->blue = sys_get_be16(raw_data.blue);
         
-        printk("Passou da atribuição\n\t");
-        printk("Valores lidos ...\n\t");
-        printk("Clear: %0.2X%0.2X\n\t", raw_data.clear[1], raw_data.clear[0]);
-        printk("Red: %0.2X%0.2X\n\t", raw_data.red[1], raw_data.red[0]);
-        printk("Green: %0.2X%0.2X\n\t", raw_data.green[1], raw_data.green[0]);
-        printk("Blue: %0.2X%0.2X\n\t", raw_data.blue[1], raw_data.blue[0]);
+        // temp prints
+        // printk("Valores lidos ...\n\t");
+        // printk("Clear: %f\n\t", data->clear);
+        // printk("Red: %f\n\t", data->red);
+        // printk("Green: %f\n\t", data->green);
+        // printk("Blue: %f\n\t", data->blue);
 
         return 0;                                                                                /* success return 0 */
     }
@@ -1232,7 +1396,7 @@ static int tcs34725_chip_enable(const struct device *dev)
         printk("Deu ruim ...\n\t");
     }
 
-    printk("Reg enable: %0.2x\n\t", temp_check);
+    // printk("Reg enable: %0.2x\n\t", temp_check);
 
     ret = tcs34725_register_write(dev, TCS34725_REG_ENABLE, TCS34725_ENABLE_PON);
     if (ret != 0) 
@@ -1249,21 +1413,22 @@ static int tcs34725_chip_enable(const struct device *dev)
         return ret;
     }
 
-    ret = tcs34725_register_read(dev, TCS34725_REG_ENABLE, &temp_check, 1);
-    if (ret) {
-        printk("Deu ruim 2 ...\n\t");
-    }
+    // ret = tcs34725_register_read(dev, TCS34725_REG_ENABLE, &temp_check, 1);
+    // if (ret) {
+    //     printk("Deu ruim 2 ...\n\t");
+    // }
 
-    printk("Reg enable fim: %0.2x\n\t", temp_check);
+    // // printk("Reg enable fim: %0.2x\n\t", temp_check);
 
-    ret = tcs34725_register_read(dev, TCS34725_REG_ATIME, &temp_check, 1);
-    if (ret) {
-        printk("Deu ruim 3 ...\n\t");
-    }
+    // ret = tcs34725_register_read(dev, TCS34725_REG_ATIME, &temp_check, 1);
+    // if (ret) {
+    //     printk("Deu ruim 3 ...\n\t");
+    // }
 
-    printk("Tempo de integração no init: %0.2x\n\t", temp_check);
+    // // printk("Tempo de integração no init: %0.2x\n\t", temp_check);
 
 
+    // Maybe its needed to set the integration time here
     temp_check = 0xFF;
     ret = tcs34725_register_write(dev, TCS34725_REG_ATIME, &temp_check);
     if (ret != 0) 
@@ -1299,7 +1464,7 @@ static int tcs34725_init(const struct device *dev)
 {
     LOG_DBG("Initializing TCS34725");
 
-    printk("This is the device init function\n\t");
+    // printk("This is the device init function\n\t");
 
     int ret; 
     uint8_t id;
@@ -1425,7 +1590,7 @@ static int tcs34725_init(const struct device *dev)
     // Chamar a função de enable
 
 
-    printk("Fim da init ...\n\t");
+    // printk("Fim da init ...\n\t");
 
     return 0;                                                                            /* success return 0 */
 }

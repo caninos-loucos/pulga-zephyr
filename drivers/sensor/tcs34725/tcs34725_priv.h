@@ -68,14 +68,14 @@ extern "C"{
  */
 #define TCS34725_REG_ENABLE         0x00        /**< enable register */ // Changed to 0x0
 #define TCS34725_REG_ATIME          0x01        /**< atime register */
-#define TCS34725_REG_WTIME          0x83        /**< wtime register */
-#define TCS34725_REG_AILTL          0xA4        /**< ailtl register */
-#define TCS34725_REG_AILTH          0xA5        /**< ailth register */
-#define TCS34725_REG_AIHTL          0xA6        /**< aihtl register */
-#define TCS34725_REG_AIHTH          0xA7        /**< aihtl register */
-#define TCS34725_REG_PERS           0x8C        /**< pers register */
-#define TCS34725_REG_CONFIG         0x8D        /**< config register */
-#define TCS34725_REG_CONTROL        0x8F        /**< control register */
+#define TCS34725_REG_WTIME          0x03        /**< wtime register */
+#define TCS34725_REG_AILTL          0x04        /**< ailtl register */
+#define TCS34725_REG_AILTH          0x05        /**< ailth register */
+#define TCS34725_REG_AIHTL          0x06        /**< aihtl register */
+#define TCS34725_REG_AIHTH          0x07        /**< aihtl register */
+#define TCS34725_REG_PERS           0x0C        /**< pers register */
+#define TCS34725_REG_CONFIG         0x0D        /**< config register */
+#define TCS34725_REG_CONTROL        0x0F        /**< control register */
 #define TCS34725_REG_ID             0x12        /**< id register */       // Changed to 0x12, as specified in datasheet
 #define TCS34725_REG_STATUS         0x13        /**< status register */ // Changed
 #define TCS34725_REG_CDATAL         0x14        /**< cdatal register */
@@ -86,10 +86,13 @@ extern "C"{
 #define TCS34725_REG_GDATAH         0x19        /**< gdatah register */
 #define TCS34725_REG_BDATAL         0x1A        /**< bdatal register */
 #define TCS34725_REG_BDATAH         0x1B        /**< bdatah register */
-#define TCS34725_REG_CLEAR          0xE6        /**< clear register */
+#define TCS34725_REG_CLEAR          0xE6        /**< clear register */ // 1 11 (00110) -> 1 11 (AIHTL)
 
 // Individual bits used to specify data to be written
-#define COMMAND_BIT                 0x80       // command bit in hex
+#define TCS34725_COMMAND                 0x80       // command bit in hex
+#define TCS34725_COMMAND_AUTO_INCREMENT     0x20
+#define TCS34725_COMMAND_SPECIAL_FUNCTION   0x60
+#define TCS34725_COMMAND_CLEAR_FUNCTION     0x06
 #define TCS34725_ENABLE_AIEN                0x10       // RGBC interrupt enable. When asserted, permits RGBC interrupts to be generated. 
 #define TCS34725_ENABLE_WEN                 0x08       // Wait enable. Writing a 1 activates the wait timer. 
 #define TCS34725_ENABLE_AEN                 0x02       // RGBC enable. Writing a 1 activates the RGBC.
@@ -228,14 +231,15 @@ typedef struct tcs34725_info_s
     uint32_t driver_version;           /**< driver version */
 } tcs34725_info_t;
 
-
 struct tcs34725_data {
-	uint16_t red;
-    uint16_t green;
-    uint16_t blue;
-    uint16_t clear;
-    // Not sure if this is how it should be done
-    struct tcs34725_handle_s *handle;
+	uint16_t red; //uint16_t red;
+    uint16_t green; //uint16_t green; //Will need to store in float
+    uint16_t blue; //uint16_t blue;
+    uint16_t clear; //uint16_t clear;
+    uint64_t luminosity; // Luminosity in lux
+    uint64_t color_temperature; // Color temperature in Kelvin degrees // Maybe change to another uintx_t later?
+    tcs34725_integration_time_t integration_time;
+    tcs34725_gain_t gain;
 };
 
 struct tcs34725_config {
@@ -264,6 +268,12 @@ static int tcs34725_channel_get(const struct device *dev, enum sensor_channel ch
 static int tcs34725_attr_get(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, struct sensor_value *value);
 // Sets desired attribute 
 static int tcs34725_attr_set(const struct device *dev, enum sensor_channel channel, enum sensor_attribute attribute, const struct sensor_value *value);
+
+static float tcs34725_bytes_to_float(const uint8_t *value);
+
+static int tcs34725_hex_to_gain(uint8_t gain_hex);
+
+static const void tcs34725_calculate_lux_and_temp(const struct device *dev);
 
 /**
  * @}
@@ -525,7 +535,7 @@ uint8_t tcs34725_set_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_i
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_integration_time_t *t);
+uint8_t tcs34725_get_rgbc_integration_time(const struct device *dev);
 
 /**
  * @brief     set the wait time
@@ -564,7 +574,7 @@ uint8_t tcs34725_get_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t *
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_gain(tcs34725_handle_t *handle, tcs34725_gain_t gain);
+uint8_t tcs34725_set_gain(const struct device *dev);
 
 /**
  * @brief      get the adc gain
@@ -577,7 +587,7 @@ uint8_t tcs34725_set_gain(tcs34725_handle_t *handle, tcs34725_gain_t gain);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_gain(tcs34725_handle_t *handle, tcs34725_gain_t *gain);
+uint8_t tcs34725_get_gain(const struct device *dev);
 
 /**
  * @}

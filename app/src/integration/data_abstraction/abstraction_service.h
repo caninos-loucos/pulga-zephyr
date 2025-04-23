@@ -20,6 +20,7 @@ enum DataType
     SI1133_MODEL,
     SCD30_MODEL,
     GNSS_MODEL,
+    TCS34725_MODEL,
     MAX_DATA_TYPE // Total number of data types
 };
 
