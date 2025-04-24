@@ -110,6 +110,11 @@ return_clause:
 	return error;
 }
 
+bool is_lorawan_buffer_empty()
+{
+	return buffer_is_empty(&lorawan_buffer);
+}
+
 // Register channels to the Communication Module
 ChannelAPI *register_lorawan_callbacks()
 {

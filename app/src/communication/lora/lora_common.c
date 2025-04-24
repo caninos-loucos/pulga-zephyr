@@ -3,6 +3,7 @@
 #include <zephyr/lorawan/lorawan.h>
 #include <communication/lora/lora_common.h>
 #include <communication/lora/lora_device/lora_device.h>
+#include <communication/lora/lorawan/lorawan_interface.h>
 
 LOG_MODULE_REGISTER(lora_common, CONFIG_APP_LOG_LEVEL);
 
@@ -25,6 +26,11 @@ void reset_join_variables(struct join_variables *join_vars, enum ChannelType cha
 void add_item_to_package(struct join_variables *join_vars, uint32_t *encoded_data, uint8_t encoded_data_word_size);
 #endif // Any of the two join packets configurations
 
+// Encodes data and inserts it into the internal buffer
+static int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum EncodingLevel encoding);
+// Acquires LoRa device if necessary and sends the package
+static int send_package(LoraDevice *lora_device, enum ChannelType caller_channel, uint8_t *package, uint8_t package_size);
+
 /**
  * Definitions
  */
@@ -32,14 +38,13 @@ void add_item_to_package(struct join_variables *join_vars, uint32_t *encoded_dat
 // Encoding and buffering Data thread
 void lora_process_data(void *channel, void *buffer, void *send_thread)
 {
-    LOG_INF("Processing LoRa data started");
-
     int error;
     enum ChannelType channel_type = (enum ChannelType)(uintptr_t)channel;
     PulgaRingBuffer *pulga_buffer = (PulgaRingBuffer *)buffer;
     k_tid_t *send_thread_id = (k_tid_t *)send_thread;
     enum EncodingLevel encoding = MINIMALIST;
 
+    LOG_INF("CHANNEL %d - Processing LoRa data started", channel_type);
     while (1)
     {
         // Waits for data to be ready
@@ -68,13 +73,13 @@ void lora_process_data(void *channel, void *buffer, void *send_thread)
             // maximum payload size can be assembled
             if (get_buffer_size_without_headers(pulga_buffer) < max_payload_size)
             {
-                LOG_DBG("Joining more data");
+                LOG_DBG("CHANNEL %d - Joining more data", channel_type);
                 // Signals for the Communication Interface that processing is complete
                 k_sem_give(&data_processed);
                 continue;
             }
         }
-        LOG_DBG("Waking up sending thread on channel %d", channel_type);
+        LOG_DBG("CHANNEL %d - Waking up sending thread", channel_type);
         k_wakeup(*send_thread_id);
         k_sem_give(&data_processed);
     }
@@ -84,7 +89,7 @@ int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum
 {
     LOG_DBG("Encoding data item");
     int error = 0, encoded_size = 0;
-    uint8_t encoded_data[256] = {0};
+    uint8_t encoded_data[MAX_DATA_LEN] = {0};
 
     // Encoding data to raw bytes
     encoded_size = encode_data(data_unit.data_words, data_unit.data_type, encoding,
@@ -106,10 +111,10 @@ int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum
 #if defined(CONFIG_LORA_P2P_JOIN_PACKET) || defined(CONFIG_LORAWAN_JOIN_PACKET)
 void reset_join_variables(struct join_variables *join_vars, enum ChannelType channel_type)
 {
-    LOG_DBG("Resetting join variables");
+    LOG_DBG("CHANNEL %d - Resetting join variables", channel_type);
     join_vars->insert_index = 0;
     // Resetting join package variables after last send
-    memset(join_vars->joined_data, 0, 256);
+    memset(join_vars->joined_data, 0, MAX_DATA_LEN);
     if (channel_type == LORAWAN)
     {
         uint8_t unused_arg, temp_max_payload;
@@ -121,7 +126,8 @@ void reset_join_variables(struct join_variables *join_vars, enum ChannelType cha
         join_vars->max_payload_size = MAX_DATA_LEN;
     }
     join_vars->available_package_size = join_vars->max_payload_size;
-    LOG_DBG("Maximum payload size for current datarate: %d B", join_vars->available_package_size);
+    LOG_DBG("CHANNEL %d - Maximum payload size for current datarate: %d B",
+            channel_type, join_vars->available_package_size);
 }
 
 void add_item_to_package(struct join_variables *join_vars, uint32_t *encoded_data, uint8_t encoded_data_word_size)
@@ -138,13 +144,14 @@ void add_item_to_package(struct join_variables *join_vars, uint32_t *encoded_dat
 
 void lora_send_data(void *channel, void *buffer, void *param2)
 {
-    LOG_INF("Sending via lora started");
     ARG_UNUSED(param2);
 
     enum ChannelType channel_type = (enum ChannelType)(uintptr_t)channel;
     PulgaRingBuffer *pulga_buffer = (PulgaRingBuffer *)buffer;
 #if IS_ENABLED(CONFIG_LORA_P2P_JOIN_PACKET) || IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)
     struct join_variables join_vars;
+
+    LOG_INF("CHANNEL %d - Sending via lora started", channel_type);
 
     if ((channel_type == LORAWAN && IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)) ||
         (channel_type == LORA_P2P && IS_ENABLED(CONFIG_LORA_P2P_JOIN_PACKET)))
@@ -158,7 +165,7 @@ void lora_send_data(void *channel, void *buffer, void *param2)
         // After waking up, transmits until buffer is empty
         while (!buffer_is_empty(pulga_buffer))
         {
-            LOG_DBG("Resetting data item variables");
+            LOG_DBG("CHANNEL %d - Resetting data item variables", channel_type);
             int error = 0;
             uint8_t encoded_data_word_size = MAX_32_WORDS;
             uint32_t encoded_data[MAX_32_WORDS];
@@ -173,8 +180,8 @@ void lora_send_data(void *channel, void *buffer, void *param2)
                 // Sends package as the new item wouldn't fit in it and resets package variables to form a new one
                 if (join_vars.available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
                 {
-                    lora_device.send_package(&lora_device, channel_type, join_vars.joined_data,
-                                             join_vars.max_payload_size - join_vars.available_package_size);
+                    send_package(&lora_device, channel_type, join_vars.joined_data,
+                                 join_vars.max_payload_size - join_vars.available_package_size);
                     reset_join_variables(&join_vars, channel_type);
                     continue;
                 }
@@ -197,11 +204,80 @@ void lora_send_data(void *channel, void *buffer, void *param2)
                 continue;
             }
 #endif // Any of the two join packets configurations
-       // Sends the packet directly if not joining
-            lora_device.send_package(&lora_device, channel_type, (uint8_t *) encoded_data,
-                                     SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size));
+
+            // Sends the packet directly if not joining
+            send_package(&lora_device, channel_type, (uint8_t *)encoded_data,
+                         SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size));
         }
-        LOG_DBG("Buffer is empty, sleeping");
+#if defined(CONFIG_SEND_LORAWAN) && defined(CONFIG_RECEIVE_LORA_P2P)
+        // If LoRaWAN is used, it releases the ownership of the LoRa device
+        if (channel_type == LORAWAN && IS_ENABLED(CONFIG_RECEIVE_LORA_P2P))
+        {
+            // Activates P2P so it can receive data
+            lora_device.release_ownership(&lora_device, LORAWAN);
+            acquire_ownership(LORA_P2P);
+        }
+#endif // Both LoRaWAN and LoRa P2P channels
+        LOG_DBG("CHANNEL %d - Buffer is empty, sleeping", channel_type);
         k_sleep(K_FOREVER);
     }
 }
+
+int send_package(LoraDevice *lora_device, enum ChannelType caller_channel, uint8_t *package, uint8_t package_size)
+{
+    int error = 0;
+#if defined(CONFIG_SEND_LORAWAN) && (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
+    error = acquire_ownership(caller_channel);
+    if (error)
+    {
+        return error;
+    }
+#endif // Both LoRaWAN and LoRa P2P channels
+    error = lora_device->send_package(lora_device, caller_channel, package, package_size);
+    return error;
+}
+
+#if defined(CONFIG_SEND_LORAWAN) && (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
+int acquire_ownership(enum ChannelType caller_channel)
+{
+    int error = 0;
+    // Checks if the channel is already using the LoRa device
+    error = lora_device.check_ownership(&lora_device, caller_channel);
+    if (!error)
+    {
+        LOG_DBG("CHANNEL %d - LoRa device already owned by this channel", caller_channel);
+        goto return_clause;
+    }
+
+    // if (caller_channel == LORA_P2P)
+    // {
+    //     if (!is_lorawan_buffer_empty())
+    //     {
+    //         LOG_ERR("CHANNEL %d - LoRaWAN has priority and its buffer is not empty, cannot acquire ownership",
+    //                 caller_channel);
+    //         error = -EBUSY;
+    //         goto return_clause;
+    //     }
+    //     lora_device.release_ownership(&lora_device, LORAWAN);
+    // }
+    // LoRaWAN has priority over LoRa P2P
+    else if (caller_channel == LORAWAN)
+    {
+        lora_device.release_ownership(&lora_device, LORA_P2P);
+    }
+    // Acquires ownership of the LoRa device
+    error = lora_device.acquire_ownership(&lora_device, caller_channel);
+    if (error)
+    {
+        goto return_clause;
+    }
+    error = lora_device.setup_lora_connection(&lora_device, caller_channel);
+    if (error)
+    {
+        goto return_clause;
+    }
+    LOG_DBG("CHANNEL %d - LoRa device acquired", caller_channel);
+return_clause:
+    return error;
+}
+#endif // Both LoRaWAN and LoRa P2P channels

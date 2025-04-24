@@ -107,12 +107,11 @@ config LORAWAN_JOIN_PACKET
 # LORA P2P
 config SEND_LORA_P2P
 	bool "LoRa Peer-to-Peer sending"
-	depends on !SEND_LORAWAN
-	select LORAWAN
+	depends on LORAWAN
 
 config RECEIVE_LORA_P2P
 	bool "LoRa Peer-to-Peer receiving"
-	depends on !SEND_LORAWAN
+	depends on LORAWAN
 	
 config LORA_P2P_JOIN_PACKET
 	bool "Join data in the lora_p2p buffer to make the most of a packet size"

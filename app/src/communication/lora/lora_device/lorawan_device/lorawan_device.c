@@ -44,11 +44,6 @@ int setup_lorawan_connection(LoraDevice *lora_device)
         LOG_ERR("lorawan_join_network failed: %d", error);
         goto return_clause;
     }
-    // Request network time until it succeeds and schedule periodic requests
-    do
-    {
-        error = get_network_time(true);
-    } while (error);
 
 return_clause:
     return error;

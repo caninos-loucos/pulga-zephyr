@@ -43,13 +43,17 @@ static int lora_p2p_init_channel(void)
 	int error = 0;
 
 	if (!lora_device.is_ready(&lora_device))
-    {
-        return -EAGAIN;
-    }
+	{
+		return -EAGAIN;
+	}
 
 	init_pulga_buffer(&lora_p2p_buffer, &lora_p2p_ring_buffer);
 
+#ifdef CONFIG_SEND_LORAWAN
+	error = acquire_ownership(LORA_P2P);
+#else
 	error = lora_device.setup_lora_connection(&lora_device, LORA_P2P);
+#endif
 	if (error)
 	{
 		goto return_clause;

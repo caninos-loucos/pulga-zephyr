@@ -28,7 +28,7 @@ static struct k_work_delayable sync_work;
 static K_WORK_DELAYABLE_DEFINE(sync_work, sync_work_handler);
 // Period to request network time again as a kernel timeout value
 #define SYNC_PERIOD K_SECONDS(86400) // Once a day
-#endif
+#endif // CONFIG_EVENT_TIMESTAMP_LORAWAN
 
 /**
  * Definitions
@@ -75,13 +75,26 @@ int init_lorawan_connection()
         goto return_clause;
     }
 
+#if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
+    error = acquire_ownership(LORAWAN);
+#else
     error = lora_device.setup_lora_connection(&lora_device, LORAWAN);
+#endif
     if (error)
     {
         goto return_clause;
     }
 #if defined(CONFIG_EVENT_TIMESTAMP_LORAWAN)
+    // Request network time until it succeeds and schedule periodic requests
+    do
+    {
+        error = lora_device.sync_timestamp(&lora_device, LORAWAN, true);
+    } while (error);
     k_work_schedule(&sync_work, SYNC_PERIOD);
+#endif
+
+#if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
+    error = lora_device.release_ownership(&lora_device, LORAWAN);
 #endif
 
 return_clause:
@@ -111,8 +124,15 @@ void dr_changed_callback(enum lorawan_datarate new_dr)
 void sync_work_handler(struct k_work *work)
 {
     int error = 0;
-
-    error = lora_device.sync_timestamp(&lora_device, LORAWAN);
+#if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
+    error = acquire_ownership(LORAWAN);
+    if (error)
+    {
+        k_work_schedule(&sync_work, K_SECONDS(30));
+        return;
+    }
+#endif
+    error = lora_device.sync_timestamp(&lora_device, LORAWAN, false);
     // Retry after some time if it fails
     if (error)
     {

@@ -2,7 +2,7 @@
 #include <zephyr/logging/log.h>
 #include <communication/lora/lora_device/lora_p2p_device/lora_p2p_device.h>
 
-LOG_MODULE_REGISTER(lorawan_device, CONFIG_APP_LOG_LEVEL);
+LOG_MODULE_REGISTER(lora_p2p_device, CONFIG_APP_LOG_LEVEL);
 
 /**
  * Declarations
@@ -110,7 +110,7 @@ void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
 }
 #endif // CONFIG_RECEIVE_LORA_P2P
 
-int send_lora_p2p_package(const struct device *lora_device, uint8_t *package, uint8_t package_size)
+int send_lora_p2p_package(const struct device *lora_device, uint8_t *package, int package_size)
 {
     int error = 0;
 
