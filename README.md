@@ -24,7 +24,7 @@ The following features are to be demonstrated in this example:
 ## Getting Started
 
 To set up a proper Zephyr development environment, according to the official
-[Zephyr Getting Started Guide](https://docs.zephyrproject.org/l,atest/getting_started/index.html),
+[Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/getting_started/index.html),
 you should:
   - Install your dependencies (refer to guide).
   - Create a directory for the Zephyr workspace directory:
