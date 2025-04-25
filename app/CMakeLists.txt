@@ -7,10 +7,10 @@
 cmake_minimum_required(VERSION 3.13.1)
 
 # Uncomment to activate GPS shield, when Pulga-GPS module is attached to the stack
-# list(APPEND SHIELD pulga_gps)
+list(APPEND SHIELD pulga_gps) 
 
 # Uncomment to activate LoRa shield, when Pulga-LoRa module is attached to the stack
-# list(APPEND SHIELD pulga-lora)
+list(APPEND SHIELD pulga-lora)
 
 # Uncomment to activate SCD30 shield, a CO2 concentration sensor
 # list(APPEND SHIELD scd30)
@@ -56,7 +56,7 @@ if(CONFIG_SHIELD_SCD30)
 endif()
 
 if(NOT CONFIG_EVENT_TIMESTAMP_NONE)
-    target_sources(app PRIVATE  
+    target_sources(app PRIVATE
                         src/integration/timestamp/timestamp_service.c)
 endif()
 
