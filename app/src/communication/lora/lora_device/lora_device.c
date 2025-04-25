@@ -15,8 +15,8 @@ LOG_MODULE_REGISTER(lora_device, CONFIG_APP_LOG_LEVEL);
 enum DeviceOwner
 {
     OWNERSHIP_FREE = -1,
-    OWNERSHIP_LORA_P2P = LORA_P2P,
     OWNERSHIP_LORAWAN = LORAWAN,
+    OWNERSHIP_LORA_P2P = LORA_P2P,
 };
 
 typedef struct DeviceOwnership
@@ -37,20 +37,20 @@ struct PrivateAttributes
 };
 
 // Verifies if the LoRa device is ready
-static inline bool is_ready(LoraDevice *lora_device);
+static inline bool is_ready();
 // Configures the LoRa device for the given channel
-static int setup_lora_connection(LoraDevice *lora_device, enum ChannelType caller_channel);
+static int setup_lora_connection(enum ChannelType caller_channel, bool transm_enabled);
 // Sends a package using the LoRa device
-static int send_package(LoraDevice *lora_device, enum ChannelType caller_channel, uint8_t *package, int package_size);
+static int send_package(enum ChannelType caller_channel, uint8_t *package, int package_size);
 // Synchronizes the timestamp of the LoRa device with the network time
 // For now, this function is only used by the LoRaWAN channel
-static int sync_timestamp(LoraDevice *lora_device, enum ChannelType caller_channel, bool force_sync);
+static int sync_timestamp(enum ChannelType caller_channel, bool force_sync);
 // Verifies if the LoRa device is owned by the channel calling the function
-static int check_ownership(LoraDevice *lora_device, enum ChannelType caller_channel);
+static bool check_ownership(enum ChannelType caller_channel);
 // Acquires ownership of the LoRa device for the given channel
-static int acquire_ownership(LoraDevice *lora_device, enum ChannelType caller_channel);
+static int acquire_device(enum ChannelType caller_channel);
 // Releases the lock on the LoRa device
-static int release_ownership(LoraDevice *lora_device, enum ChannelType caller_channel);
+static int release_device(enum ChannelType caller_channel);
 
 /**
  * Definitions
@@ -88,113 +88,96 @@ LoraDevice lora_device = {
     .send_package = send_package,
     .sync_timestamp = sync_timestamp,
     .check_ownership = check_ownership,
-    .acquire_ownership = acquire_ownership,
-    .release_ownership = release_ownership,
+    .acquire_device = acquire_device,
+    .release_device = release_device,
 };
 
-bool is_ready(LoraDevice *lora_device)
+bool is_ready()
 {
     int ready = 0;
 
-    k_sem_take(lora_device->device_private->device_sem, K_FOREVER);
-    ready = device_is_ready(lora_device->device_private->device);
+    k_sem_take(lora_device.device_private->device_sem, K_FOREVER);
+    ready = device_is_ready(lora_device.device_private->device);
     if (!ready)
     {
-        LOG_ERR("%s: device not ready.", lora_device->device_private->device->name);
+        LOG_ERR("%s: device not ready.", lora_device.device_private->device->name);
     }
-    k_sem_give(lora_device->device_private->device_sem);
+    k_sem_give(lora_device.device_private->device_sem);
     return ready;
 }
 
-int setup_lora_connection(LoraDevice *lora_device, enum ChannelType caller_channel)
+int setup_lora_connection(enum ChannelType caller_channel, bool transm_enabled)
 {
     int error = 0;
-    k_sem_take(lora_device->device_private->device_sem, K_FOREVER);
-    error = check_ownership(lora_device, caller_channel);
-    if (error)
+    if (!check_ownership(caller_channel))
     {
-        goto return_clause;
+        enum DeviceOwner owner = lora_device.device_private->ownership.channel;
+        LOG_DBG("CHANNEL %d - Tried to setup connection but device is owned by %d", caller_channel, owner);
+        return -EPERM;
     }
+    k_sem_take(lora_device.device_private->device_sem, K_FOREVER);
 #ifdef CONFIG_SEND_LORAWAN
     if (caller_channel == LORAWAN)
     {
-        error = setup_lorawan_connection(lora_device);
-        if (error)
-        {
-            LOG_ERR("Failed to setup LoRaWAN connection: %d", error);
-        }
+        error = setup_lorawan_connection();
         goto return_clause;
     }
 #endif
 #if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
     if (caller_channel == LORA_P2P)
     {
-        error = setup_lora_p2p_connection(lora_device->device_private->device);
-        if (error)
-        {
-            LOG_ERR("Failed to setup LoRa Peer-to-Peer connection: %d", error);
-        }
+        error = setup_lora_p2p_connection(lora_device.device_private->device, transm_enabled);
         goto return_clause;
     }
 #endif
 return_clause:
-    k_sem_give(lora_device->device_private->device_sem);
+    k_sem_give(lora_device.device_private->device_sem);
     return error;
 }
 
-int send_package(LoraDevice *lora_device, enum ChannelType caller_channel, uint8_t *package, int package_size)
+int send_package(enum ChannelType caller_channel, uint8_t *package, int package_size)
 {
     int error = 0;
-    k_sem_take(lora_device->device_private->device_sem, K_FOREVER);
-    error = check_ownership(lora_device, caller_channel);
-    if (error)
+    if (!check_ownership(caller_channel))
     {
-        goto return_clause;
+        enum DeviceOwner owner = lora_device.device_private->ownership.channel;
+        LOG_DBG("CHANNEL %d - Tried to send package but device is owned by %d", caller_channel, owner);
+        return -EPERM;
     }
+    k_sem_take(lora_device.device_private->device_sem, K_FOREVER);
 #ifdef CONFIG_SEND_LORAWAN
     if (caller_channel == LORAWAN)
     {
-        error = send_lorawan_package(lora_device, package, (uint8_t)package_size);
-        if (error)
-        {
-            LOG_ERR("Failed to send LoRaWAN package: %d", error);
-        }
+        error = send_lorawan_package(package, (uint8_t)package_size);
         goto return_clause;
     }
 #endif
 #if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
     if (caller_channel == LORA_P2P)
     {
-        error = send_lora_p2p_package(lora_device->device_private->device, package, package_size);
-        if (error)
-        {
-            LOG_ERR("Failed to send LoRa Peer-to-Peer package: %d", error);
-        }
+        error = send_lora_p2p_package(lora_device.device_private->device, package, package_size);
         goto return_clause;
     }
 #endif
 return_clause:
-    k_sem_give(lora_device->device_private->device_sem);
+    k_sem_give(lora_device.device_private->device_sem);
     return error;
 }
 
-int sync_timestamp(LoraDevice *lora_device, enum ChannelType caller_channel, bool force_sync)
+int sync_timestamp(enum ChannelType caller_channel, bool force_sync)
 {
     int error = 0;
-    k_sem_take(lora_device->device_private->device_sem, K_FOREVER);
-    error = check_ownership(lora_device, caller_channel);
-    if (error)
+    if (!check_ownership(caller_channel))
     {
-        goto return_clause;
+        enum DeviceOwner owner = lora_device.device_private->ownership.channel;
+        LOG_DBG("CHANNEL %d - Tried to synchronize but device is owned by %d", caller_channel, owner);
+        return -EPERM;
     }
+    k_sem_take(lora_device.device_private->device_sem, K_FOREVER);
 #ifdef CONFIG_SEND_LORAWAN
     if (caller_channel == LORAWAN)
     {
         error = get_network_time(force_sync);
-        if (error)
-        {
-            LOG_ERR("Failed to sync timestamp: %d", error);
-        }
         goto return_clause;
     }
 #endif
@@ -206,60 +189,53 @@ int sync_timestamp(LoraDevice *lora_device, enum ChannelType caller_channel, boo
     }
 #endif
 return_clause:
-    k_sem_give(lora_device->device_private->device_sem);
+    k_sem_give(lora_device.device_private->device_sem);
     return error;
 }
 
-int check_ownership(LoraDevice *lora_device, enum ChannelType caller_channel)
+bool check_ownership(enum ChannelType caller_channel)
 {
+    k_sem_take(lora_device.device_private->device_sem, K_FOREVER);
     // Check if the LoRa device is owned by the channel calling the function
-    if ((enum ChannelType)lora_device->device_private->ownership.channel != caller_channel)
+    bool owned = (enum ChannelType)lora_device.device_private->ownership.channel == caller_channel;
+    k_sem_give(lora_device.device_private->device_sem);
+    return owned;
+}
+
+int acquire_device(enum ChannelType caller_channel)
+{
+    if (check_ownership(caller_channel))
     {
-        LOG_WRN("CHANNEL %d - LoRa device is not owned by this channel", caller_channel);
-        return -EPERM;
+        // The LoRa device is already owned by the channel calling the function
+        LOG_DBG("CHANNEL %d - Tried to acquire LoRa device already owned by this channel", caller_channel);
+        return -EBUSY;
     }
+    // Waits for the LoRa device to be released
+    k_sem_take(lora_device.device_private->ownership.ownership_sem, K_FOREVER);
+    k_sem_take(lora_device.device_private->device_sem, K_FOREVER);
+    lora_device.device_private->ownership.channel = caller_channel;
+    k_sem_give(lora_device.device_private->device_sem);
+    LOG_DBG("CHANNEL %d - LoRa device acquired", caller_channel);
     return 0;
 }
 
-int acquire_ownership(LoraDevice *lora_device, enum ChannelType caller_channel)
+int release_device(enum ChannelType caller_channel)
 {
-    int error = 0;
-
-    if ((enum ChannelType)lora_device->device_private->ownership.channel == caller_channel)
+    if (!check_ownership(caller_channel))
     {
-        LOG_DBG("CHANNEL %d - LoRa device is already owned by this channel", caller_channel);
-        error = -EBUSY;
-        goto return_clause;
+        enum DeviceOwner owner = lora_device.device_private->ownership.channel;
+        if (owner == OWNERSHIP_FREE)
+        {
+            LOG_DBG("CHANNEL %d - LoRa device is already free", caller_channel);
+            return 0;
+        }
+        LOG_DBG("CHANNEL %d - Tried to release device owned by %d", caller_channel, owner);
+        return -EPERM;
     }
-    // Waits for the LoRa device to be released
-    k_sem_take(lora_device->device_private->ownership.ownership_sem, K_FOREVER);
-    k_sem_take(lora_device->device_private->device_sem, K_FOREVER);
-
-    lora_device->device_private->ownership.channel = caller_channel;
-return_clause:
-    k_sem_give(lora_device->device_private->device_sem);
-    if (error)
-    {
-        LOG_ERR("CHANNEL %d - Failed to acquire ownership of LoRa device: %d",
-                caller_channel, error);
-        k_sem_give(lora_device->device_private->ownership.ownership_sem);
-    }
-    return error;
-}
-
-int release_ownership(LoraDevice *lora_device, enum ChannelType caller_channel)
-{
-    LOG_DBG("CHANNEL %d - Releasing ownership of LoRa device", caller_channel);
-    int error = 0;
-    k_sem_take(lora_device->device_private->device_sem, K_FOREVER);
-    error = check_ownership(lora_device, caller_channel);
-    if (error)
-    {
-        goto return_clause;
-    }
-    lora_device->device_private->ownership.channel = OWNERSHIP_FREE;
-    k_sem_give(lora_device->device_private->ownership.ownership_sem);
-return_clause:
-    k_sem_give(lora_device->device_private->device_sem);
-    return error;
+    k_sem_take(lora_device.device_private->device_sem, K_FOREVER);
+    lora_device.device_private->ownership.channel = OWNERSHIP_FREE;
+    k_sem_give(lora_device.device_private->ownership.ownership_sem);
+    k_sem_give(lora_device.device_private->device_sem);
+    LOG_DBG("CHANNEL %d - LoRa device released", caller_channel);
+    return 0;
 }

@@ -24,14 +24,12 @@ static void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t si
  * Definitions
  */
 
-int setup_lora_p2p_connection(const struct device *lora_device)
+int setup_lora_p2p_connection(const struct device *lora_device, bool transm_enabled)
 {
     LOG_DBG("Setting up LoRa Peer-to-Peer connection");
     int error = 0;
 
-    error = join_p2p_network(lora_device,
-                             (IS_ENABLED(CONFIG_SEND_LORA_P2P) &&
-                              !IS_ENABLED(CONFIG_RECEIVE_LORA_P2P)));
+    error = join_p2p_network(lora_device, transm_enabled);
     if (error < 0)
     {
         LOG_ERR("Failed to join LoRa Peer-to-Peer network: %d", error);
@@ -56,18 +54,20 @@ static int join_p2p_network(const struct device *lora_device, bool transm_enable
         error = lora_recv_async(lora_device, NULL, NULL);
         if (error < 0)
         {
-            LOG_ERR("Stopping LoRa Peer-to-Peer reception failed");
+            LOG_ERR("Stopping LoRa Peer-to-Peer reception failed: %d", error);
             goto return_clause;
         }
+        LOG_DBG("LoRa Peer-to-Peer reception stopped");
     }
 #endif // CONFIG_RECEIVE_LORA_P2P
     lora_p2p_config(&lora_modem_config, transm_enabled);
     error = lora_config(lora_device, &lora_modem_config);
     if (error < 0)
     {
-        LOG_ERR("lora_config failed");
+        LOG_ERR("lora_config failed: %d", error);
         goto return_clause;
     }
+    LOG_DBG("LoRa Peer-to-Peer configuration successful");
 #ifdef CONFIG_RECEIVE_LORA_P2P
     if (!transm_enabled)
     {
@@ -75,9 +75,10 @@ static int join_p2p_network(const struct device *lora_device, bool transm_enable
         error = lora_recv_async(lora_device, lora_receive_cb, NULL);
         if (error < 0)
         {
-            LOG_ERR("Starting LoRa Peer-to-Peer reception failed");
+            LOG_ERR("Starting LoRa Peer-to-Peer reception failed: %d", error);
             goto return_clause;
         }
+        LOG_DBG("LoRa Peer-to-Peer reception started");
     }
 #endif // CONFIG_RECEIVE_LORA_P2P
 return_clause:
@@ -122,7 +123,7 @@ int send_lora_p2p_package(const struct device *lora_device, uint8_t *package, in
     error = lora_send(lora_device, package, package_size);
     if (error < 0)
     {
-        LOG_ERR("lora_send failed");
+        LOG_ERR("lora_send failed: %d", error);
         goto return_clause;
     }
     LOG_INF("lora_send successful");

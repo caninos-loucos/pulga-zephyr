@@ -29,7 +29,7 @@ static inline void lorawan_config_activation(struct lorawan_join_config *join_co
  */
 
 // Configures lorawan connection, joining the network
-int setup_lorawan_connection(LoraDevice *lora_device)
+int setup_lorawan_connection()
 {
     LOG_DBG("Setting up LoRaWAN connection");
     int error = 0;
@@ -44,7 +44,7 @@ int setup_lorawan_connection(LoraDevice *lora_device)
         LOG_ERR("lorawan_join_network failed: %d", error);
         goto return_clause;
     }
-
+    LOG_DBG("LoRaWAN connection setup successful");
 return_clause:
     return error;
 }
@@ -106,7 +106,7 @@ return_clause:
 }
 #endif
 
-int send_lorawan_package(LoraDevice *lora_device, uint8_t *package, uint8_t package_size)
+int send_lorawan_package(uint8_t *package, uint8_t package_size)
 {
     // Send using Zephyr's subsystem and check if the transmission was successful
     int error = lorawan_send(1, package, package_size, LORAWAN_MSG_UNCONFIRMED);

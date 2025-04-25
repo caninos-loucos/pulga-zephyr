@@ -10,20 +10,20 @@ struct LoraDevice
     // Private attributes of the LoRa device
     LoraDevicePrivate *device_private;
     // Verifies if the LoRa device is ready
-    bool (*is_ready)(LoraDevice *lora_device);
+    bool (*is_ready)();
     // Configures the LoRa device for the given channel
-    int (*setup_lora_connection)(LoraDevice *lora_device, enum ChannelType caller_channel);
+    int (*setup_lora_connection)(enum ChannelType caller_channel, bool transm_enabled);
     // Sends a package using the LoRa device
-    int (*send_package)(LoraDevice *lora_device, enum ChannelType caller_channel, uint8_t *package, int package_size);
+    int (*send_package)(enum ChannelType caller_channel, uint8_t *package, int package_size);
     // Synchronizes the timestamp of the LoRa device with the network time
     // For now, this function is only used by the LoRaWAN channel
-    int (*sync_timestamp)(LoraDevice *lora_device, enum ChannelType, bool force_sync);
+    int (*sync_timestamp)(enum ChannelType, bool force_sync);
     // Verifies if the LoRa device is owned by the channel calling the function
-    int (*check_ownership)(LoraDevice *lora_device, enum ChannelType caller_channel);
+    bool (*check_ownership)(enum ChannelType caller_channel);
     // Acquires ownership of the LoRa device for the given channel
-    int (*acquire_ownership)(LoraDevice *lora_device, enum ChannelType caller_channel);
+    int (*acquire_device)(enum ChannelType caller_channel);
     // Releases the lock on the LoRa device
-    int (*release_ownership)(LoraDevice *lora_device, enum ChannelType caller_channel);
+    int (*release_device)(enum ChannelType caller_channel);
 };
 
 extern LoraDevice lora_device;

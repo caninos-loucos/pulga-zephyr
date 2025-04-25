@@ -50,7 +50,7 @@
 #endif // CONFIG_LORA_P2P_SF
 
 // Configures Lora Peer-to-Peer connection and starts listening if reception is enabled
-int setup_lora_p2p_connection(const struct device *lora_device);
+int setup_lora_p2p_connection(const struct device *lora_device, bool transm_enabled);
 // Sends Lora Peer-to-Peer package and handles errors
 int send_lora_p2p_package(const struct device *lora_device, uint8_t *package, int package_size);
 // // Acquires ownership of the LoRa device, changing the device configuration

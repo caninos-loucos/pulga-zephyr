@@ -42,17 +42,18 @@ static int lora_p2p_init_channel(void)
 	LOG_DBG("Initializing LoRa Peer-to-Peer channel");
 	int error = 0;
 
-	if (!lora_device.is_ready(&lora_device))
+	if (!lora_device.is_ready())
 	{
 		return -EAGAIN;
 	}
 
 	init_pulga_buffer(&lora_p2p_buffer, &lora_p2p_ring_buffer);
 
+	bool transm_enabled = IS_ENABLED(CONFIG_SEND_LORA_P2P) && !IS_ENABLED(CONFIG_RECEIVE_LORA_P2P);
 #ifdef CONFIG_SEND_LORAWAN
-	error = acquire_ownership(LORA_P2P);
+	error = acquire_ownership(LORA_P2P, transm_enabled);
 #else
-	error = lora_device.setup_lora_connection(&lora_device, LORA_P2P);
+	error = lora_device.setup_lora_connection(LORA_P2P, transm_enabled);
 #endif
 	if (error)
 	{

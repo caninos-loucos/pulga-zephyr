@@ -11,7 +11,7 @@ void lora_process_data(void *channel, void *buffer, void *send_thread);
 void lora_send_data(void *channel, void *buffer, void *);
 #if defined(CONFIG_SEND_LORAWAN) && (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
 // Prepares and checks conditions to transmit ownership of the LoRa device for the given channel
-int acquire_ownership(enum ChannelType caller_channel);
+int acquire_ownership(enum ChannelType caller_channel, bool transm_enabled);
 #endif // Both LoRaWAN and LoRa P2P channels
 
 #endif // LORA_COMMON_H

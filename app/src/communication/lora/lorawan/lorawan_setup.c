@@ -40,7 +40,7 @@ int init_lorawan_connection()
     LOG_DBG("Initializing LoRaWAN connection");
     int error = 0;
 
-    if (!lora_device.is_ready(&lora_device))
+    if (!lora_device.is_ready())
     {
         return -EAGAIN;
     }
@@ -76,9 +76,9 @@ int init_lorawan_connection()
     }
 
 #if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
-    error = acquire_ownership(LORAWAN);
+    error = acquire_ownership(LORAWAN, true);
 #else
-    error = lora_device.setup_lora_connection(&lora_device, LORAWAN);
+    error = lora_device.setup_lora_connection(LORAWAN, true);
 #endif
     if (error)
     {
@@ -88,13 +88,14 @@ int init_lorawan_connection()
     // Request network time until it succeeds and schedule periodic requests
     do
     {
-        error = lora_device.sync_timestamp(&lora_device, LORAWAN, true);
+        error = lora_device.sync_timestamp(LORAWAN, true);
     } while (error);
     k_work_schedule(&sync_work, SYNC_PERIOD);
 #endif
 
+// Releases the ownership of the LoRa device so P2P can also initilize
 #if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
-    error = lora_device.release_ownership(&lora_device, LORAWAN);
+    error = lora_device.release_device(LORAWAN);
 #endif
 
 return_clause:
@@ -125,14 +126,14 @@ void sync_work_handler(struct k_work *work)
 {
     int error = 0;
 #if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
-    error = acquire_ownership(LORAWAN);
+    error = acquire_ownership(LORAWAN, true);
     if (error)
     {
         k_work_schedule(&sync_work, K_SECONDS(30));
         return;
     }
 #endif
-    error = lora_device.sync_timestamp(&lora_device, LORAWAN, false);
+    error = lora_device.sync_timestamp(LORAWAN, false);
     // Retry after some time if it fails
     if (error)
     {
