@@ -24,11 +24,11 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
                     "Timestamp: %d; Light: %d lux; Infrared: %d lux; UV: %d; "
                     "UVIndex: %d.%02d;",
                     si1133_model->timestamp,
-                    si1133_model->light.val1,
-                    si1133_model->infrared.val1,
-                    si1133_model->uv.val1,
-                    si1133_model->uv_index.val1,
-                    si1133_model->uv_index.val2 / 10000);
+                    si1133_model->light,
+                    si1133_model->infrared,
+                    si1133_model->uv,
+                    si1133_model->uv_index / 100,
+                    si1133_model->uv_index % 100);
 }
 
 // Encodes all values of data model into a minimalist string
@@ -41,11 +41,11 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
     return snprintf(encoded_data, encoded_size,
                     "TS%dL%dIR%dUV%dI%d.%02d",
                     si1133_model->timestamp,
-                    si1133_model->light.val1,
-                    si1133_model->infrared.val1,
-                    si1133_model->uv.val1,
-                    si1133_model->uv_index.val1,
-                    si1133_model->uv_index.val2 / 10000);
+                    si1133_model->light,
+                    si1133_model->infrared,
+                    si1133_model->uv,
+                    si1133_model->uv_index / 100,
+                    si1133_model->uv_index % 100);
 }
 
 static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)

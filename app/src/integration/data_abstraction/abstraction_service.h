@@ -2,11 +2,15 @@
 #define DATA_ABSTRACTION_H
 
 #include <zephyr/kernel.h>
+#include <zephyr/sys/ring_buffer.h>
 
 // Offset in DataType enum. Values equal or greater than this
 // mean the data came from a sensor. Other types of data will
 // have a value less than this.
 #define SENSOR_TYPE_OFFSET 5
+
+// Declares ring buffer that will store data until it is read and sent
+extern struct ring_buf app_buffer;
 
 // Encoding used in buffer items so program
 // knows how to parse and present the data

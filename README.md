@@ -28,81 +28,149 @@ To set up a proper Zephyr development environment, according to the official
 you should:
   - Install your dependencies (refer to guide).
   - Create a directory for the Zephyr workspace directory:
-    > mkdir zephyrproject && cd zephyrproject
+    ```
+    mkdir zephyrproject && cd zephyrproject
+    ```
   - Create a new python virtual environment and activate it:
-    > \# inside the zephyrproject directory\
-    > python3 -mvenv .venv && source .venv/bin/activate
+    ```
+    \# inside the zephyrproject directory\
+    python3 -mvenv .venv && source .venv/bin/activate
+    ```
   - Install `west`, Zephyr's meta tool:
-    > pip install west
+    ```
+    pip install west
+    ```
   - Initialize the workspace directory (``zephyrproject``), which will contain
     the `pulga-zephyr` repository, and the Zephyr source code:
-    > west init -m https://github.com/caninos-loucos/pulga-zephyr --mr main ./\
-    > west update
+    ```
+    west init -m https://github.com/caninos-loucos/pulga-zephyr --mr main ./\
+    west update
+    ```
   - Export a Zephyr CMake package for building Zephyr applications:
-    > west zephyr-export
+    ```
+    west zephyr-export
+    ```
   - Install Python dependencies through `west`:
-    > west packages pip --install
+    ```
+    west packages pip --install
+    ```
   - Install the Zephyr SDK:
-    > west sdk install
+    ```
+    west sdk install
+    ```
 
 ### Building and running
 
 To update the code running on the Pulga, you must build it and flash it:
   - Enter this project's directory:
-    > cd pulga-zephyr
+  ```
+  cd pulga-zephyr
+  ```
   - Build the `app` application:
-    > west build -b pulga "app"
+  ```
+  west build -b pulga "app"
+  ```
   - Flash it using `west` or use J-Flash Lite. When using `west`,
   it's necessary to install **NRF Command Line Tools** beforehand.
-    > west flash
+  ```
+  west flash
+  ```
 
 If you have issues building the application
 (specially after changing application or compilation configuration options),
 try running a **pristine** build:
-  > west build -p -b pulga "app"
+  ```
+  west build -p -b pulga "app"
+  ```
 
 A sample **debug configuration** is provided.
 You can use it for building:
-  > west build -b pulga "app" -- -DOVERLAY_CONFIG=debug.conf
+  ```
+  west build -b pulga "app" -- -DOVERLAY_CONFIG=debug.conf
+  ```
 
 There are also other example applications in the `samples` directory,
 which can be built by using their directories
 instead of the `app` directory as argument:
-  > west build -b pulga "samples/blinky"
+  ```
+  west build -b pulga "samples/blinky"
+  ```
 
 ### Additional features
 
-Features that are external to the Pulga Core board, such as SCD30 sensor, GPS sampling and LoraWAN, need to activated by uncommenting the respective lines of code in ``app/CMakeLists.txt``. For example, if you want to activate GNSS (GPS) sensoring, the following line needs to be uncommented:
+Features that are external to the Pulga Core board, such as SCD30 sensor, GPS sampling and LoraWAN, need to activated by uncommenting the respective pieces of code in `app/CMakeLists.txt`. For example, if you want to activate GNSS (GPS) sensoring, the following line needs to be uncommented:
 
 ```
 list(APPEND SHIELD pulga_gps)
 ```
 
-### Configuring the application
+## Configuring the application
 
-To deactivate sensors internal to Pulga Core, you simply need to change their status from "okay" to "disabled" in ``app/boards/pulga.overlay``. The sensors sampling interval, the transmission interval of the communication channels, the size of the ring buffer and the use of UART communication to terminal are to be configured in ``app/prj.conf`` and the description of those options can be found in ``app/Kconfig``.
+To deactivate sensors internal to Pulga Core, you simply need to change their status from "okay" to "disabled" in `app/boards/pulga.overlay`. The sensors sampling interval, the transmission interval of the communication channels, the size of the ring buffer and the use of UART communication to terminal are to be configured in `app/prj.conf` and the description of those options can be found in `app/Kconfig`.
 
 #### Application configurations
-- SAMPLING_INTERVAL: periodically, after the configured time in milliseconds, all activated sensors will write measurements to the ring buffer.
+- `SAMPLING_INTERVAL`: periodically, after the configured time in milliseconds, all activated sensors will write measurements to the ring buffer.
   - Constraints:
     - SCD30: 2s < t < 180s.
     - L86 GNSS module: 100ms < t < 10s. If t > 1000ms, it needs to be a multiple of 1000. If the interval is bigger than 10s, the application will ignore GNSS measurements and only allow writing to buffer in the configured time.
-- TRANSMISSION_INTERVAL: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it, repeating this until the buffer is empty.
-  - Constraints: 
-    - LoRaWAN: transmission takes about 5s, so if the transmission interval is too large and the sampling period is too low, data might be lost. To prevent this, this application uses another buffer, internal to LoRaWAN.
-- BUFFER_WORDS: number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
-- EVENT_TIMESTAMP_SOURCE: this option allows the user to choose whether the application will timestamp the sampling events or not. In case it does, it's possible to configure the source of the time reference between the LoRaWAN network, GNSS satellite data or system uptime. As a choice configuration (available options found in KConfig file), selecting one option will automatically set all others to false.
+- `TRANSMISSION_INTERVAL`: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it.
   - Constraints:
-    - EVENT_TIMESTAMP_LORAWAN: this option can only be set when using pulga-lora shield and if LoRaWAN is active.
-    - EVENT_TIMESTAMP_GNSS: this option can only be set when using pulga_gps shield.
+    - LoRaWAN: transmission takes about 5s, so if the transmission interval is too large and the sampling period is too low, data might be lost. To prevent this, this application uses another buffer, internal to LoRaWAN.
+- `BUFFER_WORDS`: number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
+- `EVENT_TIMESTAMP_SOURCE`: this option allows the user to choose whether the application will timestamp the sampling events or not. In case it does, it's possible to configure the source of the time reference between the LoRaWAN network, GNSS satellite data or system uptime. As a choice configuration (available options found in KConfig file), selecting one option will automatically set all others to false.
+  - Constraints:
+    - `EVENT_TIMESTAMP_LORAWAN`: this option can only be set when using pulga-lora shield and if LoRaWAN is active.
+    - `EVENT_TIMESTAMP_GNSS`: this option can only be set when using pulga_gps shield.
 
-#### Communication configurations
-- SEND_UART: Prints a verbose output to the configured terminal, such as TeraTerm or MiniCOM.
-- SEND_LORA: Sends a compressed version of the output via LoRaWAN, requiring pulga-lora shield to be activated.
+- `TRANSMISSION_INTERVAL`: periodically, after the configured time in milliseconds, a thread will read an item from the buffer and wake all activated communications channels to transmit it.
+
+  - Constraints:
+    - LoRaWAN: transmission takes about 5s, so if the transmission interval is too large and the sampling period is too low, data might be lost. To prevent this, this application uses another buffer, internal to LoRaWAN.
+
+- `BUFFER_WORDS`: number of 32-bit words the ring buffer can hold, including headers. Every item stored in the buffer has a 32-bit header. When compiling the application, total used RAM predicted by West needs to be less than 99%.
+
+### Communication configurations
+
+- `SEND_UART`: Prints a verbose output to the configured terminal, such as screen, TeraTerm or MiniCOM.
+- `SEND_LORA`: Sends a smaller version of the output via LoRaWAN, requiring pulga-lora shield to be activated.
+  - This sending mode uses raw byte encoding, which sends the structs from each sensor type to the buffer, thus the decoding application has to be aware of the formats:
+    - **BME280**
+      - DataType 05 (uint8)
+      - Temperature in centidegrees Celsius (int16);
+      - Pressure in hPa (uint16);
+      - Relative Humidity % (uint8);
+      - Timestamp (uint32);
+    - **BMI160**
+      - DataType 06(uint8);
+      - XYZ acceleration in cm/s² (one uint16 for each axis);
+      - XYZ rotation in milliradians/s (one uint16 per axis);
+      - Timestamp (uint32);
+    - **Si1133**
+      - DataType 07(uint8);
+      - Luminosity in lux (uint32);
+      - Infrared in lux (uint32);
+      - UV  in lux(uint16);
+      - UV Index, no unit (uint16);
+      - Timestamp (uint32);
+    - **SCD30**
+      - DataType 08(uint8);
+      - CO2 in ppm (uint16);
+      - Temperature in centidegrees (int16);
+      - Relative Humidity in %RH (uint8);
+      - Timestamp (uint32);
+    - **GNSS** 
+      - DataType 09(uint8);
+      - Latitude in microdegrees (int32);
+      - Longitude in microdegrees (int32);
+      - Bearing angle in centidegrees (uint16);
+      - Speed in cm/s (uint16); Altitude in cm (uint32);
+      - Real Time = [hour (uint8); minute(uint8); millisecond (uint16); day (uint8); month(uint8); year(uint8)];
+      - Timestamp (uint32);
 
 #### LoRaWAN configurations
-- LORAWAN_DR: Datarate used in LoRaWAN communication. This affects several communication parameters. The lower the datarate, the smaller the maximum payload size, the lower the range, the slower the communication and the higher the power consumption.
-- LORAWAN_ACTIVATION: Whether joining the LoRaWAN network will be via OTAA (more secure, renews encryption keys during communication) or ABP (less secure, configures keys to be used during all communication).
-- LORAWAN_SELECTED_REGION (lorawan_interface.h): The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc.
-- Lorawan keys (lorawan_keys_example.h): Security parameters that allow LoRaWAN communication. In production environment, configured in a lorawan_keys.h file, which will be properly ignored by git, being necessary to update the import in lorawan_setup.c.
-- Power amplifier output pin (boards/shields/pulga-lora.overlay): depends on the type of Pulga Lora board used. Types A and B don't have PA boost so "rfo" pin is used, while types C and D use "pa-boost" pin.
+- `LORAWAN_DR`: Datarate used in LoRaWAN communication. This affects several communication parameters. The lower the datarate, the smaller the maximum payload size, the lower the range, the slower the communication and the higher the power consumption.
+- `LORAWAN_ACTIVATION`: Whether joining the LoRaWAN network will be via OTAA (more secure, renews encryption keys during communication) or ABP (less secure, configures keys to be used during all communication).
+- `LORAWAN_SELECTED_REGION` (lorawan_interface.h): The LoRaWAN region affects parameters such as the bandwidth, the number of channels, etc.
+
+- *Lorawan keys* (lorawan_keys_example.h): Security parameters that allow LoRaWAN communication. In production environment, configured in a lorawan_keys.h file, which will be properly ignored by git, being necessary to update the import in lorawan_setup.c.
+- *Power amplifier output pin* (boards/shields/pulga-lora.overlay): depends on the type of Pulga Lora board used. Types A and B don't have PA boost so "rfo" pin is used, while types C and D use "pa-boost" pin.

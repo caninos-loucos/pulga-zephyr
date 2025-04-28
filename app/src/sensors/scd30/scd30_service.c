@@ -4,8 +4,15 @@
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 #include <sensors/scd30/scd30_service.h>
+<<<<<<< HEAD
+<<<<<<< HEAD
+#include <assert.h>
+    =======
+>>>>>>> origin/main
+=======
+>>>>>>> main
 
-LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
+    LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
 /**
  * DEFINITIONS
@@ -53,39 +60,62 @@ static void read_sensor_values()
     LOG_DBG("Reading SCD30");
 
     SensorModelSCD30 scd30_model;
-    uint32_t scd30_data[MAX_32_WORDS];
-    int error = 0;
+    int error;
+    struct sensor_value val;
+    void *scd30_data;
+
+    assert(sizeof(scd30_model) <= (SCD30_MODEL_WORDS * 4));
+
+    scd30_model.dataType = (uint8_t) SCD30_MODEL;
 
 sample_fetch:
     error = sensor_sample_fetch(scd30);
-    if (!error)
-    {
-        sensor_channel_get(scd30, SENSOR_CHAN_CO2,
-                           &scd30_model.co2);
-        sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP,
-                           &scd30_model.temperature);
-        sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
-                           &scd30_model.humidity);
-#ifndef CONFIG_EVENT_TIMESTAMP_NONE
-        scd30_model.timestamp = get_current_timestamp();
-#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
-        memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
-
-        if (insert_in_buffer(&app_buffer, scd30_data, SCD30_MODEL, error, SCD30_MODEL_WORDS) != 0)
-        {
-            LOG_ERR("Failed to insert data in ring buffer.");
-        }
-    }
-    else if (error == -EAGAIN)
+    if (error == -EAGAIN)
     {
-        LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
-                scd30->name, error);
+        LOG_WRN("sensor_sample_fetch failed with error %d, trying again", error);
         goto sample_fetch;
     }
-    else
-        LOG_ERR("fetch sample from \"%s\" failed: %d",
-                scd30->name, error);
+    else if (error)
+    {
+        LOG_ERR("sensor_sample_fetch failed with error %d", error);
+        return;
+    }
+
+    error = sensor_channel_get(scd30, SENSOR_CHAN_CO2, &val);
+    if (error)
+        goto channel_get_err;
+
+    // CO2 range (with guaranteed accuracy):  0-10000 ppm
+    scd30_model.co2 = val.val1;
+
+    error = sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP, &val);
+    if (error)
+        goto channel_get_err;
+
+    // Temperature is stored in centidegrees ( 1/100th of a degree Celsius )
+    scd30_model.temperature = val.val1 * 100 + val.val2 / 10000;
+
+    error = sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY, &val);
+    if (error)
+        goto channel_get_err;
+
+    // Humidity stored in %RH
+    scd30_model.humidity = val.val1;
+
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+    scd30_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
+
+    error = insert_in_buffer(&app_buffer, (uint32_t *)&scd30_model, SCD30_MODEL, error, SCD30_MODEL_WORDS);
+
+    if (error)
+        LOG_ERR("Failed to insert data in ring buffer with error %d.", error);
+
+    return;
+
+channel_get_err:
+    LOG_ERR("sensor_channel_get failed with error %d", error);
 }
 
 // Register SCD30 sensor callbacks
@@ -104,12 +134,11 @@ int set_valid_sample_time(int raw_sample_time)
     struct sensor_value period;
 
     raw_sample_time /= 1000;
-
     period.val1 = CLAMP(raw_sample_time, 2, 1800);
 
     if (period.val1 != raw_sample_time)
     {
-        LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",
+        LOG_INF("Sampling period outside SCD30 specification, SCD30 set to sample every %d seconds.",
                 period.val1);
     }
 

@@ -4,6 +4,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
 #include <sensors/bmi160/bmi160_service.h>
+#include <assert.h>
 
 LOG_MODULE_REGISTER(bmi160_service, CONFIG_APP_LOG_LEVEL);
 
@@ -44,39 +45,53 @@ static void read_sensor_values()
     LOG_DBG("Reading BMI160");
 
     SensorModelBMI160 bmi160_model;
-    uint32_t bmi160_data[MAX_32_WORDS];
-    int error = 0;
+    struct sensor_value val[3];
+    int error, i;
+
+    assert(sizeof(bmi160_model) <= (BMI160_MODEL_WORDS * 4));
+
+    bmi160_model.dataType = (uint8_t) BMI160_MODEL;
 
 sample_fetch:
     error = sensor_sample_fetch(bmi160);
-    if (!error)
-    {
-        sensor_channel_get(bmi160, SENSOR_CHAN_ACCEL_XYZ,
-                           bmi160_model.acceleration);
-        sensor_channel_get(bmi160, SENSOR_CHAN_GYRO_XYZ,
-                           bmi160_model.rotation);
-#ifndef CONFIG_EVENT_TIMESTAMP_NONE
-        bmi160_model.timestamp = get_current_timestamp();
-#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
-        memcpy(&bmi160_data, &bmi160_model, sizeof(SensorModelBMI160));
-
-        if (insert_in_buffer(&app_buffer, bmi160_data, BMI160_MODEL, error, BMI160_MODEL_WORDS) != 0)
-        {
-            LOG_ERR("Failed to insert data in ring buffer.");
-        }
-    }
-    else if (error == -EAGAIN)
+    if (error == -EAGAIN)
     {
         LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
                 bmi160->name, error);
         goto sample_fetch;
     }
-    else
+    else if (error)
     {
-        LOG_ERR("fetch sample from \"%s\" failed: %d",
-                bmi160->name, error);
+        LOG_ERR("sensor_sample_fetch failed with error %d", error);
+        return;
     }
+
+    error = sensor_channel_get(bmi160, SENSOR_CHAN_ACCEL_XYZ,
+                               val);
+    if (error)
+        goto channel_get_err;
+
+    // Acceleration in cm/s²
+    for (i = 0; i < 3; i++)
+        bmi160_model.acceleration[i] = val[i].val1 * 100 + val[i].val2 / 10000;
+
+    error = sensor_channel_get(bmi160, SENSOR_CHAN_GYRO_XYZ,
+                               val);
+    if (error)
+        goto channel_get_err;
+
+    // Rotation in milliradians/s
+    for (i = 0; i < 3; i++)
+        bmi160_model.rotation[i] = val[i].val1 * 1000 + val[i].val2 / 1000;
+
+    error = insert_in_buffer(&app_buffer, (uint32_t *)&bmi160_model, BMI160_MODEL, error, BMI160_MODEL_WORDS);
+    if (error)
+        LOG_ERR("Failed to insert data in ring buffer with error %d.", error);
+    return;
+
+channel_get_err:
+    LOG_ERR("sensor_channel_get failed with error %d", error);
 }
 
 // Register BMI160 sensor callbacks
