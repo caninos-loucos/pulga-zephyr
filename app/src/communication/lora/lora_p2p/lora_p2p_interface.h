@@ -16,6 +16,8 @@
 // Create an internal buffer to be able to send multiple data readings in one packet
 #define LORA_P2P_BUFFER_SIZE 2048
 
+// Id of the thread that sends data via LoRa P2P and configures the reception
+extern k_tid_t lora_p2p_send_thread_id;
 // Register lora_p2p callbacks
 ChannelAPI *register_lora_p2p_callbacks();
 

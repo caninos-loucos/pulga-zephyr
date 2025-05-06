@@ -61,6 +61,8 @@ static k_tid_t lorawan_send_thread_id;
 
 // Initializes and starts thread to send data via LoRaWAN
 static int lorawan_init_channel();
+// Sends data via LoRaWAN
+static void lorawan_send_data(void *channel, void *buffer, void *param2);
 
 /**
  * Definitions
@@ -84,7 +86,7 @@ static int lorawan_init_channel()
 	// After joining successfully, create the send thread.
 	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
 										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
-										lora_process_data, (void *)(uintptr_t) LORAWAN, &lorawan_buffer, &lorawan_send_thread_id,
+										lora_process_data, (void *)(uintptr_t)LORAWAN, &lorawan_buffer, &lorawan_send_thread_id,
 										LORAWAN_PROCESSING_PRIORITY, 0, K_NO_WAIT);
 	error = k_thread_name_set(lorawan_thread_id, "lorawan_process_data");
 	if (error)
@@ -97,7 +99,7 @@ static int lorawan_init_channel()
 	// After joining successfully, create the send thread.
 	lorawan_send_thread_id = k_thread_create(&lorawan_send_thread_data, lorawan_send_thread_stack_area,
 											 K_THREAD_STACK_SIZEOF(lorawan_send_thread_stack_area),
-											 lora_send_data, (void *)(uintptr_t) LORAWAN, &lorawan_buffer, NULL,
+											 lorawan_send_data, (void *)(uintptr_t)LORAWAN, &lorawan_buffer, NULL,
 											 LORAWAN_SEND_THREAD_PRIORITY, 0, K_NO_WAIT);
 	error = k_thread_name_set(lorawan_send_thread_id, "lorawan_send_data");
 	if (error)
@@ -110,9 +112,72 @@ return_clause:
 	return error;
 }
 
-bool is_lorawan_buffer_empty()
+void lorawan_send_data(void *channel, void *buffer, void *param2)
 {
-	return buffer_is_empty(&lorawan_buffer);
+	ARG_UNUSED(param2);
+
+	enum ChannelType channel_type = (enum ChannelType)(uintptr_t)channel;
+	PulgaRingBuffer *pulga_buffer = (PulgaRingBuffer *)buffer;
+	LOG_INF("CHANNEL %d - Sending via lora started", channel_type);
+
+#if IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)
+	struct join_variables join_vars;
+	reset_join_variables(&join_vars, channel_type);
+#endif
+
+	while (1)
+	{
+		int error = 0;
+		LOG_DBG("CHANNEL %d - Buffer is empty, sleeping", channel_type);
+		k_sleep(K_FOREVER);
+		do
+		{
+			error = acquire_ownership(channel_type, true);
+		} while (error);
+
+		// After waking up, transmits until buffer is empty
+		while (!buffer_is_empty(pulga_buffer))
+		{
+			LOG_DBG("CHANNEL %d - Resetting data item variables", channel_type);
+			uint8_t encoded_data_word_size = MAX_32_WORDS;
+			uint32_t encoded_data[MAX_32_WORDS];
+			memset(encoded_data, 0, sizeof(encoded_data));
+
+#if IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)
+			// Peeking the size of the next item in the buffer
+			error = get_item_word_size(pulga_buffer, &encoded_data_word_size);
+			// Sends package as the new item wouldn't fit in it and resets package variables to form a new one
+			if (join_vars.available_package_size - SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size) < 0)
+			{
+				lora_device.send_package(channel_type, join_vars.joined_data,
+										 join_vars.max_payload_size - join_vars.available_package_size);
+				reset_join_variables(&join_vars, channel_type);
+				continue;
+			}
+#endif
+			enum DataType data_type;
+			// Get the next packet from the internal buffer
+			error = get_from_buffer(pulga_buffer, encoded_data, &data_type, &encoded_data_word_size);
+			if (error)
+			{
+				continue;
+			}
+
+#if IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)
+			add_item_to_package(&join_vars, encoded_data, encoded_data_word_size);
+			continue;
+#endif
+
+			// Sends the packet directly if not joining
+			lora_device.send_package(channel_type, (uint8_t *)encoded_data,
+									 SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size));
+		}
+		// Release after sending everything on buffer
+		do
+		{
+			error = release_ownership(channel_type);
+		} while (error);
+	}
 }
 
 // Register channels to the Communication Module

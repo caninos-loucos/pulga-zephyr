@@ -75,11 +75,7 @@ int init_lorawan_connection()
         goto return_clause;
     }
 
-#if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
     error = acquire_ownership(LORAWAN, true);
-#else
-    error = lora_device.setup_lora_connection(LORAWAN, true);
-#endif
     if (error)
     {
         goto return_clause;
@@ -92,11 +88,11 @@ int init_lorawan_connection()
     } while (error);
     k_work_schedule(&sync_work, SYNC_PERIOD);
 #endif
-
-// Releases the ownership of the LoRa device so P2P can also initilize
-#if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
-    error = lora_device.release_device(LORAWAN);
-#endif
+    // Releases the ownership of the LoRa device so P2P can also initilize
+    do
+    {
+        error = release_ownership(LORAWAN);
+    } while (error);
 
 return_clause:
     return error;
@@ -125,14 +121,12 @@ void dr_changed_callback(enum lorawan_datarate new_dr)
 void sync_work_handler(struct k_work *work)
 {
     int error = 0;
-#if defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)
     error = acquire_ownership(LORAWAN, true);
     if (error)
     {
         k_work_schedule(&sync_work, K_SECONDS(30));
         return;
     }
-#endif
     error = lora_device.sync_timestamp(LORAWAN, false);
     // Retry after some time if it fails
     if (error)
@@ -141,6 +135,10 @@ void sync_work_handler(struct k_work *work)
         k_work_schedule(&sync_work, K_SECONDS(30));
         return;
     }
+    do
+    {
+        error = release_ownership(LORAWAN);
+    } while (error);
     // Schedule next request
     k_work_schedule(&sync_work, SYNC_PERIOD);
 }

@@ -21,17 +21,40 @@ LOG_MODULE_REGISTER(lorawan_device, CONFIG_APP_LOG_LEVEL);
  * Declarations
  */
 
+// Configures lorawan connection, joining the network
+static int setup_lorawan_connection(const struct device *lora_device, bool transm_enabled);
+// Sends LoRaWAN package and handles errors
+static int send_lorawan_package(const struct device *lora_device, uint8_t *package, int package_size);
+#ifdef CONFIG_EVENT_TIMESTAMP_LORAWAN
+// Sends a request to the network to get the current time and
+// sets it as the synchronization time
+static int get_network_time(bool force_request);
+#endif // CONFIG_EVENT_TIMESTAMP_LORAWAN
 // Set security configuration parameters for joining network
 static inline void lorawan_config_activation(struct lorawan_join_config *join_config);
+
+LoraDeviceAPI lorawan_device = {
+    .send_package = send_lorawan_package,
+#ifdef CONFIG_EVENT_TIMESTAMP_LORAWAN
+    .sync_timestamp = get_network_time,
+#else
+    .sync_timestamp = NULL,
+#endif // CONFIG_EVENT_TIMESTAMP_LORAWAN
+    .acquire_device = setup_lorawan_connection,
+    .release_device = NULL,
+    .check_configuration = NULL,
+};
 
 /**
  * Definitions
  */
 
 // Configures lorawan connection, joining the network
-int setup_lorawan_connection()
+int setup_lorawan_connection(const struct device *lora_device, bool transm_enabled)
 {
     LOG_DBG("Setting up LoRaWAN connection");
+    ARG_UNUSED(lora_device);
+    ARG_UNUSED(transm_enabled);
     int error = 0;
 
     // Configuration structure to join network
@@ -50,7 +73,7 @@ return_clause:
 }
 
 // Set security configuration parameters for joining network
-void lorawan_config_activation(struct lorawan_join_config *join_config)
+inline void lorawan_config_activation(struct lorawan_join_config *join_config)
 {
     // Initialize the security parameters from the defined values
     static uint8_t device_id[] = LORAWAN_DEV_EUI;
@@ -106,8 +129,9 @@ return_clause:
 }
 #endif
 
-int send_lorawan_package(uint8_t *package, uint8_t package_size)
+int send_lorawan_package(const struct device *lora_device, uint8_t *package, int package_size)
 {
+    ARG_UNUSED(lora_device);
     // Send using Zephyr's subsystem and check if the transmission was successful
     int error = lorawan_send(1, package, package_size, LORAWAN_MSG_UNCONFIRMED);
     if (error)

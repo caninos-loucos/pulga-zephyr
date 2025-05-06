@@ -39,7 +39,5 @@
 ChannelAPI *register_lorawan_callbacks();
 // Checks readiness of the LoRa device, configures lorawan backend and timestamp synchronization
 int init_lorawan_connection();
-// Checks if the internal buffer is empty
-bool is_lorawan_buffer_empty();
 
 #endif /* LORAWAN_INTERFACE_H */
