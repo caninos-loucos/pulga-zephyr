@@ -206,17 +206,21 @@ int acquire_device(enum ChannelType caller_channel, bool transm_enabled)
             return -EBUSY;
         }
     }
-#if DEVICE_SHARING
+// Checks if both LoRaWAN and LoRa P2P protocols are enabled.
+#if defined(CONFIG_SEND_LORAWAN) && \
+    (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
     else
     {
         // Waits for the LoRa device to be released
         k_sem_take(device_private.ownership.ownership_sem[caller_owner], K_FOREVER);
     }
-#endif // DEVICE_SHARING
+#endif // Device sharing
 
     k_sem_take(device_private.device_sem, K_FOREVER);
 
-#if DEVICE_SHARING
+// Checks if both LoRaWAN and LoRa P2P protocols are enabled.
+#if defined(CONFIG_SEND_LORAWAN) && \
+    (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
     if (caller_owner == OWNERSHIP_LORAWAN && IS_ENABLED(CONFIG_RECEIVE_LORA_P2P))
     {
         // Stops Lora Peer-to-Peer reception before initializing LoRaWAN
@@ -226,7 +230,7 @@ int acquire_device(enum ChannelType caller_channel, bool transm_enabled)
             goto return_clause;
         }
     }
-#endif // DEVICE_SHARING
+#endif // Device sharing
 
     error = device_private.device_apis[caller_owner]->acquire_device(device_private.device,
                                                                      transm_enabled);
@@ -241,7 +245,9 @@ return_clause:
     {
         // If the device cannot be acquired, release the ownership
         LOG_ERR("CHANNEL %d - Failed to acquire LoRa device: %d", caller_channel, error);
-#if DEVICE_SHARING
+// Checks if both LoRaWAN and LoRa P2P protocols are enabled.
+#if defined(CONFIG_SEND_LORAWAN) && \
+    (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
         if (!check_ownership(caller_owner))
         {
             k_sem_give(device_private.ownership.ownership_sem[caller_owner]);
@@ -281,7 +287,9 @@ int release_device(enum ChannelType caller_channel)
     }
     device_private.ownership.channel = OWNERSHIP_FREE;
 
-#if DEVICE_SHARING
+// Checks if both LoRaWAN and LoRa P2P protocols are enabled.
+#if defined(CONFIG_SEND_LORAWAN) && \
+    (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
     if (caller_owner == OWNERSHIP_LORA_P2P)
     {
         // If the channel is LoRa P2P, it releases the semaphore for the LoRaWAN channel
@@ -292,7 +300,7 @@ int release_device(enum ChannelType caller_channel)
         // If the channel is LoRaWAN, it releases the semaphore for the LoRa P2P channel
         k_sem_give(device_private.ownership.ownership_sem[OWNERSHIP_LORA_P2P]);
     }
-#endif // DEVICE_SHARING
+#endif // Device sharing
 
     LOG_DBG("CHANNEL %d - LoRa device released", caller_channel);
 return_clause:

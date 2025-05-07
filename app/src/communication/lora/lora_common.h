@@ -14,10 +14,6 @@ struct join_variables
     uint8_t joined_data[MAX_DATA_LEN];
 };
 
-// Checks if both LoRaWAN and LoRa P2P protocols are enabled.
-#define DEVICE_SHARING (defined(CONFIG_SEND_LORAWAN) && \
-                        (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P)))
-
 // Resets variables used to join packets into package
 void reset_join_variables(struct join_variables *join_vars, enum ChannelType channel_type);
 // Adds data item from buffer to package

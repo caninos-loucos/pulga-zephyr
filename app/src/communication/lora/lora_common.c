@@ -69,7 +69,7 @@ void lora_process_data(void *channel, void *buffer, void *send_thread)
 void get_max_payload_size(enum ChannelType channel_type, int *max_payload_size)
 {
     *max_payload_size = MAX_DATA_LEN;
-#if defined(CONFIG_SEND_LORAWAN) && defined(CONFIG_LORAWAN_JOIN_PACKET)
+#if defined(CONFIG_LORAWAN_JOIN_PACKET)
     if (channel_type == LORAWAN && IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET))
     {
         uint8_t unused_arg, temp_max_payload;
