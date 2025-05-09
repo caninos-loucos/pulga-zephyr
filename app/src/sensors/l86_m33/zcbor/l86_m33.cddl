@@ -1,0 +1,1 @@
+L86_M33 = [ timestamp: int .size 8, latitude: int .size 8, longitude: int .size 8 ]

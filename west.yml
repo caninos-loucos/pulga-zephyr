@@ -8,7 +8,7 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     
     - name: caninos
-      url-base: https://github.com/anacforcelli
+      url-base: https://github.com/caninos-loucos
 
   projects:
     - name: zephyr
@@ -20,6 +20,7 @@ manifest:
         name-allowlist:
           - cmsis      # required by the ARM port
           - hal_nordic # required by the custom_plank board (Nordic based)
+          - zcbor
           
     - name: loramac-node
       remote: caninos

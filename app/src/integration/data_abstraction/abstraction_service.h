@@ -36,6 +36,8 @@ enum EncodingLevel
     MINIMALIST,
     // Encodes data into a verbose string
     VERBOSE,
+    // Encodes data into cbor
+    CBOR,
 };
 
 // Functions exposed for each data type
@@ -50,6 +52,8 @@ typedef struct
     int (*encode_minimalist)(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size);
     // Prints raw bytes to the buffer
     int (*encode_raw_bytes)(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size);
+    // Encodes data to CBOR
+    int (*encode_cbor)(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size);
     // Splits structured data into individual one item sized buffers
     // void* (*split_data)(uint32_t* data_words, uint8_t** value_list);
 } DataAPI;

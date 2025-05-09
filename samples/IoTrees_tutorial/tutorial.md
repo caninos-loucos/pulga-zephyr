@@ -26,7 +26,9 @@ After completing the [Getting Started](https://github.com/caninos-loucos/pulga-z
 - First, open a virtual environment and synchronize it in the terminal using the following command:
 
   ``` console
-  cd path/to/where/venv/was/installed && source .venv/bin/activate && west update
+  cd path/to/where/venv/was/installed
+  source .venv/bin/activate
+  west update
   ```
 
 Now, it is possible to make changes inside the code.
@@ -86,7 +88,7 @@ For more details, see [Images]() below.
 ---
 ### In Coding 
 
-Path: `PULGA-ZEPHY/app/comunicaition/lorawan/lorawan_buffer/lorawan_keys_exampla.h`
+Path: `PULGA-ZEPHY/app/src/communication/lorawan/lorawan_buffer/lorawan_keys_example.h`
 - Here, the code must to match with the same number in the site
 
     - Device EUI = `LORAWAN_DEV_EUI` 

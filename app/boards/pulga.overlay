@@ -1,14 +1,13 @@
 /**
-* This piece of code activates the sensors internal to the board,
-* connected to the CPU by I2C0 
-*/
-&i2c0 {
-
-	/*Visible light, Infrared and UV Sensor*/
-	si1133@55 {
-		compatible = "silabs,si1133";
+ * This piece of code activates the sensors internal to the board,
+  * connected to the CPU by I2C0
+  */
+ &i2c0 {
+	 /*Visible light, Infrared and UV Sensor*/
+	 si1133@55 {
+		 compatible = "silabs,si1133";
 		reg = <0x55>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	/*Accelerometer and Gyroscope*/

@@ -1,5 +1,9 @@
 #include <stdlib.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/timeutil.h>
+#include <zcbor_encode.h>
+#include <sensors/l86_m33/zcbor/l86_m33_encode.h>
+#include <sensors/l86_m33/zcbor/l86_m33_encode_types.h>
 #include <sensors/l86_m33/l86_m33_service.h>
 
 LOG_MODULE_REGISTER(gnss_model, CONFIG_APP_LOG_LEVEL);
@@ -75,12 +79,49 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
     return sizeof(SensorModelGNSS);
 }
 
+static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+{
+    SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
+    struct L86_M33 zcbor_input;
+    uint8_t zcbor_output[SIZE_32_BIT_WORDS_TO_BYTES(8)];
+    size_t zcbor_output_size;
+
+    struct tm structured_time = {
+        .tm_sec = gnss_model->real_time.millisecond / 1000,
+        .tm_min = gnss_model->real_time.minute,
+        .tm_hour = gnss_model->real_time.hour,
+        .tm_mday = gnss_model->real_time.month_day,
+        .tm_mon = gnss_model->real_time.month - 1,
+        .tm_year = gnss_model->real_time.century_year + 2000 - TIME_UTILS_BASE_YEAR,
+    };
+    int64_t gps_epoch = timeutil_timegm64(&structured_time);
+    LOG_DBG("GNSS time: %lld", gps_epoch);
+
+    zcbor_input.latitude = gnss_model->navigation.latitude;
+    zcbor_input.longitude = gnss_model->navigation.longitude;
+    zcbor_input.timestamp = gps_epoch;
+
+    int err = cbor_encode_L86_M33(zcbor_output, sizeof(zcbor_output), &zcbor_input, &zcbor_output_size);
+    if (err != ZCBOR_SUCCESS)
+    {
+        LOG_ERR("Could not encode lm86_m33 data into zcbor, error %d", err);
+        return -1;
+    }
+
+    memcpy(encoded_data, "{g", 2);
+    memcpy(encoded_data + 2, &zcbor_output_size, 1);
+    memcpy(encoded_data + 3, zcbor_output, zcbor_output_size);
+    memcpy(encoded_data + 3 + zcbor_output_size, "}\0", 2);
+    return zcbor_output_size + 5;
+}
+
 // Registers GNSS model callbacks
 DataAPI *register_gnss_model_callbacks()
 {
     gnss_model_api.num_data_words = GNSS_MODEL_WORDS;
     gnss_model_api.encode_verbose = encode_verbose;
     gnss_model_api.encode_minimalist = encode_minimalist;
+    gnss_model_api.encode_cbor = encode_cbor;
     gnss_model_api.encode_raw_bytes = encode_raw_bytes;
     // gnss_model_api.split_values = split_values;
     return &gnss_model_api;

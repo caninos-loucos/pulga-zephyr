@@ -58,11 +58,21 @@ static void uart_send_data(void *param0, void *param1, void *param2)
         // Waits data to be ready
         k_sem_take(&data_ready_sem[UART], K_FOREVER);
 
+#if CONFIG_ZCBOR
+        // Encoding data to cbor
+        size = encode_data(data_unit.data_words, data_unit.data_type, CBOR,
+                           encoded_data, sizeof(encoded_data));
+#else
         // Encoding data to verbose string
         size = encode_data(data_unit.data_words, data_unit.data_type, VERBOSE,
                            encoded_data, sizeof(encoded_data));
+#endif
+
         if (size >= 0)
-            printk("%s\n", encoded_data);
+        {
+            fwrite(encoded_data, sizeof(uint8_t), size, stdout);
+            fwrite("\n", sizeof(uint8_t), 1, stdout);
+        }
         else
             LOG_ERR("Could not encode data");
 
