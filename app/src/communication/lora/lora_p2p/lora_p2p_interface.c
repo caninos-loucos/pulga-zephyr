@@ -105,15 +105,6 @@ void lora_p2p_send_data(void *channel, void *buffer, void *param2)
 	while (1)
 	{
 		int error = 0;
-		do
-		{
-			error = acquire_ownership(channel_type, false);
-		} while (error);
-		// Allows the LoRaWAN channel to interrupt the LoRa P2P channel
-		do
-		{
-			error =  release_ownership(channel_type);
-		} while (error);
 		LOG_DBG("CHANNEL %d - Buffer is empty, sleeping", channel_type);
 		k_sleep(K_FOREVER);
 		// After waking up, transmits until buffer is empty
@@ -178,7 +169,7 @@ try_again:
 	}
 	do
 	{
-		error = release_ownership(caller_channel);
+		error = acquire_ownership(caller_channel, false);
 	} while (error);
 return_clause:
 	return error;

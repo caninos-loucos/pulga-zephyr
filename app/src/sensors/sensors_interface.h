@@ -7,7 +7,7 @@
  * Refer to:
  * https://docs.zephyrproject.org/latest/kernel/services/threads/index.html
  */
-#define SENSORS_THREAD_STACK_SIZE 1024
+#define SENSORS_THREAD_STACK_SIZE 4096
 #define SENSORS_THREAD_PRIORITY 5 /* preemptible */
 
 // Encoding used to map sensors APIs

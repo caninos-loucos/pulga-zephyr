@@ -42,7 +42,7 @@ int register_comm_callbacks()
     LOG_DBG("Registering communication callbacks");
 
 #ifdef CONFIG_SEND_UART
-    channel_apis[UART] = register_uart_callbacks();
+    channel_apis[UART] = NULL;
 #endif /* CONFIG_SEND_UART */
 
 #ifdef CONFIG_SEND_LORAWAN

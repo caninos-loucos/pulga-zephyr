@@ -104,10 +104,21 @@ void receive_fix_callback(const struct device *gnss_device,
 
         memcpy(&l86_m33_data, &gnss_model, sizeof(SensorModelGNSS));
 
-        if (insert_in_buffer(&app_buffer, l86_m33_data, GNSS_MODEL, 0, GNSS_MODEL_WORDS) != 0)
+        uint8_t encoded_data[512];
+        int size;
+        // Encoding data to cbor
+        size = encode_data(l86_m33_data, GNSS_MODEL, CBOR,
+                           encoded_data, sizeof(encoded_data));
+        if (size >= 0)
         {
-            LOG_ERR("Failed to insert data in ring buffer.");
+            fflush(stdout);
+            fwrite(encoded_data, sizeof(uint8_t), size, stdout);
+            fwrite("\n", sizeof(uint8_t), 1, stdout);
+            // printk("%s"k, encoded_data);
+            fflush(stdout);
         }
+        else
+            LOG_ERR("Could not encode data");
     }
 }
 

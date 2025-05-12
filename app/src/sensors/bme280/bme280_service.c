@@ -62,10 +62,21 @@ sample_fetch:
 
         memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
 
-        if (insert_in_buffer(&app_buffer, bme280_data, BME280_MODEL, error, BME280_MODEL_WORDS) != 0)
+        uint8_t encoded_data[512];
+        int size;
+        // Encoding data to cbor
+        size = encode_data(bme280_data, BME280_MODEL, CBOR,
+                           encoded_data, sizeof(encoded_data));
+        if (size >= 0)
         {
-            LOG_ERR("Failed to insert data in ring buffer.");
+            fflush(stdout);
+            fwrite(encoded_data, sizeof(uint8_t), size, stdout);
+            fwrite("\n", sizeof(uint8_t), 1, stdout);
+            // printk("%s"k, encoded_data);
+            fflush(stdout);
         }
+        else
+            LOG_ERR("Could not encode data");
     }
     else if (error == -EAGAIN)
     {

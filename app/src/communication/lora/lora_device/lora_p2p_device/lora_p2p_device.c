@@ -100,11 +100,21 @@ void lora_receive_cb(const struct device *dev, uint8_t *data, uint16_t size,
                      int16_t rssi, int8_t snr, void *user_data)
 {
     ARG_UNUSED(dev);
-    ARG_UNUSED(size);
     ARG_UNUSED(user_data);
 
-    LOG_INF("LoRa RX RSSI: %d dBm, SNR: %d dB", rssi, snr);
-    LOG_HEXDUMP_INF(data, size, "LoRa RX payload");
+    if (size >= 0)
+    {
+        uint8_t encoded_data[512];
+        // uint8_t converted_size = size;
+        memcpy(encoded_data, "{p", 2);
+        memcpy(encoded_data + 2, &size, 1);
+        memcpy(encoded_data + 3, data, size);
+        memcpy(encoded_data + 3 + size, "}\0", 2);
+        fflush(stdout);
+        fwrite(encoded_data, sizeof(uint8_t), size + 5, stdout);
+        fwrite("\n", sizeof(uint8_t), 1, stdout);
+        fflush(stdout);
+    }
 }
 #endif // CONFIG_RECEIVE_LORA_P2P
 
