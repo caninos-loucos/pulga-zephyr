@@ -2,6 +2,7 @@
 #include <zephyr/shell/shell.h>
 #include <communication/uart/uart_interface.h>
 #include <sensors/sensors_interface.h>
+#include <zephyr/sys/util.h>
 
 LOG_MODULE_REGISTER(shell_commands, CONFIG_APP_LOG_LEVEL);
 
@@ -192,10 +193,11 @@ static int forward_data_cmd_handler(const struct shell *sh, size_t argc, char **
         return -ENETDOWN;
     }
 
-    char payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS))] = {0};
-    snprintf(payload, sizeof(payload), "%s", argv[3]);
+    uint8_t payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS))] = {0};
+    int actual_length = hex2bin(argv[3], strlen(argv[3]), 
+                        payload, sizeof(payload));
 
-    if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA, 0, MAX_32_WORDS) != 0)
+    if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA, 0, SIZE_BYTES_TO_32_BIT_WORDS(actual_length)) != 0)
     {
         shell_error(sh, "Failed to insert data in ring buffer.");
         return -EAGAIN;
