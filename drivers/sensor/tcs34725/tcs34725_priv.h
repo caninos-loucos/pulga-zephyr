@@ -238,8 +238,13 @@ struct tcs34725_data {
     uint16_t clear; //uint16_t clear;
     uint64_t luminosity; // Luminosity in lux
     uint64_t color_temperature; // Color temperature in Kelvin degrees // Maybe change to another uintx_t later?
-    tcs34725_integration_time_t integration_time;
+    uint16_t low_threshold;
+    uint16_t high_threshold;
     tcs34725_gain_t gain;
+    tcs34725_bool_t enable;
+    tcs34725_integration_time_t int_time;
+    tcs34725_wait_time_t wait_time;
+    tcs34725_interrupt_mode_t int_mode;
 };
 
 struct tcs34725_config {
@@ -247,7 +252,7 @@ struct tcs34725_config {
 };
 
 // Writes data to a register
-static int tcs34725_register_write(const struct device *dev, uint8_t reg, uint8_t data);
+static int tcs34725_register_write(const struct device *dev, uint8_t reg, uint8_t *data, uint8_t size);
 
 // Reads data from a register
 static int tcs34725_register_read(const struct device *dev, uint8_t reg, uint8_t *buf, uint32_t size);
@@ -273,7 +278,7 @@ static float tcs34725_bytes_to_float(const uint8_t *value);
 
 static int tcs34725_hex_to_gain(uint8_t gain_hex);
 
-static const void tcs34725_calculate_lux_and_temp(const struct device *dev);
+static void tcs34725_calculate_lux_and_temp(const struct device *dev);
 
 /**
  * @}
@@ -401,7 +406,7 @@ uint8_t tcs34725_deinit(tcs34725_handle_t *handle);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_read_rgbc(const struct device *dev);
+int tcs34725_read_rgbc(const struct device *dev);
 
 // uint8_t tcs34725_read_rgbc(tcs34725_handle_t *handle, uint16_t *red, uint16_t *green, uint16_t *blue, uint16_t *clear);
 
@@ -418,7 +423,7 @@ uint8_t tcs34725_read_rgbc(const struct device *dev);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_read_rgb(tcs34725_handle_t *handle, uint16_t *red, uint16_t *green, uint16_t *blue);
+int tcs34725_read_rgb(const struct device *dev);
 
 /**
  * @brief      read the clear data
@@ -431,7 +436,7 @@ uint8_t tcs34725_read_rgb(tcs34725_handle_t *handle, uint16_t *red, uint16_t *gr
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_read_c(tcs34725_handle_t *handle, uint16_t *clear);
+int tcs34725_read_c(const struct device *dev);
 
 /**
  * @brief     enable or disable the wait time
@@ -444,7 +449,7 @@ uint8_t tcs34725_read_c(tcs34725_handle_t *handle, uint16_t *clear);
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_wait(tcs34725_handle_t *handle, tcs34725_bool_t enable);
+int tcs34725_set_wait_enable(const struct device *dev, tcs34725_bool_t enable);
 
 /**
  * @brief      get the wait time
@@ -457,7 +462,7 @@ uint8_t tcs34725_set_wait(tcs34725_handle_t *handle, tcs34725_bool_t enable);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_wait(tcs34725_handle_t *handle, tcs34725_bool_t *enable);
+int tcs34725_get_wait_enable(const struct device *dev);
 
 /**
  * @brief     enable or disable the rgbc adc
@@ -470,7 +475,7 @@ uint8_t tcs34725_get_wait(tcs34725_handle_t *handle, tcs34725_bool_t *enable);
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_rgbc(tcs34725_handle_t *handle, tcs34725_bool_t enable);
+int tcs34725_set_rgbc_status(const struct device *dev, tcs34725_bool_t enable);
 
 /**
  * @brief      get the rgbc status
@@ -483,7 +488,7 @@ uint8_t tcs34725_set_rgbc(tcs34725_handle_t *handle, tcs34725_bool_t enable);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_rgbc(tcs34725_handle_t *handle, tcs34725_bool_t *enable);
+int tcs34725_get_rgbc_status(const struct device *dev);
 
 /**
  * @brief     enable or disable the power
@@ -496,7 +501,7 @@ uint8_t tcs34725_get_rgbc(tcs34725_handle_t *handle, tcs34725_bool_t *enable);
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_power_on(tcs34725_handle_t *handle, tcs34725_bool_t enable);
+int tcs34725_set_power_on(const struct device *dev, tcs34725_bool_t enable);
 
 /**
  * @brief      get the power status
@@ -509,7 +514,7 @@ uint8_t tcs34725_set_power_on(tcs34725_handle_t *handle, tcs34725_bool_t enable)
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_power_on(tcs34725_handle_t *handle, tcs34725_bool_t *enable);
+int tcs34725_get_power_on(const struct device *dev);
 
 /**
  * @brief     set the rgbc adc integration time
@@ -522,7 +527,7 @@ uint8_t tcs34725_get_power_on(tcs34725_handle_t *handle, tcs34725_bool_t *enable
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_integration_time_t t);
+int tcs34725_set_rgbc_integration_time(const struct device *dev, tcs34725_integration_time_t t);
 
 /**
  * @brief      get the rgbc adc integration time
@@ -535,7 +540,7 @@ uint8_t tcs34725_set_rgbc_integration_time(tcs34725_handle_t *handle, tcs34725_i
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_rgbc_integration_time(const struct device *dev);
+int tcs34725_get_rgbc_integration_time(const struct device *dev);
 
 /**
  * @brief     set the wait time
@@ -548,7 +553,7 @@ uint8_t tcs34725_get_rgbc_integration_time(const struct device *dev);
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t t);
+int tcs34725_set_wait_time(const struct device *dev, tcs34725_wait_time_t t);
 
 /**
  * @brief      get the wait time
@@ -561,7 +566,7 @@ uint8_t tcs34725_set_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t t
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t *t);
+int tcs34725_get_wait_time(const struct device *dev);
 
 /**
  * @brief     set the adc gain
@@ -574,7 +579,7 @@ uint8_t tcs34725_get_wait_time(tcs34725_handle_t *handle, tcs34725_wait_time_t *
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_gain(const struct device *dev);
+int tcs34725_set_gain(const struct device *dev, tcs34725_gain_t gain);
 
 /**
  * @brief      get the adc gain
@@ -587,7 +592,7 @@ uint8_t tcs34725_set_gain(const struct device *dev);
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_gain(const struct device *dev);
+int tcs34725_get_gain(const struct device *dev);
 
 /**
  * @}
@@ -611,7 +616,7 @@ uint8_t tcs34725_get_gain(const struct device *dev);
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_rgbc_interrupt(tcs34725_handle_t *handle, tcs34725_bool_t enable);
+int tcs34725_set_rgbc_interrupt(const struct device *dev, tcs34725_bool_t enable);
 
 /**
  * @brief      get the rgbc interrupt
@@ -624,7 +629,7 @@ uint8_t tcs34725_set_rgbc_interrupt(tcs34725_handle_t *handle, tcs34725_bool_t e
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_rgbc_interrupt(tcs34725_handle_t *handle, tcs34725_bool_t *enable);
+int tcs34725_get_rgbc_interrupt(const struct device *dev);
 
 /**
  * @brief     set the interrupt mode
@@ -637,7 +642,7 @@ uint8_t tcs34725_get_rgbc_interrupt(tcs34725_handle_t *handle, tcs34725_bool_t *
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrupt_mode_t mode);
+int tcs34725_set_interrupt_mode(const struct device *dev, tcs34725_interrupt_mode_t mode);
 
 /**
  * @brief      get the interrupt mode
@@ -650,7 +655,7 @@ uint8_t tcs34725_set_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrup
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrupt_mode_t *mode);
+int tcs34725_get_interrupt_mode(const struct device *dev);
 
 /**
  * @brief     set the rgbc clear low interrupt threshold
@@ -663,7 +668,7 @@ uint8_t tcs34725_get_interrupt_mode(tcs34725_handle_t *handle, tcs34725_interrup
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_rgbc_clear_low_interrupt_threshold(tcs34725_handle_t *handle, uint16_t threshold);
+int tcs34725_set_rgbc_clear_low_interrupt_threshold(const struct device *dev, uint16_t threshold);
 
 /**
  * @brief      get the rgbc clear low interrupt threshold
@@ -676,7 +681,7 @@ uint8_t tcs34725_set_rgbc_clear_low_interrupt_threshold(tcs34725_handle_t *handl
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_rgbc_clear_low_interrupt_threshold(tcs34725_handle_t *handle, uint16_t *threshold);
+int tcs34725_get_rgbc_clear_low_interrupt_threshold(const struct device *dev);
 
 /**
  * @brief     set the rgbc clear high interrupt threshold
@@ -689,7 +694,7 @@ uint8_t tcs34725_get_rgbc_clear_low_interrupt_threshold(tcs34725_handle_t *handl
  *            - 3 handle is not initialized
  * @note      none
  */
-uint8_t tcs34725_set_rgbc_clear_high_interrupt_threshold(tcs34725_handle_t *handle, uint16_t threshold);
+int tcs34725_set_rgbc_clear_high_interrupt_threshold(const struct device *dev, uint16_t threshold);
 
 /**
  * @brief      get the rgbc clear high interrupt threshold
@@ -702,7 +707,7 @@ uint8_t tcs34725_set_rgbc_clear_high_interrupt_threshold(tcs34725_handle_t *hand
  *             - 3 handle is not initialized
  * @note       none
  */
-uint8_t tcs34725_get_rgbc_clear_high_interrupt_threshold(tcs34725_handle_t *handle, uint16_t *threshold);
+int tcs34725_get_rgbc_clear_high_interrupt_threshold(const struct device *dev);
 
 /**
  * @}
@@ -729,6 +734,7 @@ uint8_t tcs34725_get_rgbc_clear_high_interrupt_threshold(tcs34725_handle_t *hand
  * @note      none
  */
 uint8_t tcs34725_set_reg(tcs34725_handle_t *handle, uint8_t reg, uint8_t *buf, uint16_t len);
+
 
 /**
  * @brief      get the chip register
