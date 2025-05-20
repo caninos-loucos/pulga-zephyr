@@ -155,6 +155,11 @@ void lora_p2p_send_data(void *channel, void *buffer, void *param2)
 			acquire_and_send(channel_type, (uint8_t *)encoded_data,
 							 SIZE_32_BIT_WORDS_TO_BYTES(encoded_data_word_size));
 		}
+		// Release after sending everything on buffer
+		do
+		{
+			error = release_ownership(channel_type);
+		} while (error);
 	}
 }
 
@@ -176,10 +181,6 @@ try_again:
 		}
 		goto return_clause;
 	}
-	do
-	{
-		error = release_ownership(caller_channel);
-	} while (error);
 return_clause:
 	return error;
 }
