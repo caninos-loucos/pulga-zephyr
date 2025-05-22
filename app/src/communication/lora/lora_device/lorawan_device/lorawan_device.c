@@ -3,6 +3,7 @@
 #include <zephyr/lorawan/lorawan.h>
 #include <communication/lora/lora_device/lora_device.h>
 #include <communication/lora/lora_device/lorawan_device/lorawan_device.h>
+#include <communication/lora/lorawan/lorawan_interface.h>
 #include <integration/timestamp/timestamp_service.h>
 
 /* 	Get the LoraWAN keys from file in main directory, in the following format:
@@ -56,6 +57,21 @@ int setup_lorawan_connection(const struct device *lora_device, bool transm_enabl
     ARG_UNUSED(lora_device);
     ARG_UNUSED(transm_enabled);
     int error = 0;
+    // Starts the LoRaWAN backend, transmission does not start just yet
+    error = lorawan_start();
+    if (error)
+    {
+        LOG_ERR("lorawan_start failed: %d", error);
+        goto return_clause;
+    }
+
+    // Set the initial or fixed datarate according to the config
+    error = lorawan_set_datarate(LORAWAN_DR);
+    if (error)
+    {
+        LOG_ERR("lorawan_set_datarate failed: %d", error);
+        goto return_clause;
+    }
 
     // Configuration structure to join network
     struct lorawan_join_config join_config;

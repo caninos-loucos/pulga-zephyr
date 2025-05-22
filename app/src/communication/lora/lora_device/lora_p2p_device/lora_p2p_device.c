@@ -16,6 +16,10 @@ static inline int start_lora_p2p_reception(const struct device *lora_device);
 static inline int send_lora_p2p_package(const struct device *lora_device, uint8_t *package, int package_size);
 // Verifies if transmission and reception are already correctly configured
 static inline bool check_configuration(bool transm_enabled);
+#ifdef CONFIG_SEND_LORAWAN
+// Resets LoRa callbacks and data
+static inline int reset_lora_p2p_device(const struct device *lora_device);
+#endif // Device sharing
 
 #ifdef CONFIG_RECEIVE_LORA_P2P
 // Callback function to be used whenever data is received.
@@ -61,6 +65,13 @@ inline int setup_lora_p2p_connection(const struct device *lora_device, bool tran
         LOG_DBG("LoRa Peer-to-Peer connection already configured");
         goto return_clause;
     }
+#ifdef CONFIG_SEND_LORAWAN
+    error = reset_lora_p2p_device(lora_device);
+    if (error)
+    {
+        goto return_clause;
+    }
+#endif // Device sharing
 #ifdef CONFIG_RECEIVE_LORA_P2P
     // Stop reception
     if (transm_enabled)
@@ -127,7 +138,10 @@ inline int send_lora_p2p_package(const struct device *lora_device, uint8_t *pack
         return -EINVAL;
     }
     // Send using Zephyr's subsystem and check if the transmission was successful
-    error = lora_send(lora_device, package, package_size);
+    do
+    {
+        error = lora_send(lora_device, package, package_size);
+    } while (error == -EAGAIN);
     if (error)
     {
         LOG_ERR("lora_send failed: %d", error);
@@ -189,4 +203,18 @@ bool check_configuration(bool transm_enabled)
 {
     return lora_modem_config.tx == transm_enabled &&
            reception_enabled != transm_enabled;
+}
+
+int reset_lora_p2p_device(const struct device *lora_device)
+{
+    int error = lora_reset(lora_device);
+    if (error)
+    {
+        LOG_ERR("lora_reset failed: %d", error);
+        goto return_clause;
+    }
+    reception_enabled = false;
+    lora_modem_config.tx = false;
+return_clause:
+    return error;
 }

@@ -58,22 +58,7 @@ int init_lorawan_connection()
     downlink_cb.cb = downlink_callback;
     lorawan_register_downlink_callback(&downlink_cb);
     lorawan_register_dr_changed_callback(dr_changed_callback);
-
-    // Starts the LoRaWAN backend, transmission does not start just yet
-    error = lorawan_start();
-    if (error)
-    {
-        LOG_ERR("lorawan_start failed: %d", error);
-        goto return_clause;
-    }
-
-    // Set the initial or fixed datarate according to the config
-    error = lorawan_set_datarate(LORAWAN_DR);
-    if (error)
-    {
-        LOG_ERR("lorawan_set_datarate failed: %d", error);
-        goto return_clause;
-    }
+    
 
     error = acquire_ownership(LORAWAN, true);
     if (error)
