@@ -105,6 +105,15 @@ void lora_p2p_send_data(void *channel, void *buffer, void *param2)
 	while (1)
 	{
 		int error = 0;
+		do
+		{
+			error = acquire_ownership(channel_type, false);
+		} while (error);
+		// Allows the LoRaWAN channel to interrupt the LoRa P2P channel
+		do
+		{
+			error = release_ownership(channel_type);
+		} while (error);
 		LOG_DBG("CHANNEL %d - Buffer is empty, sleeping", channel_type);
 		k_sleep(K_FOREVER);
 		// After waking up, transmits until buffer is empty
@@ -130,8 +139,10 @@ void lora_p2p_send_data(void *channel, void *buffer, void *param2)
 #endif
 
 			enum DataType data_type;
+			uint8_t custom_value = 0;
 			// Get the next packet from the internal buffer
-			error = get_from_buffer(pulga_buffer, encoded_data, &data_type, &encoded_data_word_size);
+			error = get_from_buffer(pulga_buffer, encoded_data, &data_type, &custom_value,
+									&encoded_data_word_size);
 			if (error)
 			{
 				continue;
@@ -166,7 +177,7 @@ try_again:
 	if (error)
 	{
 		LOG_ERR("CHANNEL %d - Failed to send package: %d", caller_channel, error);
-		if(error == -EINVAL)
+		if (error == -EINVAL)
 		{
 			goto try_again;
 		}

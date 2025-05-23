@@ -40,6 +40,23 @@ enum EncodingLevel
     CBOR,
 };
 
+// Communication channels available for the application
+// **Channels must be on the same order as in ChannelType enum**
+typedef union
+{
+    uint8_t value;
+    struct
+    {
+        uint8_t uart : 1; // bit 0
+        uint8_t ble : 1;
+        uint8_t lorawan : 1;
+        uint8_t lora_p2p : 1; // bit 3
+        uint8_t reserved : 4;
+    } channels;
+} AppChannelOptions;
+
+#define CHANNEL_ENABLED(options, channel)  ((options) & (1 << (channel)))
+
 // Functions exposed for each data type
 typedef struct
 {

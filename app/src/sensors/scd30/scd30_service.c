@@ -72,7 +72,8 @@ sample_fetch:
 
         memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
 
-        if (insert_in_buffer(&app_buffer, scd30_data, SCD30_MODEL, error, SCD30_MODEL_WORDS) != 0)
+        if (insert_in_buffer(&app_buffer, scd30_data, SCD30_MODEL,
+                             sensor_output_options.value, SCD30_MODEL_WORDS) != 0)
         {
             LOG_ERR("Failed to insert data in ring buffer.");
         }

@@ -52,7 +52,8 @@ void lora_process_data(void *channel, void *buffer, void *send_thread)
             // If the application is joining packets into a larger package,
             // it waits longer to wake up the sending thread, until a package with
             // maximum payload size can be assembled
-            if (get_buffer_size_without_headers(pulga_buffer) < max_payload_size)
+            int estimated_package_size = get_buffer_size_without_headers(pulga_buffer);
+            if (estimated_package_size < max_payload_size && estimated_package_size < 150)
             {
                 LOG_DBG("CHANNEL %d - Joining more data", channel_type);
                 // Signals for the Communication Interface that processing is complete

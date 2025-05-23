@@ -65,7 +65,8 @@ sample_fetch:
 
         memcpy(&si1133_data, &si1133_model, sizeof(SensorModelSi1133));
 
-        if (insert_in_buffer(&app_buffer, si1133_data, SI1133_MODEL, error, SI1133_MODEL_WORDS) != 0)
+        if (insert_in_buffer(&app_buffer, si1133_data, SI1133_MODEL,
+                             sensor_output_options.value, SI1133_MODEL_WORDS) != 0)
         {
             LOG_ERR("Failed to insert data in ring buffer.");
         }

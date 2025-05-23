@@ -27,7 +27,8 @@ extern PulgaRingBuffer app_buffer;
 // Initializes a ring buffer
 void init_pulga_buffer(PulgaRingBuffer *pulga_buffer, struct ring_buf *ring_buffer);
 // Gets item from buffer
-int get_from_buffer(PulgaRingBuffer *pulga_buffer, uint32_t *data_words, enum DataType *data_type, uint8_t *num_words);
+int get_from_buffer(PulgaRingBuffer *pulga_buffer, uint32_t *data_words, enum DataType *data_type,
+                    uint8_t *custom_value, uint8_t *num_words);
 // Inserts data in buffer
 int insert_in_buffer(PulgaRingBuffer *pulga_buffer, uint32_t *data_words, enum DataType data_type,
                      uint8_t custom_value, uint8_t num_words);

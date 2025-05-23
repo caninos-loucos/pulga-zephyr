@@ -209,7 +209,7 @@ int acquire_device(enum ChannelType caller_channel, bool transm_enabled)
 // Checks if both LoRaWAN and LoRa P2P protocols are enabled.
 #if defined(CONFIG_SEND_LORAWAN) && \
     (defined(CONFIG_SEND_LORA_P2P) || defined(CONFIG_RECEIVE_LORA_P2P))
-    else
+    else if (device_private.ownership.channel != OWNERSHIP_FREE)
     {
         // Waits for the LoRa device to be released
         k_sem_take(device_private.ownership.ownership_sem[caller_owner], K_FOREVER);

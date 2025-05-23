@@ -156,8 +156,10 @@ void lorawan_send_data(void *channel, void *buffer, void *param2)
 			}
 #endif
 			enum DataType data_type;
+			uint8_t custom_value = 0;
 			// Get the next packet from the internal buffer
-			error = get_from_buffer(pulga_buffer, encoded_data, &data_type, &encoded_data_word_size);
+			error = get_from_buffer(pulga_buffer, encoded_data, &data_type, &custom_value,
+									&encoded_data_word_size);
 			if (error)
 			{
 				continue;

@@ -182,22 +182,25 @@ static int forward_data_cmd_handler(const struct shell *sh, size_t argc, char **
         return -EINVAL;
     }
 
+    uint8_t payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS))] = {0};
+    int actual_length = hex2bin(argv[3], strlen(argv[3]),
+                                payload, sizeof(payload));
+    AppChannelOptions app_channel_options = {0};
     switch (channel)
     {
     case LORAWAN:
+        app_channel_options.channels.lorawan = true;
         break;
     case LORA_P2P:
+        app_channel_options.channels.lora_p2p = true;
         break;
     default:
         shell_warn(sh, "Channel not configured.");
         return -ENETDOWN;
     }
 
-    uint8_t payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS))] = {0};
-    int actual_length = hex2bin(argv[3], strlen(argv[3]), 
-                        payload, sizeof(payload));
-
-    if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA, 0, SIZE_BYTES_TO_32_BIT_WORDS(actual_length)) != 0)
+    if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA,
+                         app_channel_options.value, SIZE_BYTES_TO_32_BIT_WORDS(actual_length)) != 0)
     {
         shell_error(sh, "Failed to insert data in ring buffer.");
         return -EAGAIN;
