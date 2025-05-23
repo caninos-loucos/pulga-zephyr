@@ -39,6 +39,7 @@ enum EncodingLevel
 };
 
 // Communication channels available for the application
+// **Channels must be on the same order as in ChannelType enum**
 typedef union
 {
     uint8_t value;
@@ -51,6 +52,8 @@ typedef union
         uint8_t reserved : 4;
     } channels;
 } AppChannelOptions;
+
+#define CHANNEL_ENABLED(options, channel)  ((options) & (1 << (channel)))
 
 // Functions exposed for each data type
 typedef struct

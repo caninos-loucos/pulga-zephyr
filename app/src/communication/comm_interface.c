@@ -133,23 +133,23 @@ static void read_and_notify(void *param0, void *param1, void *param2)
         // After waking up, transmits until buffer is empty
         while (buffer_is_empty(&app_buffer) == false)
         {
-            uint8_t custom_value = 0;
+            AppChannelOptions channel_options;
             if (get_from_buffer(&app_buffer, data_unit.data_words, &data_unit.data_type,
-                                &custom_value, NULL) == 0)
+                                &channel_options.value, NULL) == 0)
             {
                 // Notifies each registered channel that a new data unit is ready
-                for (int i = 0; i < MAX_CHANNELS; i++)
+                for (int channel_type = 0; channel_type < MAX_CHANNELS; channel_type++)
                 {
-                    if (channel_apis[i] != NULL)
+                    if (channel_apis[channel_type] != NULL && CHANNEL_ENABLED(channel_options.value, channel_type))
                     {
-                        k_sem_give(&data_ready_sem[i]);
+                        k_sem_give(&data_ready_sem[channel_type]);
                     }
                 }
 
                 // Waits until all registered channels have processed the data unit
-                for (int i = 0; i < MAX_CHANNELS; i++)
+                for (int channel_type = 0; channel_type < MAX_CHANNELS; channel_type++)
                 {
-                    if (channel_apis[i] != NULL)
+                    if (channel_apis[channel_type] != NULL && CHANNEL_ENABLED(channel_options.value, channel_type))
                     {
                         k_sem_take(&data_processed, K_FOREVER);
                     }
