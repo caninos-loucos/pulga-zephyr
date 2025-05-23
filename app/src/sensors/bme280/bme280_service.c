@@ -62,7 +62,8 @@ sample_fetch:
 
         memcpy(&bme280_data, &bme280_model, sizeof(SensorModelBME280));
 
-        if (insert_in_buffer(&app_buffer, bme280_data, BME280_MODEL, error, BME280_MODEL_WORDS) != 0)
+        if (insert_in_buffer(&app_buffer, bme280_data, BME280_MODEL,
+                             sensor_output_options.value, BME280_MODEL_WORDS) != 0)
         {
             LOG_ERR("Failed to insert data in ring buffer.");
         }

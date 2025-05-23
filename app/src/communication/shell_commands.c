@@ -169,7 +169,12 @@ static int forward_data_cmd_handler(const struct shell *sh, size_t argc, char **
     char payload[SIZE_32_BIT_WORDS_TO_BYTES((MAX_32_WORDS))] = {0};
     snprintf(payload, sizeof(payload), "%s", argv[1]);
 
-    if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA, 0, MAX_32_WORDS) != 0)
+    AppChannelOptions app_channel_options = {0};
+    app_channel_options.channels.lora_p2p = true;
+    app_channel_options.channels.lorawan = true;
+
+    if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA,
+                         app_channel_options.value, MAX_32_WORDS) != 0)
     {
         shell_error(sh, "Failed to insert data in ring buffer.");
         return -EAGAIN;

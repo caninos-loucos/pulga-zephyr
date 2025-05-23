@@ -35,6 +35,8 @@ typedef struct
 
 // List of registered sensor APIs
 extern SensorAPI *sensor_apis[MAX_SENSORS];
+// Output options for sensor data
+extern AppChannelOptions sensor_output_options;
 
 // Registers callbacks for the used sensors
 int register_sensors_callbacks();

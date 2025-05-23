@@ -25,6 +25,8 @@ typedef struct
 {
     // Initializes channel and starts communication
     int (*init_channel)();
+    // Enqueues data to be sent
+    int (*enqueue_data)(uint32_t *data_words, enum DataType data_type, uint8_t num_words);
 } ChannelAPI;
 
 // Data unit that will be served to communication channels

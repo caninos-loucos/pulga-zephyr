@@ -23,6 +23,12 @@ static k_tid_t sensors_thread_id;
 static int current_sampling_interval = CONFIG_SAMPLING_INTERVAL;
 // List of registered sensor APIs
 SensorAPI *sensor_apis[MAX_SENSORS] = {0};
+AppChannelOptions sensor_output_options = {
+	.channels.uart = true,
+	.channels.ble = true,
+	.channels.lorawan = true,
+	.channels.lora_p2p = true,
+};
 
 // Initializes all sensors
 static void init_sensors();
@@ -128,14 +134,14 @@ static void perform_read_sensors(void *param0, void *param1, void *param2)
 }
 
 // Set the interval in milliseconds between samples
-void set_sampling_interval(int new_interval)
+inline void set_sampling_interval(int new_interval)
 {
 	current_sampling_interval = new_interval;
 	LOG_DBG("Sampling interval set to %dms", new_interval);
 }
 
 // Get the interval in milliseconds between samples
-int get_sampling_interval()
+inline int get_sampling_interval()
 {
 	return current_sampling_interval;
 }
