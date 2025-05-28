@@ -28,7 +28,7 @@ void lora_process_data(void *channel, void *buffer, void *send_thread)
     enum ChannelType channel_type = (enum ChannelType)(uintptr_t)channel;
     PulgaRingBuffer *pulga_buffer = (PulgaRingBuffer *)buffer;
     k_tid_t *send_thread_id = (k_tid_t *)send_thread;
-    enum EncodingLevel encoding = MINIMALIST;
+    enum EncodingLevel encoding = RAW_BYTES;
 
     LOG_INF("CHANNEL %d - Processing LoRa data started", channel_type);
     while (1)

@@ -9,7 +9,7 @@
 #define SIZE_32_BIT_WORDS_TO_BYTES(expr) (expr * 4)
 
 // Maximum number of 32-bit words an item of the application buffer can have
-#define MAX_32_WORDS 16
+#define MAX_32_WORDS 64
 
 struct PulgaRingBufferPrivate;
 

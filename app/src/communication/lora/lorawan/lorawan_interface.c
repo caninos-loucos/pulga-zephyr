@@ -167,7 +167,10 @@ void lorawan_send_data(void *channel, void *buffer, void *param2)
 
 #if IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)
 			add_item_to_package(&join_vars, encoded_data, encoded_data_word_size);
-			continue;
+			if(join_vars.available_package_size > 50)
+			{
+				continue;
+			}
 #endif
 
 			// Sends the packet directly if not joining
