@@ -15,17 +15,17 @@ DataAPI text_model_api;
  */
 
 // Encodes all values of payload into a string
-static int text_encode(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int text_encode(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
   return snprintf(encoded_data, encoded_size, "%s\n", (char *)data_words);
 }
 
 // Converts data words into bytes
-static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
+  encoded_size = SIZE_32_BIT_WORDS_TO_BYTES(data_size);
   bytecpy(encoded_data, data_words, encoded_size);
-
-  return MAX_32_WORDS;
+  return encoded_size;
 }
 
 DataAPI *register_text_model_callbacks()

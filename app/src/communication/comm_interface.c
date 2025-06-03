@@ -134,9 +134,11 @@ static void read_and_notify(void *param0, void *param1, void *param2)
         while (buffer_is_empty(&app_buffer) == false)
         {
             AppChannelOptions channel_options;
+            uint8_t num_words = MAX_32_WORDS;
             if (get_from_buffer(&app_buffer, data_unit.data_words, &data_unit.data_type,
-                                &channel_options.value, NULL) == 0)
+                                &channel_options.value, &num_words) == 0)
             {
+                data_unit.num_words = num_words;
                 // Notifies each registered channel that a new data unit is ready
                 for (int channel_type = 0; channel_type < MAX_CHANNELS; channel_type++)
                 {

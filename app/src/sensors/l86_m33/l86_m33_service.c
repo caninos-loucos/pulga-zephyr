@@ -107,7 +107,7 @@ void receive_fix_callback(const struct device *gnss_device,
         uint8_t encoded_data[512];
         int size;
         // Encoding data to cbor
-        size = encode_data(l86_m33_data, GNSS_MODEL, CBOR,
+        size = encode_data(l86_m33_data, SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelGNSS)), GNSS_MODEL, CBOR,
                            encoded_data, sizeof(encoded_data));
         if (size >= 0)
         {

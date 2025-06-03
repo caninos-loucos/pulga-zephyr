@@ -53,7 +53,7 @@ void lora_process_data(void *channel, void *buffer, void *send_thread)
             // it waits longer to wake up the sending thread, until a package with
             // maximum payload size can be assembled
             int estimated_package_size = get_buffer_size_without_headers(pulga_buffer);
-            if (estimated_package_size < max_payload_size && estimated_package_size < 150)
+            if (estimated_package_size < max_payload_size && estimated_package_size < 200)
             {
                 LOG_DBG("CHANNEL %d - Joining more data", channel_type);
                 // Signals for the Communication Interface that processing is complete
@@ -88,8 +88,8 @@ int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum
     uint8_t encoded_data[MAX_DATA_LEN] = {0};
 
     // Encoding data to raw bytes
-    encoded_size = encode_data(data_unit.data_words, data_unit.data_type, encoding,
-                               encoded_data, sizeof(encoded_data));
+    encoded_size = encode_data(data_unit.data_words, data_unit.num_words, data_unit.data_type,
+                               encoding, encoded_data, sizeof(encoded_data));
     if (encoded_size < 0)
     {
         LOG_ERR("Could not encode data");

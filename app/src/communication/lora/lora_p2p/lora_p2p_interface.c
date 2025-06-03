@@ -150,10 +150,13 @@ void lora_p2p_send_data(void *channel, void *buffer, void *param2)
 
 #if IS_ENABLED(CONFIG_LORA_P2P_JOIN_PACKET)
 			add_item_to_package(&join_vars, encoded_data, encoded_data_word_size);
-			if(join_vars.available_package_size > 50)
+			if(join_vars.available_package_size < 80)
 			{
-				continue;
+				acquire_and_send(channel_type, join_vars.joined_data,
+								 join_vars.max_payload_size - join_vars.available_package_size);
+				reset_join_variables(&join_vars, channel_type);
 			}
+			continue;
 #endif
 
 			// Sends the packet directly if not joining

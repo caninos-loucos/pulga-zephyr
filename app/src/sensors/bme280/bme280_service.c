@@ -65,7 +65,7 @@ sample_fetch:
         uint8_t encoded_data[512];
         int size;
         // Encoding data to cbor
-        size = encode_data(bme280_data, BME280_MODEL, CBOR,
+        size = encode_data(bme280_data, SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelBME280)), BME280_MODEL, CBOR,
                            encoded_data, sizeof(encoded_data));
         if (size >= 0)
         {

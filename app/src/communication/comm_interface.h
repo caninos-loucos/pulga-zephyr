@@ -35,6 +35,7 @@ typedef struct
 {
     uint32_t data_words[MAX_32_WORDS];
     enum DataType data_type;
+    uint8_t num_words;
 } CommunicationUnit;
 
 // Semaphores to guarantee every registered channel

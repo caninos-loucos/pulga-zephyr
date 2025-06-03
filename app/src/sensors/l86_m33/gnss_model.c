@@ -19,7 +19,7 @@ static DataAPI gnss_model_api;
  */
 
 // Encodes all values of data model into a verbose string
-static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_verbose(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
@@ -49,7 +49,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 }
 
 // Encodes all values of data model into a minimalist string
-static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_minimalist(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
@@ -71,7 +71,7 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     gnss_model->real_time.century_year);
 }
 
-static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into bytes
     bytecpy(encoded_data, data_words, encoded_size);
@@ -79,7 +79,7 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
     return sizeof(SensorModelGNSS);
 }
 
-static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_cbor(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     SensorModelGNSS *gnss_model = (SensorModelGNSS *)data_words;
     struct L86_M33 zcbor_input;

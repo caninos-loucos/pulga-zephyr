@@ -60,11 +60,11 @@ static void uart_send_data(void *param0, void *param1, void *param2)
 
 #if CONFIG_ZCBOR
         // Encoding data to cbor
-        size = encode_data(data_unit.data_words, data_unit.data_type, CBOR,
+        size = encode_data(data_unit.data_words, data_unit.num_words, data_unit.data_type, CBOR,
                            encoded_data, sizeof(encoded_data));
 #else
         // Encoding data to verbose string
-        size = encode_data(data_unit.data_words, data_unit.data_type, VERBOSE,
+        size = encode_data(data_unit.data_words, data_unit.num_words, data_unit.data_type, VERBOSE,
                            encoded_data, sizeof(encoded_data));
 #endif
 

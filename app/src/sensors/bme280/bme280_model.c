@@ -16,7 +16,7 @@ static DataAPI bme280_model_api;
  */
 
 // Encodes all values of data model into a verbose string
-static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_verbose(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelBME280 *bme280_model = (SensorModelBME280 *)data_words;
@@ -35,7 +35,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 }
 
 // Encodes all values of data model into a minimal string
-static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_minimalist(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelBME280 *bme280_model = (SensorModelBME280 *)data_words;
@@ -52,7 +52,7 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     bme280_model->humidity.val2 / 10000);
 }
 
-static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into bytes
     bytecpy(encoded_data, data_words, encoded_size);
@@ -60,7 +60,7 @@ static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t 
     return sizeof(SensorModelBME280);
 }
 
-static int encode_cbor(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_cbor(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     SensorModelBME280 *bme280_model = (SensorModelBME280 *)data_words;
     uint32_t zcbor_input = bme280_model->temperature.val1 * 100 + bme280_model->temperature.val2 / 10000;

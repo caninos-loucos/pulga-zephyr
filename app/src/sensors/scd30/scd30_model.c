@@ -14,7 +14,7 @@ static DataAPI scd30_model_api;
  */
 
 // Encodes all values of data model into a verbose string
-static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_verbose(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelSCD30 *scd30_model = (SensorModelSCD30 *)data_words;
@@ -32,7 +32,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 }
 
 // Encodes all values of data model into a mininal string
-static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_minimalist(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelSCD30 *scd30_model = (SensorModelSCD30 *)data_words;
@@ -48,7 +48,7 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     scd30_model->humidity.val2 / 10000);
 }
 
-static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into bytes
     bytecpy(encoded_data, data_words, encoded_size);

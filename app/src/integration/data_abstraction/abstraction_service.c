@@ -23,30 +23,30 @@ int register_data_callbacks()
 }
 
 // Encodes data to specified format
-int encode_data(uint32_t *data_words, enum DataType data_type, enum EncodingLevel encoding,
-				uint8_t *encoded_data, size_t encoded_size)
+int encode_data(uint32_t *data_words, uint8_t data_size, enum DataType data_type,
+                enum EncodingLevel encoding, uint8_t *encoded_data, size_t encoded_size)
 {
 	// Gets correct data API corresponding to given data type
 	DataAPI *data_api = get_data_api(data_type);
 	switch (encoding)
 	{
 	case VERBOSE:
-		return data_api->encode_verbose(data_words, encoded_data, encoded_size);
+		return data_api->encode_verbose(data_words, data_size, encoded_data, encoded_size);
 		break;
 	case MINIMALIST:
-		return data_api->encode_minimalist(data_words, encoded_data, encoded_size);
+		return data_api->encode_minimalist(data_words, data_size, encoded_data, encoded_size);
 		break;
 	case RAW_BYTES:
-		return data_api->encode_raw_bytes(data_words, encoded_data, encoded_size);
+		return data_api->encode_raw_bytes(data_words, data_size, encoded_data, encoded_size);
 		break;
 	case CBOR:
 		if (!data_api->encode_cbor)
 		{
-			return data_api->encode_minimalist(data_words, encoded_data, encoded_size);
+			return data_api->encode_minimalist(data_words, data_size, encoded_data, encoded_size);
 			break;
 		}
 
-		return data_api->encode_cbor(data_words, encoded_data, encoded_size);
+		return data_api->encode_cbor(data_words, data_size, encoded_data, encoded_size);
 		break;
 	default:
 		LOG_ERR("Invalid encoding level");

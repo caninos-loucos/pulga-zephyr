@@ -14,7 +14,7 @@ static DataAPI bmi160_model_api;
  */
 
 // Encodes all values of data model into a verbose string
-static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_verbose(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelBMI160 *bmi160_model = (SensorModelBMI160 *)data_words;
@@ -40,7 +40,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 }
 
 // Encodes all values of data model into a minimalist string
-static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_minimalist(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into the model
     SensorModelBMI160 *bmi160_model = (SensorModelBMI160 *)data_words;
@@ -63,7 +63,7 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
                     bmi160_model->rotation[2].val2 / 10000);
 }
 
-static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
+static int encode_raw_bytes(uint32_t *data_words, uint8_t data_size, uint8_t *encoded_data, size_t encoded_size)
 {
     // Converts words into bytes
     bytecpy(encoded_data, data_words, encoded_size);
