@@ -11,9 +11,8 @@ LOG_MODULE_REGISTER(comm_interface, CONFIG_APP_LOG_LEVEL);
  * DEFINITIONS
  */
 
-struct k_sem data_ready_sem[MAX_CHANNELS];
 struct k_sem data_processed;
-CommunicationUnit data_unit;
+CommunicationUnit *data_unit;
 // List of registered communication APIs
 static ChannelAPI *channel_apis[MAX_CHANNELS] = {0};
 // Stack of reading buffer thread
@@ -79,17 +78,19 @@ int init_channels()
         if (channel_apis[i] != NULL)
         {
             LOG_DBG("Initializing channel %d", i);
-            error = k_sem_init(&data_ready_sem[i], 0, 1);
             if (error)
             {
                 LOG_ERR("Failed to initialize data ready semaphore: %d", error);
                 return error;
             }
-            error = channel_apis[i]->init_channel();
-            if (error)
+            if (channel_apis[i]->init_channel)
             {
-                channel_apis[i] = NULL;
-                continue;
+                error = channel_apis[i]->init_channel();
+                if (error)
+                {
+                    channel_apis[i] = NULL;
+                    continue;
+                }
             }
             registered_comm_channels++;
         }
@@ -134,22 +135,28 @@ static void read_and_notify(void *param0, void *param1, void *param2)
         while (buffer_is_empty(&app_buffer) == false)
         {
             AppChannelOptions channel_options;
-            if (get_from_buffer(&app_buffer, data_unit.data_words, &data_unit.data_type,
-                                &channel_options.value, NULL) == 0)
+            CommunicationUnit data_unit_temp = {
+                .num_words = MAX_32_WORDS,
+            };
+            if (get_from_buffer(&app_buffer, data_unit_temp.data_words, &(data_unit_temp.data_type),
+                                &channel_options.value, &(data_unit_temp.num_words)) == 0)
             {
+                data_unit = &data_unit_temp;
                 // Notifies each registered channel that a new data unit is ready
                 for (int channel_type = 0; channel_type < MAX_CHANNELS; channel_type++)
                 {
-                    if (channel_apis[channel_type] != NULL && CHANNEL_ENABLED(channel_options.value, channel_type))
+                    if (channel_apis[channel_type]
+                        && CHANNEL_ENABLED(channel_options.value, channel_type))
                     {
-                        k_sem_give(&data_ready_sem[channel_type]);
+                        channel_apis[channel_type]->enqueue_data(data_unit);
                     }
                 }
 
                 // Waits until all registered channels have processed the data unit
                 for (int channel_type = 0; channel_type < MAX_CHANNELS; channel_type++)
                 {
-                    if (channel_apis[channel_type] != NULL && CHANNEL_ENABLED(channel_options.value, channel_type))
+                    if (channel_apis[channel_type]
+                        && CHANNEL_ENABLED(channel_options.value, channel_type))
                     {
                         k_sem_take(&data_processed, K_FOREVER);
                     }

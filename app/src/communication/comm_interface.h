@@ -7,7 +7,7 @@
  * Refer to:
  * https://docs.zephyrproject.org/latest/kernel/services/threads/index.html
  */
-#define READ_BUFFER_THREAD_STACK_SIZE 1024
+#define READ_BUFFER_THREAD_STACK_SIZE 2048
 #define READ_BUFFER_THREAD_PRIORITY 5 /* preemptible */
 
 // Encoding used to map channel APIs
@@ -20,28 +20,28 @@ enum ChannelType
     MAX_CHANNELS // Total number of channels
 };
 
-// API that all communication channels must implement
-typedef struct
-{
-    // Initializes channel and starts communication
-    int (*init_channel)();
-    // Enqueues data to be sent
-    int (*enqueue_data)(uint32_t *data_words, enum DataType data_type, uint8_t num_words);
-} ChannelAPI;
-
 // Data unit that will be served to communication channels
 // will consist on the content and in the data type
 typedef struct
 {
     uint32_t data_words[MAX_32_WORDS];
     enum DataType data_type;
+    uint8_t num_words; // Number of bit words in data_words
 } CommunicationUnit;
 
+// API that all communication channels must implement
+typedef struct
+{
+    // Initializes channel and starts communication
+    int (*init_channel)();
+    // Enqueues data to be sent
+    void (*enqueue_data)(CommunicationUnit *data_unit);
+} ChannelAPI;
+
 // Semaphores to guarantee every registered channel
-// will receive and process the data unit
-extern struct k_sem data_ready_sem[MAX_CHANNELS];
+// will process the data unit
 extern struct k_sem data_processed;
-extern CommunicationUnit data_unit;
+extern CommunicationUnit *data_unit;
 
 // Initializes synchronization structures and
 // communication for all registered channels

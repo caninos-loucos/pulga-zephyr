@@ -8,9 +8,6 @@
  * Refer to:
  * https://docs.zephyrproject.org/latest/kernel/services/threads/index.html
  */
-#define LORAWAN_PROCESSING_STACK_SIZE 8192
-#define LORAWAN_PROCESSING_PRIORITY 5 /* preemptible */
-
 #define LORAWAN_SEND_THREAD_STACK_SIZE 2048
 #define LORAWAN_SEND_THREAD_PRIORITY 5 /* preemptible */
 

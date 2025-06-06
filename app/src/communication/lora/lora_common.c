@@ -12,8 +12,6 @@ LOG_MODULE_REGISTER(lora_common, CONFIG_APP_LOG_LEVEL);
  * Declarations
  */
 
-// Gets the maximum payload size for the given channel type
-static inline void get_max_payload_size(enum ChannelType channel_type, int *max_payload_size);
 // Encodes data and inserts it into the internal buffer
 static inline int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum EncodingLevel encoding);
 
@@ -21,63 +19,33 @@ static inline int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit d
  * Definitions
  */
 
-// Encoding and buffering Data thread
-void lora_process_data(void *channel, void *buffer, void *send_thread)
+int encode_and_enqueue(LoraCommonAPI *lora_api, CommunicationUnit data_unit, enum EncodingLevel encoding)
 {
-    int error;
-    enum ChannelType channel_type = (enum ChannelType)(uintptr_t)channel;
-    PulgaRingBuffer *pulga_buffer = (PulgaRingBuffer *)buffer;
-    k_tid_t *send_thread_id = (k_tid_t *)send_thread;
-    enum EncodingLevel encoding = MINIMALIST;
-
-    LOG_INF("CHANNEL %d - Processing LoRa data started", channel_type);
-    while (1)
+    int error = 0;
+    // Encodes data item to be sent and inserts the encoded data in the internal buffer
+    error = encode_and_insert(lora_api->pulga_buffer, data_unit, encoding);
+    if (error)
     {
-        // Waits for data to be ready
-        k_sem_take(&data_ready_sem[channel_type], K_FOREVER);
-        int max_payload_size;
-        get_max_payload_size(channel_type, &max_payload_size);
-
-        // Encodes data item to be sent and inserts the encoded data in the internal buffer
-        error = encode_and_insert(pulga_buffer, data_unit, encoding);
-        if (error)
-        {
-            k_sem_give(&data_processed);
-            continue;
-        }
-
-        if ((channel_type == LORAWAN && IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)) ||
-            (channel_type == LORA_P2P && IS_ENABLED(CONFIG_LORA_P2P_JOIN_PACKET)))
-        {
-            // If the application is joining packets into a larger package,
-            // it waits longer to wake up the sending thread, until a package with
-            // maximum payload size can be assembled
-            if (get_buffer_size_without_headers(pulga_buffer) < max_payload_size)
-            {
-                LOG_DBG("CHANNEL %d - Joining more data", channel_type);
-                // Signals for the Communication Interface that processing is complete
-                k_sem_give(&data_processed);
-                continue;
-            }
-        }
-        LOG_DBG("CHANNEL %d - Waking up sending thread", channel_type);
-        k_wakeup(*send_thread_id);
-        k_sem_give(&data_processed);
+        LOG_ERR("CHANNEL %d - Failed to enqueue data: %d", lora_api->channel_type, error);
+        goto return_clause;
     }
-}
-
-void get_max_payload_size(enum ChannelType channel_type, int *max_payload_size)
-{
-    *max_payload_size = MAX_DATA_LEN;
-#if defined(CONFIG_LORAWAN_JOIN_PACKET)
-    if (channel_type == LORAWAN && IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET))
+    if ((lora_api->channel_type == LORAWAN && IS_ENABLED(CONFIG_LORAWAN_JOIN_PACKET)) ||
+        (lora_api->channel_type == LORA_P2P && IS_ENABLED(CONFIG_LORA_P2P_JOIN_PACKET)))
     {
-        uint8_t unused_arg, temp_max_payload;
-        // Maximum payload size determined by datarate and region
-        lorawan_get_payload_sizes(&unused_arg, &temp_max_payload);
-        *max_payload_size = temp_max_payload;
+        // If the application is joining packets into a larger package,
+        // it waits longer to wake up the sending thread, until a package with
+        // maximum payload size can be assembled
+        if (get_buffer_size_without_headers(lora_api->pulga_buffer) < lora_api->get_max_payload_size())
+        {
+            LOG_DBG("CHANNEL %d - Joining more data", lora_api->channel_type);
+            // Signals for the Communication Interface that processing is complete
+            goto return_clause;
+        }
     }
-#endif
+    LOG_DBG("CHANNEL %d - Waking up sending thread", lora_api->channel_type);
+    k_wakeup(lora_api->send_thread_id);
+return_clause:
+    return error;
 }
 
 int encode_and_insert(PulgaRingBuffer *buffer, CommunicationUnit data_unit, enum EncodingLevel encoding)

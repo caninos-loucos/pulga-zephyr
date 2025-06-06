@@ -7,9 +7,6 @@
  * Refer to:
  * https://docs.zephyrproject.org/latest/kernel/services/threads/index.html
  */
-#define LORA_P2P_THREAD_STACK_SIZE 2048
-#define LORA_P2P_PROCESSING_PRIORITY 5 /* preemptible */
-
 #define LORA_P2P_SEND_THREAD_STACK_SIZE 2048
 #define LORA_P2P_SEND_THREAD_PRIORITY 5 /* preemptible */
 

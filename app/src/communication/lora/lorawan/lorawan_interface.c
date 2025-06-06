@@ -46,23 +46,27 @@ LOG_MODULE_REGISTER(lorawan_interface, CONFIG_APP_LOG_LEVEL);
 RING_BUF_ITEM_DECLARE(lorawan_ring_buffer, LORAWAN_BUFFER_SIZE);
 PulgaRingBuffer lorawan_buffer;
 
-// Instance of ChannelAPI for lorawan channel
-static ChannelAPI lorawan_api;
-
-// Stack of the thread that takes data read from general buffer and prepares them to send
-static K_THREAD_STACK_DEFINE(lorawan_thread_stack_area, LORAWAN_PROCESSING_STACK_SIZE);
-// Thread control block - metadata
-static struct k_thread lorawan_thread_data;
-static k_tid_t lorawan_thread_id;
 // Stack of the thread that actually sends the data via LoRaWAN
 static K_THREAD_STACK_DEFINE(lorawan_send_thread_stack_area, LORAWAN_SEND_THREAD_STACK_SIZE);
 static struct k_thread lorawan_send_thread_data;
-static k_tid_t lorawan_send_thread_id;
 
 // Initializes and starts thread to send data via LoRaWAN
 static int lorawan_init_channel();
 // Sends data via LoRaWAN
 static void lorawan_send_data(void *channel, void *buffer, void *param2);
+// Gets the maximum payload size
+static inline uint8_t get_max_payload_size();
+// Enqueues data to be sent via LoRaWAN
+static inline void enqueue_lorawan_data(CommunicationUnit *data_unit);
+
+// Instance of ChannelAPI for lorawan channel
+static ChannelAPI lorawan_channel_api;
+// Instance of LoraCommonAPI for lorawan channel
+LoraCommonAPI lorawan_common_api = {
+	.channel_type = LORAWAN,
+	.pulga_buffer = &lorawan_buffer,
+	.get_max_payload_size = get_max_payload_size,
+};
 
 /**
  * Definitions
@@ -82,26 +86,13 @@ static int lorawan_init_channel()
 		goto return_clause;
 	}
 
-	LOG_DBG("Initializing LoRaWAN processing data thread");
-	// After joining successfully, create the send thread.
-	lorawan_thread_id = k_thread_create(&lorawan_thread_data, lorawan_thread_stack_area,
-										K_THREAD_STACK_SIZEOF(lorawan_thread_stack_area),
-										lora_process_data, (void *)(uintptr_t)LORAWAN, &lorawan_buffer, &lorawan_send_thread_id,
-										LORAWAN_PROCESSING_PRIORITY, 0, K_NO_WAIT);
-	error = k_thread_name_set(lorawan_thread_id, "lorawan_process_data");
-	if (error)
-	{
-		LOG_ERR("Failed to set LoRaWAN processing data thread name: %d", error);
-		goto return_clause;
-	}
-
 	LOG_DBG("Initializing send via LoRaWAN thread");
 	// After joining successfully, create the send thread.
-	lorawan_send_thread_id = k_thread_create(&lorawan_send_thread_data, lorawan_send_thread_stack_area,
-											 K_THREAD_STACK_SIZEOF(lorawan_send_thread_stack_area),
-											 lorawan_send_data, (void *)(uintptr_t)LORAWAN, &lorawan_buffer, NULL,
-											 LORAWAN_SEND_THREAD_PRIORITY, 0, K_NO_WAIT);
-	error = k_thread_name_set(lorawan_send_thread_id, "lorawan_send_data");
+	lorawan_common_api.send_thread_id = k_thread_create(&lorawan_send_thread_data, lorawan_send_thread_stack_area,
+														K_THREAD_STACK_SIZEOF(lorawan_send_thread_stack_area),
+														lorawan_send_data, (void *)(uintptr_t)LORAWAN, &lorawan_buffer, NULL,
+														LORAWAN_SEND_THREAD_PRIORITY, 0, K_NO_WAIT);
+	error = k_thread_name_set(lorawan_common_api.send_thread_id, "lorawan_send_data");
 	if (error)
 	{
 		LOG_ERR("Failed to set send via LoRaWAN thread name: %d", error);
@@ -182,10 +173,30 @@ void lorawan_send_data(void *channel, void *buffer, void *param2)
 	}
 }
 
+static inline void enqueue_lorawan_data(CommunicationUnit *data_unit)
+{
+	int error = 0;
+	do 
+	{
+		// Encodes data and enqueues it to the LoRaWAN channel
+		error = encode_and_enqueue(&lorawan_common_api, *data_unit, MINIMALIST);
+	} while (error);
+	k_sem_give(&data_processed);
+}
+
+static inline uint8_t get_max_payload_size()
+{
+	uint8_t unused_arg, max_payload;
+	// Maximum payload size determined by datarate and region
+	lorawan_get_payload_sizes(&unused_arg, &max_payload);
+	return max_payload;
+}
+
 // Register channels to the Communication Module
 ChannelAPI *register_lorawan_callbacks()
 {
 	LOG_DBG("Initializing lorawan callbacks");
-	lorawan_api.init_channel = lorawan_init_channel;
-	return &lorawan_api;
+	lorawan_channel_api.init_channel = lorawan_init_channel;
+	lorawan_channel_api.enqueue_data = enqueue_lorawan_data;
+	return &lorawan_channel_api;
 }
