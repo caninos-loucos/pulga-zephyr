@@ -4,7 +4,7 @@
 #include <communication/comm_interface.h>
 
 // Create an internal buffer to be able to send multiple data readings in one packet
-#define LORAWAN_BUFFER_SIZE 2048
+#define LORAWAN_BUFFER_SIZE 8192
 
 // Encodes data and inserts it into the internal buffer
 int encode_and_insert(CommunicationUnit data_unit);
