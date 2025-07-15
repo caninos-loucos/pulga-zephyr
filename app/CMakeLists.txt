@@ -15,6 +15,9 @@ cmake_minimum_required(VERSION 3.13.1)
 # Uncomment to activate SCD30 shield, a CO2 concentration sensor
 # list(APPEND SHIELD scd30)
 
+# Uncomment to activate BME680 shield, a gas, humidity, pressure and temperature sensor
+list(APPEND SHIELD bme680)
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(app LANGUAGES C)
@@ -53,6 +56,12 @@ if(CONFIG_SHIELD_SCD30)
     target_sources(app PRIVATE  
                         src/sensors/scd30/scd30_model.c
                         src/sensors/scd30/scd30_service.c)
+endif()
+
+if(CONFIG_SHIELD_BME680)
+    target_sources(app PRIVATE  
+                        src/sensors/bme680/bme680_model.c
+                        src/sensors/bme680/bme680_service.c)
 endif()
 
 if(NOT CONFIG_EVENT_TIMESTAMP_NONE)

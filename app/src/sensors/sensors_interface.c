@@ -2,6 +2,7 @@
 #include <sensors/sensors_interface.h>
 #include <sensors/si1133/si1133_service.h>
 #include <sensors/bme280/bme280_service.h>
+#include <sensors/bme680/bme680_service.h>
 #include <sensors/bmi160/bmi160_service.h>
 #include <sensors/scd30/scd30_service.h>
 #include <sensors/l86_m33/l86_m33_service.h>
@@ -58,6 +59,9 @@ int register_sensors_callbacks()
 	sensor_apis[L86_M33] = register_l86_m33_callbacks();
 #endif /* CONFIG_SHIELD_PULGA_GPS */
 
+#ifdef CONFIG_SHIELD_BME680
+	sensor_apis[BME680] = register_bme680_callbacks();
+#endif /* CONFIG_SHIELD_BME680 */
 	return 0;
 }
 

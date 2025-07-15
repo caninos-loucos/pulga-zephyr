@@ -21,7 +21,7 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "Timestamp: %d; Temperature: %d.%02d°C; Pressure: %d.%02d kPa; "
+                    "Timestamp: %d; Temperature: %d.%02d oC; Pressure: %d.%02d kPa; "
                     "Humidity: %d.%02d %%RH;",
                     bme280_model->timestamp,
                     bme280_model->temperature.val1,

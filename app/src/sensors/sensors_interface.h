@@ -19,6 +19,7 @@ enum SensorType
 	SI1133,
 	SCD30,
 	L86_M33, // GNSS Sensor
+	BME680, // Air quality sensor
 	MAX_SENSORS // Total number of sensors
 };
 
