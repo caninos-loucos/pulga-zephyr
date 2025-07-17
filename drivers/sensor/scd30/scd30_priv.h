@@ -88,7 +88,6 @@ struct scd30_data {
 	float co2_ppm;
 	float temp;
 	float rel_hum;
-	struct k_sem data_ready_signal;
 	struct k_sem lock;
 	struct gpio_callback callback_data_ready;
 };

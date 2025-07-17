@@ -67,7 +67,7 @@ static scd30_callback_t registered_callback = NULL;
  * This structure is used to schedule and manage deferred work
  * for the SCD30 sensor driver.
  */
-static struct k_work work_item;
+static struct k_work data_ready_work;
 
 /**
  * @brief Global device structure pointer
@@ -78,12 +78,18 @@ static struct k_work work_item;
 const struct device *dev_global = NULL;
 
 /**
- * @brief Global sensor channel enumeration
+ * @brief Fetch a sample from the SCD30 sensor.
  *
- * This variable holds the reference to the sensor channel enumeration for the SCD30 sensor.
- * Intended to be used and acessed in any function within the driver.
+ * This function reads the CO2, temperature, and humidity data from the SCD30 sensor.
+ * It first checks if the sensor data is ready to be read, then reads the raw data
+ * from the sensor, processes it, and stores the results in the device data structure.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param chan The sensor channel to read. Only SENSOR_CHAN_ALL is supported.
+ *
+ * @return 0 if successful, negative error code otherwise.
  */
-enum sensor_channel chan_global = SENSOR_CHAN_ALL;
+static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan);
 
 /**
  * @brief Writes a command to the SCD30 sensor.
@@ -456,7 +462,7 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
  * @brief Data ready handler for the SCD30 sensor.
  *
  * This function is called when the data ready interrupt is triggered.
- * It submits a work item to process the data and signals the data ready semaphore.
+ * It submits a work item to process the data.
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param cb Pointer to the GPIO callback structure.
@@ -467,179 +473,34 @@ static void scd30_data_ready_handler(const struct device *dev, struct gpio_callb
 	ARG_UNUSED(dev);
 	ARG_UNUSED(pins);
 
-	k_work_submit(&work_item); // Triggers work schedule to be executed in due time
-
-	struct scd30_data *data = CONTAINER_OF(cb, struct scd30_data, callback_data_ready);
-
-	return k_sem_give(&data->data_ready_signal);
-}
-
-/**
- * @brief Reads a sample from the SCD30 sensor.
- *
- * This function reads the CO2, temperature, and humidity data from the SCD30 sensor.
- * It sends a command to the sensor to get the data stored in its buffer, reads the data,
- * and processes it to extract the CO2, temperature, and humidity values.
- *
- * @param dev Pointer to the device structure for the driver instance.
- * @param chan The sensor channel to read. Only SENSOR_CHAN_ALL is supported.
- *
- * @return 0 if successful, negative error code otherwise.
- */
-static int scd30_read_sample(const struct device *dev, enum sensor_channel chan)
-{
-
-	struct scd30_data *data = dev->data;
-	const struct scd30_config *cfg = dev->config;
-	int rc;
-
-	/*
-	 * Struct represensting data as received from the SCD30
-	 * each scd30_word conists of a 16 bit data word followed
-	 * by an 8 bit crc.
-	 */
-	struct scd30_rx_data
-	{
-		struct scd30_word co2_msw;
-		struct scd30_word co2_lsw;
-		struct scd30_word temp_msw;
-		struct scd30_word temp_lsw;
-		struct scd30_word humidity_msw;
-		struct scd30_word humidity_lsw;
-	} raw_rx_data;
-
-	/*
-	 * Struct representing the received data from the SCD30
-	 * in big endian order with the CRC's removed.
-	 */
-	struct rx_data
-	{
-		uint8_t co2_be[sizeof(float)];
-		uint8_t temp_be[sizeof(float)];
-		uint8_t humidity_be[sizeof(float)];
-	} rx_data;
-
-	LOG_DBG("SCD30 data ready\n");
-
-	// Checks if selected channel is valid
-	if (chan != SENSOR_CHAN_ALL)
-	{
-		return -ENOTSUP;
-	}
-
-	// Sends command to sensor to get data stored in its buffer
-	rc = scd30_write_command(dev, SCD30_CMD_READ_MEASUREMENT);
-	if (rc != 0)
-	{
-		LOG_DBG("Failed to send command. (rc = %d)", rc);
-		return rc;
-	}
-
-	/* delay for 3 msec as per datasheet. */
-	k_sleep(K_MSEC(3));
-
-	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&raw_rx_data, sizeof(raw_rx_data));
-	if (rc != 0)
-	{
-		LOG_DBG("Failed to read data. (rc = %d)", rc);
-		return rc;
-	}
-
-	/* C02 data */
-	rc = scd30_fill_data_buf(raw_rx_data.co2_msw, &rx_data.co2_be[0]);
-	if (rc != 0)
-	{
-		return rc;
-	}
-	rc = scd30_fill_data_buf(raw_rx_data.co2_lsw, &rx_data.co2_be[SCD30_WORD_SIZE]);
-	if (rc != 0)
-	{
-		return rc;
-	}
-
-	/* Temperature data */
-	rc = scd30_fill_data_buf(raw_rx_data.temp_msw, &rx_data.temp_be[0]);
-	if (rc != 0)
-	{
-		return rc;
-	}
-	rc = scd30_fill_data_buf(raw_rx_data.temp_lsw, &rx_data.temp_be[SCD30_WORD_SIZE]);
-	if (rc != 0)
-	{
-		return rc;
-	}
-
-	/* Relative humidity */
-	rc = scd30_fill_data_buf(raw_rx_data.humidity_msw, &rx_data.humidity_be[0]);
-	if (rc != 0)
-	{
-		return rc;
-	}
-	rc = scd30_fill_data_buf(raw_rx_data.humidity_lsw, &rx_data.humidity_be[SCD30_WORD_SIZE]);
-	if (rc != 0)
-	{
-		return rc;
-	}
-
-	data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
-	data->temp = scd30_bytes_to_float(rx_data.temp_be);
-	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
-
-	return 0;
-}
-
-/**
- * @brief Perform a read operation from the SCD30 sensor.
- *
- * This function reads the sensor data from the SCD30 sensor and calls the
- * registered application callback if it is set.
- *
- * @param dev Pointer to the device structure for the driver instance.
- * @param chan The sensor channel to read. Only SENSOR_CHAN_ALL is supported.
- *
- * @return 0 if successful, or a negative error code on failure.
- */
-static int scd30_perform_read(const struct device *dev, enum sensor_channel chan)
-{
-
-	int rc = 0;
-
-	rc = scd30_read_sample(dev, chan);
-	if (rc != 0)
-	{
-		LOG_ERR("%s: reading sample failed", dev->name);
-		return rc;
-	}
-
-	// Call application callback if registered
-	if (registered_callback)
-	{
-		registered_callback();
-	}
-
-	return rc;
+	k_work_submit(&data_ready_work); // Triggers work schedule to be executed in due time
 }
 
 /**
  * @brief Trigger application callback function.
  *
- * This function is called to perform a sensor read operation.
- * It uses global variables `dev_global` and `chan_global` to perform the read.
+ * This function is called to perform a sensor read operation and calls the
+ * registered application callback if it is set.
+ * It uses global variable `dev_global` to perform the read.
  * If the read operation fails, an error message is logged.
  *
  * @param work Pointer to the work structure (unused).
  */
 void trigger_application_callback(struct k_work *work)
 {
-
 	ARG_UNUSED(work);
-
 	int rc = 0;
 
-	rc = scd30_perform_read(dev_global, chan_global);
+	rc = scd30_sample_fetch(dev_global, SENSOR_CHAN_ALL);
 	if (rc != 0)
 	{
 		LOG_ERR("Error at reading");
+	}
+
+	// Call application callback if registered
+	if (registered_callback)
+	{
+		registered_callback();
 	}
 }
 
@@ -661,7 +522,7 @@ void trigger_application_callback(struct k_work *work)
 void scd30_register_callback(scd30_callback_t cb)
 {
 	registered_callback = cb;
-	k_work_init(&work_item, trigger_application_callback);
+	k_work_init(&data_ready_work, trigger_application_callback);
 
 	const struct scd30_config *cfg = dev_global->config;
 	struct scd30_data *data = dev_global->data;
@@ -699,33 +560,20 @@ void scd30_register_callback(scd30_callback_t cb)
 	// This forces the first reading. For some reason, it is needed to signalize a
 	// change in the data ready signal (that comes from the physical pin). If not done,
 	// the interrupt do not work properly.
-	rc = scd30_read_sample(dev_global, chan_global);
+	rc = scd30_sample_fetch(dev_global, SENSOR_CHAN_ALL);
 }
 
-/**
- * @brief Fetch a sample from the SCD30 sensor.
- *
- * This function reads the CO2, temperature, and humidity data from the SCD30 sensor.
- * It first checks if the sensor data is ready to be read, then reads the raw data
- * from the sensor, processes it, and stores the results in the device data structure.
- *
- * @param dev Pointer to the device structure for the driver instance.
- * @param chan The sensor channel to fetch. Must be SENSOR_CHAN_ALL.
- *
- * @return 0 if successful, negative error code otherwise.
- */
 static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
-
 	uint16_t data_ready;
 	struct scd30_data *data = dev->data;
 	const struct scd30_config *cfg = dev->config;
-	int rc;
+	int rc = 0;
 
 	/*
 	 * Struct represensting data as received from the SCD30
 	 * each scd30_word conists of a 16 bit data word followed
-	 * by an 8 bit crc
+	 * by an 8 bit crc.
 	 */
 	struct scd30_rx_data
 	{
@@ -747,35 +595,35 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		uint8_t temp_be[sizeof(float)];
 		uint8_t humidity_be[sizeof(float)];
 	} rx_data;
-
+	
+	// Checks if selected channel is valid
 	if (chan != SENSOR_CHAN_ALL)
 	{
 		return -ENOTSUP;
 	}
-
+	
 	rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
 	if (rc != 0)
 	{
-		return rc;
+		goto return_clause;
 	}
-
 	while (!data_ready)
 	{
 		rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
 
 		if (rc != 0)
 		{
-			return rc;
+			goto return_clause;
 		}
-
 		k_sleep(K_MSEC(3));
 	}
+	LOG_DBG("SCD30 data ready");
 
 	rc = scd30_write_command(dev, SCD30_CMD_READ_MEASUREMENT);
 	if (rc != 0)
 	{
 		LOG_DBG("Failed to send command. (rc = %d)", rc);
-		return rc;
+		goto return_clause;
 	}
 
 	/* delay for 3 msec as per datasheet. */
@@ -785,50 +633,55 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 	if (rc != 0)
 	{
 		LOG_DBG("Failed to read data. (rc = %d)", rc);
-		return rc;
+		goto return_clause;
 	}
 
 	/* C02 data */
 	rc = scd30_fill_data_buf(raw_rx_data.co2_msw, &rx_data.co2_be[0]);
 	if (rc != 0)
 	{
-		return rc;
+		goto return_clause;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.co2_lsw, &rx_data.co2_be[SCD30_WORD_SIZE]);
 	if (rc != 0)
 	{
-		return rc;
+		goto return_clause;
 	}
 
 	/* temperature data */
 	rc = scd30_fill_data_buf(raw_rx_data.temp_msw, &rx_data.temp_be[0]);
 	if (rc != 0)
 	{
-		return rc;
+		goto return_clause;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.temp_lsw, &rx_data.temp_be[SCD30_WORD_SIZE]);
 	if (rc != 0)
 	{
-		return rc;
+		goto return_clause;
 	}
 
 	/* relative humidity */
 	rc = scd30_fill_data_buf(raw_rx_data.humidity_msw, &rx_data.humidity_be[0]);
 	if (rc != 0)
 	{
-		return rc;
+		goto return_clause;
 	}
 	rc = scd30_fill_data_buf(raw_rx_data.humidity_lsw, &rx_data.humidity_be[SCD30_WORD_SIZE]);
 	if (rc != 0)
 	{
-		return rc;
+		goto return_clause;
 	}
 
 	data->co2_ppm = scd30_bytes_to_float(rx_data.co2_be);
 	data->temp = scd30_bytes_to_float(rx_data.temp_be);
 	data->rel_hum = scd30_bytes_to_float(rx_data.humidity_be);
 
-	return 0;
+return_clause:
+	if (rc != 0)
+	{
+		LOG_ERR("%s: reading sample failed", dev->name);
+	}
+	return rc;
 }
 
 // Sensor driver API structure for the SCD30 sensor
@@ -851,7 +704,6 @@ static int scd30_init(const struct device *dev)
 
 	data->dev = dev;
 
-	k_sem_init(&data->data_ready_signal, 0, 1);
 	k_sem_init(&data->lock, 0, 1);
 
 	if (!device_is_ready(cfg->bus.bus))
