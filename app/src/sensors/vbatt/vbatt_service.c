@@ -187,7 +187,7 @@ static void read_sensor_values()
         LOG_ERR("fetch sample from \"%s\" failed: %d", divider_data.adc->name, rc);
     }
 
-    vbatt_model.millivolts = rc;
+    vbatt_model.millivolts.val1 = rc;
 #ifndef CONFIG_EVENT_TIMESTAMP_NONE
     vbatt_model.timestamp = get_current_timestamp();
 #endif /* CONFIG_EVENT_TIMESTAMP_NONE */

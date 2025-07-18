@@ -1,5 +1,5 @@
-#ifndef vbatt_SERVICE_H
-#define vbatt_SERVICE_H
+#ifndef VBATT_SERVICE_H
+#define VBATT_SERVICE_H
 
 #include <zephyr/drivers/sensor.h>
 #include <sensors/sensors_interface.h>
@@ -7,7 +7,7 @@
 
 typedef struct
 {
-    int millivolts;
+    struct sensor_value millivolts;
     uint32_t timestamp;
 } SensorModelVbatt;
 
