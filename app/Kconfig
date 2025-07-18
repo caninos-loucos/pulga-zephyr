@@ -34,7 +34,7 @@ config BUFFER_WORDS
 	
 config VBATT
 	bool "Measure battery voltage through the ADC"
-	default y
+	default n
 	select ADC
 	depends on DT_HAS_VOLTAGE_DIVIDER_ENABLED
 
