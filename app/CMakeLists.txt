@@ -64,3 +64,9 @@ if(CONFIG_SHELL)
     target_sources(app PRIVATE
                         src/communication/shell_commands.c)
 endif()
+
+if(CONFIG_VBATT)
+    target_sources(app PRIVATE
+                        src/sensors/vbatt/vbatt_model.c
+                        src/sensors/vbatt/vbatt_service.c)
+endif()
