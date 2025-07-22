@@ -112,6 +112,7 @@ return_clause:
 	return;
 }
 
+int buffered_items = 0;
 // Encoding and buffering Data thread
 void lorawan_process_data(void *param0, void *param1, void *param2)
 {
@@ -200,6 +201,7 @@ void lorawan_send_data(void *param0, void *param1, void *param2)
 			{
 				continue;
 			}
+			buffered_items--;
 			add_item_to_package(encoded_data_word_size, max_payload_size,
 								&available_package_size, joined_data,
 								&insert_index, encoded_data);

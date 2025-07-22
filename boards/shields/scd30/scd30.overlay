@@ -38,5 +38,6 @@
 		status = "okay";
 		sample-period = <2>; 
 		//zephyr,deferred-init;
+		rdy-gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;  /* Pino de RDY */
 	};
 };
