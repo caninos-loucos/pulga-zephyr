@@ -54,30 +54,6 @@
 LOG_MODULE_REGISTER(SCD30, CONFIG_SENSOR_LOG_LEVEL);
 
 /**
- * @brief Callback function pointer for SCD30 sensor events.
- *
- * This variable holds the callback function that will be called
- * when an event occurs in the SCD30 sensor.
- */
-static scd30_callback_t registered_callback = NULL;
-
-/**
- * @brief Work item structure for deferred processing.
- *
- * This structure is used to schedule and manage deferred work
- * for the SCD30 sensor driver.
- */
-static struct k_work data_ready_work;
-
-/**
- * @brief Global device structure pointer
- *
- * This pointer holds the reference to the device structure for the SCD30 sensor.
- * Intended to be used and acessed in any function within the driver.
- */
-const struct device *dev_global = NULL;
-
-/**
  * @brief Fetch a sample from the SCD30 sensor.
  *
  * This function reads the CO2, temperature, and humidity data from the SCD30 sensor.
@@ -464,16 +440,16 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
  * This function is called when the data ready interrupt is triggered.
  * It submits a work item to process the data.
  *
- * @param dev Pointer to the device structure for the driver instance.
+ * @param dev Pointer to the device structure that represents the gpio that caused the interruption.
  * @param cb Pointer to the GPIO callback structure.
  * @param pins The pin mask for the GPIO interrupt.
  */
 static void scd30_data_ready_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-	ARG_UNUSED(dev);
 	ARG_UNUSED(pins);
 
-	k_work_submit(&data_ready_work); // Triggers work schedule to be executed in due time
+	struct scd30_data *data = CONTAINER_OF(cb, struct scd30_data, callback_data_ready);
+	k_work_submit(&data->data_ready_work); // Triggers work schedule to be executed in due time
 }
 
 /**
@@ -481,7 +457,6 @@ static void scd30_data_ready_handler(const struct device *dev, struct gpio_callb
  *
  * This function is called to perform a sensor read operation and calls the
  * registered application callback if it is set.
- * It uses global variable `dev_global` to perform the read.
  * If the read operation fails, an error message is logged.
  *
  * @param work Pointer to the work structure (unused).
@@ -491,16 +466,17 @@ void trigger_application_callback(struct k_work *work)
 	ARG_UNUSED(work);
 	int rc = 0;
 
-	rc = scd30_sample_fetch(dev_global, SENSOR_CHAN_ALL);
+	struct scd30_data *data = CONTAINER_OF(work, struct scd30_data, data_ready_work);
+	rc = scd30_sample_fetch(data->dev, SENSOR_CHAN_ALL);
 	if (rc != 0)
 	{
 		LOG_ERR("Error at reading");
 	}
 
 	// Call application callback if registered
-	if (registered_callback)
+	if (data->registered_callback)
 	{
-		registered_callback();
+		data->registered_callback();
 	}
 }
 
@@ -513,20 +489,18 @@ void trigger_application_callback(struct k_work *work)
  *
  * @param cb The callback function to register.
  *
- * @note This function assumes that the global device structure `dev_global`
- *       is already initialized and points to the correct device configuration
- *       and data structures.
+ * @param dev Pointer to the device structure for the driver instance.
  *
  * @retval None
  */
-void scd30_register_callback(scd30_callback_t cb)
+void scd30_register_callback(const struct device *dev, scd30_callback_t cb)
 {
-	registered_callback = cb;
-	k_work_init(&data_ready_work, trigger_application_callback);
-
-	const struct scd30_config *cfg = dev_global->config;
-	struct scd30_data *data = dev_global->data;
+	const struct scd30_config *cfg = dev->config;
+	struct scd30_data *data = dev->data;
 	int rc = 0;
+
+	data->registered_callback = cb;
+	k_work_init(&data->data_ready_work, trigger_application_callback);
 
 	if (!gpio_is_ready_dt(&cfg->rdy_gpios))
 	{
@@ -538,14 +512,14 @@ void scd30_register_callback(scd30_callback_t cb)
 	rc = gpio_pin_configure_dt(&cfg->rdy_gpios, GPIO_INPUT);
 	if (rc != 0)
 	{
-		LOG_ERR("%s: failed to initialize GPIO for data ready", dev_global->name);
+		LOG_ERR("%s: failed to initialize GPIO for data ready", dev->name);
 		return;
 	}
 
 	rc = gpio_pin_interrupt_configure_dt(&cfg->rdy_gpios, GPIO_INT_EDGE_TO_ACTIVE);
 	if (rc != 0)
 	{
-		LOG_ERR("%s: failed to configure data ready interrupt", dev_global->name);
+		LOG_ERR("%s: failed to configure data ready interrupt", dev->name);
 		return;
 	}
 
@@ -553,14 +527,14 @@ void scd30_register_callback(scd30_callback_t cb)
 	rc = gpio_add_callback(cfg->rdy_gpios.port, &data->callback_data_ready);
 	if (rc != 0)
 	{
-		LOG_ERR("%s: failed to add data ready callback", dev_global->name);
+		LOG_ERR("%s: failed to add data ready callback", dev->name);
 		return;
 	}
 
 	// This forces the first reading. For some reason, it is needed to signalize a
 	// change in the data ready signal (that comes from the physical pin). If not done,
 	// the interrupt do not work properly.
-	rc = scd30_sample_fetch(dev_global, SENSOR_CHAN_ALL);
+	rc = scd30_sample_fetch(dev, SENSOR_CHAN_ALL);
 }
 
 static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan)
@@ -595,13 +569,13 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		uint8_t temp_be[sizeof(float)];
 		uint8_t humidity_be[sizeof(float)];
 	} rx_data;
-	
+
 	// Checks if selected channel is valid
 	if (chan != SENSOR_CHAN_ALL)
 	{
 		return -ENOTSUP;
 	}
-	
+
 	rc = scd30_read_register(dev, SCD30_CMD_GET_DATA_READY, &data_ready);
 	if (rc != 0)
 	{
@@ -699,8 +673,6 @@ static int scd30_init(const struct device *dev)
 	const struct scd30_config *cfg = dev->config;
 	struct scd30_data *data = dev->data;
 	int rc = 0;
-
-	dev_global = dev;
 
 	data->dev = dev;
 

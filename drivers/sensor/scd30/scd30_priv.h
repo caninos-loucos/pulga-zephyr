@@ -36,7 +36,8 @@
 #define _SCD30_PRIV_H_
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include <zephyr/device.h>
@@ -75,12 +76,14 @@ extern "C" {
 #define SCD30_MAX_BUFFER_WORDS 24U
 #define SCD30_CMD_SINGLE_WORD_BUF_LEN (SCD30_COMMAND_SIZE + SCD30_WORD_SIZE + SCD30_CRC8_LEN)
 
-struct scd30_config {
+struct scd30_config
+{
 	const struct i2c_dt_spec bus;
 	const struct gpio_dt_spec rdy_gpios;
 };
 
-struct scd30_data {
+struct scd30_data
+{
 	const struct device *dev;
 	uint16_t error;
 	uint16_t sample_time;
@@ -90,9 +93,24 @@ struct scd30_data {
 	float rel_hum;
 	struct k_sem lock;
 	struct gpio_callback callback_data_ready;
+	/**
+	 * @brief Work item structure for deferred processing.
+	 *
+	 * This structure is used to schedule and manage deferred work
+	 * for the SCD30 sensor driver.
+	 */
+	struct k_work data_ready_work;
+	/**
+	 * @brief Callback function pointer for SCD30 sensor events.
+	 *
+	 * This variable holds the callback function that will be called
+	 * when an event occurs in the SCD30 sensor.
+	 */
+	scd30_callback_t registered_callback;
 };
 
-struct scd30_word {
+struct scd30_word
+{
 	uint8_t word[SCD30_WORD_SIZE];
 	uint8_t crc;
 };

@@ -73,7 +73,7 @@ static int init_sensor()
     }
 
     // Registers desired application callback into the scd30 driver api
-    scd30_register_callback(store_data_callback);
+    scd30_register_callback(scd30, store_data_callback);
 
     // Try to set the application sampling time
     set_valid_sample_time(get_sampling_interval());

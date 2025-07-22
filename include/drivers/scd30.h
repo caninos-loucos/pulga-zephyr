@@ -12,10 +12,11 @@
 /* Callback strutucture to be shared in application and driver */
 typedef void (*scd30_callback_t)(void);
 
-void scd30_register_callback(scd30_callback_t cb);
+void scd30_register_callback(const struct device *dev, scd30_callback_t cb);
 
 /* Additional custom attributes */
-enum scd30_attribute {
+enum scd30_attribute
+{
 	/**
 	 * Sensor sampling period, i.e. how many seconds there are between
 	 * two subsequent measurements.
