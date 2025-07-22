@@ -1,3 +1,7 @@
+/**
+* This piece of code activates the sensors internal to the board,
+* connected to the CPU by I2C0 
+*/
 &i2c0 {
 
 	/*Visible light, Infrared and UV Sensor*/

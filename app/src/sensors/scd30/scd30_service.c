@@ -1,9 +1,9 @@
+#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 #include <sensors/scd30/scd30_service.h>
-#include <math.h>
 
 LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
@@ -58,12 +58,12 @@ static int init_sensor()
     if (!scd30)
     {
         LOG_ERR("SDC30 not declared at device tree");
-        return -1;
+        return -ENODEV;
     }
     else if (!device_is_ready(scd30))
     {
         LOG_ERR("device \"%s\" is not ready", scd30->name);
-        return -2;
+        return -EAGAIN;
     }
     error = k_sem_init(&store_data, 0, 1);
     if (error)
@@ -89,7 +89,7 @@ inline int set_valid_sample_time(int raw_sample_time)
     raw_sample_time /= 1000;
 
     // Clip the value using mathemagical properties
-    period.val1 = (int)fmax(2, fmin(raw_sample_time, 1800));
+    period.val1 = CLAMP(raw_sample_time, 2, 1800);
     if (period.val1 != raw_sample_time)
     {
         LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",
@@ -109,7 +109,6 @@ inline int set_valid_sample_time(int raw_sample_time)
 
 void store_data_callback()
 {
-
     // Returns if it's not supposed to save data to buffer
     if (k_sem_take(&store_data, K_NO_WAIT))
     {
@@ -128,9 +127,12 @@ void store_data_callback()
                        &scd30_model.temperature);
     sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
                        &scd30_model.humidity);
+#ifndef CONFIG_EVENT_TIMESTAMP_NONE
+    scd30_model.timestamp = get_current_timestamp();
+#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
     memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
 
-    if (insert_in_buffer(scd30_data, SCD30_MODEL, error) != 0)
+    if (insert_in_buffer(&app_buffer, scd30_data, SCD30_MODEL, error, SCD30_MODEL_WORDS) != 0)
     {
         LOG_ERR("Failed to insert data in ring buffer.");
     }
@@ -142,25 +144,34 @@ static inline void read_sensor_values()
     k_sem_give(&store_data);
 
     /**
-     *  Note: Uncomment code bellow if you want the application to perform consecutive readings.
+     *  Note: Uncomment code bellow and comment the line above if you want the application
+     *  to perform consecutive readings.
      *  Otherwise, it will wait the interrupt routine in driver, associated with the sampling
      *  rate configured in the sensor.
      */
 
-    // LOG_DBG("Reading SCD30");
+//     LOG_DBG("Reading SCD30");
 
-    // SensorModelSCD30 scd30_model;
-    // uint32_t scd30_data[MAX_32_WORDS];
-    // int error = 0;
+//     SensorModelSCD30 scd30_model;
+//     uint32_t scd30_data[MAX_32_WORDS];
+//     int error = 0;
 
-    // error = sensor_sample_fetch(scd30);
-    // if (!error)
-    // {
-    //     k_sem_give(&store_data);
-    //     store_data_callback();
-    // }
-    // else
-    //     LOG_ERR("fetch_sample failed: %d", error);
+// sample_fetch:
+//     error = sensor_sample_fetch(scd30);
+//     if (!error)
+//     {
+//         k_sem_give(&store_data);
+//         store_data_callback();
+//     }
+//     else if (error == -EAGAIN)
+//     {
+//         LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
+//                 scd30->name, error);
+//         goto sample_fetch;
+//     }
+//     else
+//         LOG_ERR("fetch sample from \"%s\" failed: %d",
+//                 scd30->name, error);
 }
 
 // Register SCD30 sensor callbacks

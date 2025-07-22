@@ -2,15 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 manifest:
-  self:
-    west-commands: scripts/west-commands.yml
 
   remotes:
     - name: zephyrproject-rtos
       url-base: https://github.com/zephyrproject-rtos
     
     - name: caninos
-      url-base: https://github.com/anacforcelli
+      url-base: https://github.com/caninos-loucos
 
   projects:
     - name: zephyr
