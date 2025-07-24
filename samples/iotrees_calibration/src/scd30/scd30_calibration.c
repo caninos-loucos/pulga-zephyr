@@ -93,7 +93,7 @@ int enable_scd30_low_power_mode()
         return error;
     }
 
-    // Set the sample time to 5 seconds
+    // Set the sample time
     error = set_valid_sample_time(SCD30_SAMPLING_RATE);
     if (error)
     {
@@ -166,6 +166,8 @@ static inline int set_valid_sample_time(int raw_sample_time)
         return error;
     }
 
+    LOG_DBG("SCD30 sample time set to %d seconds", period.val1);
+
     return 0;
 }
 
@@ -187,7 +189,7 @@ static inline void force_calibration(struct k_work *work)
         }
         if (calibration_reference.val1 == SCD30_CO2_REFERENCE)
         {
-            LOG_INF("SCD30 CO2 reference already set to %d ppm",
+            LOG_INF("SCD30 CO2 reference set to %d ppm",
                     SCD30_CO2_REFERENCE);
             return;
         }

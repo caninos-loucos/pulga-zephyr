@@ -180,6 +180,8 @@ static int scd30_read_register(const struct device *dev, uint16_t reg, uint16_t 
 		return rc;
 	}
 
+	k_sleep(K_MSEC(3)); // Wait for the sensor to process the command
+
 	// Read the response from the sensor
 	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&rx_word, sizeof(rx_word));
 	if (rc != 0)
@@ -271,7 +273,7 @@ static int scd30_get_sample_time(const struct device *dev)
  * @brief Retrieves the automatic self-calibration status.
  *
  * This function reads the automatic self-calibration status from the SCD30 sensor
- * 
+ *
  * @param dev Pointer to the device structure for the driver instance.
  * @param enabled Pointer to a sensor_value structure where the status will be stored.
  * @return 0 if successful, or a negative error code on failure.
@@ -295,7 +297,7 @@ static int scd30_get_auto_calibration(const struct device *dev, struct sensor_va
 
 /**
  * @brief Retrieves the CO2 reference value for calibration.
- * 
+ *
  * @param dev Pointer to the device structure for the driver instance.
  * @param co2_reference Pointer to a sensor_value structure where the CO2 reference value will be stored.
  * @return 0 if successful, or a negative error code on failure.
@@ -322,9 +324,8 @@ static int scd30_get_co2_reference(const struct device *dev, struct sensor_value
  *
  * This function sets the sample time for the SCD30 sensor, ensuring that the
  * provided sample time is within the valid range defined by SCD30_MIN_SAMPLE_TIME
- * and SCD30_MAX_SAMPLE_TIME. If the sample time is valid, it stops the periodic
- * measurement, updates the measurement interval, and restarts the periodic
- * measurement with the default ambient pressure.
+ * and SCD30_MAX_SAMPLE_TIME. If the sample time is valid and different from the 
+ * one configured in the chip, the driver updates the measurement interval.
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param sample_time Desired sample time in seconds.
@@ -341,9 +342,17 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 		return -EINVAL;
 	}
 
-	rc = scd30_write_command(dev, SCD30_CMD_STOP_PERIODIC_MEASUREMENT);
+	// Avoid writing in the register if the sample time is already set because it
+	// can interfere with the sensor accuracy. Changing the sample time requires
+	// the recalibration of the sensor.
+	rc = scd30_get_sample_time(dev);
 	if (rc != 0)
 	{
+		return rc;
+	}
+	if (data->sample_time == sample_time)
+	{
+		LOG_DBG("Sample time already set to %d seconds", sample_time);
 		return rc;
 	}
 
@@ -352,11 +361,8 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 	{
 		return rc;
 	}
-
 	data->sample_time = sample_time;
-
-	return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT,
-								SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
+	return 0;
 }
 
 /**
@@ -657,7 +663,6 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		{
 			goto return_clause;
 		}
-		k_sleep(K_MSEC(3));
 	}
 	LOG_DBG("SCD30 data ready");
 
@@ -755,14 +760,7 @@ static int scd30_init(const struct device *dev)
 	// Really ugly workaround to make I2C1 work at 50KHz
 	((NRF_TWIM_Type *)NRF_TWIM1_BASE)->FREQUENCY = 0x00500000UL;
 
-	rc = scd30_set_sample_time(dev, data->sample_time);
-	if (rc != 0)
-	{
-		LOG_WRN("Failed to set sample period. Using period stored of device");
-		/* Try to read sample time from sensor to reflect actual sample period */
-		rc = scd30_get_sample_time(dev);
-	}
-
+	rc = scd30_get_sample_time(dev);
 	LOG_DBG("Sample time: %d", data->sample_time);
 
 	LOG_DBG("Starting periodic measurements");
