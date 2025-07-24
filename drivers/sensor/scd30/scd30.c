@@ -268,6 +268,56 @@ static int scd30_get_sample_time(const struct device *dev)
 }
 
 /**
+ * @brief Retrieves the automatic self-calibration status.
+ *
+ * This function reads the automatic self-calibration status from the SCD30 sensor
+ * 
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param enabled Pointer to a sensor_value structure where the status will be stored.
+ * @return 0 if successful, or a negative error code on failure.
+ */
+static int scd30_get_auto_calibration(const struct device *dev, struct sensor_value *enabled)
+{
+	uint16_t auto_self_calibration;
+	int rc;
+
+	rc = scd30_read_register(dev, SCD30_CMD_AUTO_SELF_CALIBRATION, &auto_self_calibration);
+	if (rc != 0)
+	{
+		return rc;
+	}
+
+	enabled->val1 = (auto_self_calibration != 0) ? 1 : 0;
+	enabled->val2 = 0;
+
+	return 0;
+}
+
+/**
+ * @brief Retrieves the CO2 reference value for calibration.
+ * 
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param co2_reference Pointer to a sensor_value structure where the CO2 reference value will be stored.
+ * @return 0 if successful, or a negative error code on failure.
+ */
+static int scd30_get_co2_reference(const struct device *dev, struct sensor_value *co2_reference)
+{
+	uint16_t calibration_reference;
+	int rc;
+
+	rc = scd30_read_register(dev, SCD30_CMD_SET_FORCED_RECALIBRATION, &calibration_reference);
+	if (rc != 0)
+	{
+		return rc;
+	}
+
+	co2_reference->val1 = calibration_reference;
+	co2_reference->val2 = 0;
+
+	return 0;
+}
+
+/**
  * @brief Sets the sample time for the SCD30 sensor.
  *
  * This function sets the sample time for the SCD30 sensor, ensuring that the
@@ -373,7 +423,7 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 		return -ENOTSUP;
 	}
 
-	switch (attr)
+	switch ((uint16_t)attr)
 	{
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 	{
@@ -387,6 +437,14 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 		val->val1 = data->sample_time;
 		val->val2 = 0;
 		return 0;
+	}
+	case SCD30_SENSOR_ATTR_AUTO_SELF_CALIBRATION:
+	{
+		return scd30_get_auto_calibration(dev, val);
+	}
+	case SCD30_SENSOR_ATTR_FORCED_RECALIBRATION:
+	{
+		return scd30_get_co2_reference(dev, val);
 	}
 
 	default:
@@ -416,7 +474,7 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 		return -ENOTSUP;
 	}
 
-	switch (attr)
+	switch ((uint16_t)attr)
 	{
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 	{
@@ -428,6 +486,16 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 	case SCD30_SENSOR_ATTR_SAMPLING_PERIOD:
 	{
 		return scd30_set_sample_time(dev, (uint16_t)val->val1);
+	}
+	case SCD30_SENSOR_ATTR_AUTO_SELF_CALIBRATION:
+	{
+		uint16_t auto_self_calibration = (val->val1 == 0) ? 0 : 1;
+		return scd30_write_register(dev, SCD30_CMD_AUTO_SELF_CALIBRATION, auto_self_calibration);
+	}
+	case SCD30_SENSOR_ATTR_FORCED_RECALIBRATION:
+	{
+		uint16_t co2_reference = val->val1;
+		return scd30_write_register(dev, SCD30_CMD_SET_FORCED_RECALIBRATION, co2_reference);
 	}
 	default:
 		return -ENOTSUP;
