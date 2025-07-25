@@ -346,6 +346,32 @@ static int scd30_get_temperature_offset(const struct device *dev,
 }
 
 /**
+ * @brief Retrieves the pressure offset for the SCD30 sensor.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param pressure_offset Pointer to a sensor_value structure where the pressure offset 
+ * will be stored in degrees mBar (kPa * 10).
+ * @return 0 if successful, or a negative error code on failure.
+ */
+static int scd30_get_pressure_offset(const struct device *dev, 
+	struct sensor_value *pressure_offset)
+{
+	uint16_t pressure_offset_raw;
+	int rc;
+
+	rc = scd30_read_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, &pressure_offset_raw);
+	if (rc != 0)
+	{
+		return rc;
+	}
+
+	pressure_offset->val1 = pressure_offset_raw;
+	pressure_offset->val2 = 0;
+
+	return 0;
+}
+
+/**
  * @brief Sets the sample time for the SCD30 sensor.
  *
  * This function sets the sample time for the SCD30 sensor, ensuring that the
@@ -483,7 +509,10 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 	{
 		return scd30_get_temperature_offset(dev, val);
 	}
-
+	case SCD30_SENSOR_ATTR_PRESSURE:
+	{
+		return scd30_get_pressure_offset(dev, val);
+	}
 	default:
 		return -ENOTSUP;
 	}
@@ -538,6 +567,11 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 	{
 		uint16_t temperature_offset = val->val1;
 		return scd30_write_register(dev, SCD30_CMD_SET_TEMPERATURE_OFFSET, temperature_offset);
+	}
+	case SCD30_SENSOR_ATTR_PRESSURE:
+	{
+		uint16_t pressure_offset = val->val1;
+		return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, pressure_offset);
 	}
 	default:
 		return -ENOTSUP;

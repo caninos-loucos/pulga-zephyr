@@ -28,8 +28,6 @@
 */
 #define SCD30_SAMPLING_RATE 5000 // 5 seconds
 #define SCD30_CO2_REFERENCE 410 // Reference CO2 level for calibration in ppm
-#define SCD30_TEMPERATURE_OFFSET 0.0 // Temperature offset in degrees Celsius
-#define SCD30_PRESSURE 1013.25 // Pressure in hPa for calibration
 
 typedef struct
 {

@@ -253,14 +253,14 @@ static inline void set_environment_offsets(struct k_work *work)
         return;
     }
 
-    // // Set the pressure offset
-    // error = set_pressure_offset(environment_mean_values.pressure);
-    // if (error)
-    // {
-    //     LOG_ERR("Failed to set pressure offset: %d", error);
-    //     k_work_schedule(&trigger_environment_offset_work, K_NO_WAIT);
-    //     return;
-    // }
+    // Set the pressure offset
+    error = set_pressure_offset(environment_mean_values.pressure);
+    if (error)
+    {
+        LOG_ERR("Failed to set pressure offset: %d", error);
+        k_work_schedule(&trigger_environment_offset_work, K_NO_WAIT);
+        return;
+    }
     LOG_DBG("SCD30 environment offsets set successfully");
 }
 
@@ -300,6 +300,41 @@ static inline int set_temperature_offset(float temperature_reference)
     }
 
     LOG_DBG("New SCD30 temperature offset set.");
+    return 0;
+}
+
+static inline int set_pressure_offset(float pressure_reference)
+{
+    int error = 0;
+    struct sensor_value current_offset, new_offset;
+    float current_offset_value;
+
+    LOG_DBG("Setting SCD30 pressure offset using reference value: %.2f mb",
+            (double)pressure_reference * 10);
+    // Gets the current pressure offset
+    error = sensor_attr_get(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_PRESSURE,
+                            &current_offset);
+    if (error)
+    {
+        LOG_ERR("Failed to get SCD30 pressure offset: %d", error);
+        return error;
+    }
+    current_offset_value = sensor_value_to_float(&current_offset);
+
+    // Calculate the new offset value
+    LOG_DBG("Current offset: %.2f mb", (double)current_offset_value);
+    sensor_value_from_float(&new_offset, pressure_reference * 10);
+
+    // Send the calculated offset to the driver
+    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_PRESSURE,
+                            &new_offset);
+    if (error)
+    {
+        LOG_ERR("Could not set SCD30 pressure offset. Error code: %d", error);
+        return error;
+    }
+
+    LOG_DBG("New SCD30 pressure offset set.");
     return 0;
 }
 
