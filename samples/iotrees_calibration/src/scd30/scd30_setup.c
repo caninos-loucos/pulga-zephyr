@@ -356,10 +356,8 @@ static inline void present_data_callback()
                                                   scd30_temperature_record.temperature_mean) /
                                                  scd30_temperature_record.count;
 
-    printk("CO2: %d ppm; Temperature: %d.%02d oC; Humidity: %d.%02d %% RH;\n",
-           scd30_model.co2.val1,
-           scd30_model.temperature.val1,
-           scd30_model.temperature.val2 / 10000,
-           scd30_model.humidity.val1,
-           scd30_model.humidity.val2 / 10000);
+    printk("CO2: %.2f ppm; Temperature: %.2f oC; Humidity: %.2f %% RH;\n",
+           (double)sensor_value_to_float(&scd30_model.co2),
+           (double)sensor_value_to_float(&scd30_model.temperature),
+           (double)sensor_value_to_float(&scd30_model.humidity));
 }
