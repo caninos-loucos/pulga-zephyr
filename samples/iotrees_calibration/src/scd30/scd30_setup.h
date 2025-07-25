@@ -1,5 +1,5 @@
-#ifndef SCD30_CALIBRATION_H
-#define SCD30_CALIBRATION_H
+#ifndef SCD30_SETUP_H
+#define SCD30_SETUP_H
 #include <zephyr/drivers/sensor.h>
 
 /**
@@ -55,4 +55,4 @@ int init_scd30();
  */
 int enable_scd30_low_power_mode();
 
-#endif /* SCD30_CALIBRATION_H */
+#endif /* SCD30_SETUP_H */

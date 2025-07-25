@@ -320,6 +320,32 @@ static int scd30_get_co2_reference(const struct device *dev, struct sensor_value
 }
 
 /**
+ * @brief Retrieves the temperature offset for the SCD30 sensor.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param temperature_offset Pointer to a sensor_value structure where the temperature offset 
+ * will be stored in degrees Celsius * 100.
+ * @return 0 if successful, or a negative error code on failure.
+ */
+static int scd30_get_temperature_offset(const struct device *dev, 
+	struct sensor_value *temperature_offset)
+{
+	uint16_t temperature_offset_raw;
+	int rc;
+
+	rc = scd30_read_register(dev, SCD30_CMD_SET_TEMPERATURE_OFFSET, &temperature_offset_raw);
+	if (rc != 0)
+	{
+		return rc;
+	}
+
+	temperature_offset->val1 = temperature_offset_raw;
+	temperature_offset->val2 = 0;
+
+	return 0;
+}
+
+/**
  * @brief Sets the sample time for the SCD30 sensor.
  *
  * This function sets the sample time for the SCD30 sensor, ensuring that the
@@ -453,6 +479,10 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 	{
 		return scd30_get_co2_reference(dev, val);
 	}
+	case SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET:
+	{
+		return scd30_get_temperature_offset(dev, val);
+	}
 
 	default:
 		return -ENOTSUP;
@@ -503,6 +533,11 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 	{
 		uint16_t co2_reference = val->val1;
 		return scd30_write_register(dev, SCD30_CMD_SET_FORCED_RECALIBRATION, co2_reference);
+	}
+	case SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET:
+	{
+		uint16_t temperature_offset = val->val1;
+		return scd30_write_register(dev, SCD30_CMD_SET_TEMPERATURE_OFFSET, temperature_offset);
 	}
 	default:
 		return -ENOTSUP;

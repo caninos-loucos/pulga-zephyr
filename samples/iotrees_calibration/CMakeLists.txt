@@ -9,4 +9,5 @@ project(iotrees_calibration)
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_sources(app PRIVATE src/main.c
-                    src/scd30/scd30_calibration.c)
+                    src/scd30/scd30_setup.c
+                    src/bme280/bme280_setup.c)
