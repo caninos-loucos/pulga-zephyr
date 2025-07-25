@@ -571,6 +571,11 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 	case SCD30_SENSOR_ATTR_PRESSURE:
 	{
 		uint16_t pressure_offset = val->val1;
+		if (pressure_offset != 0 && (pressure_offset < SCD30_MIN_PRESSURE_OFFSET || 
+			pressure_offset > SCD30_MAX_PRESSURE_OFFSET))
+		{
+			return -EINVAL;
+		}
 		return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, pressure_offset);
 	}
 	default:
