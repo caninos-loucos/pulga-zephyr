@@ -362,6 +362,7 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 		return rc;
 	}
 	data->sample_time = sample_time;
+	
 	return 0;
 }
 

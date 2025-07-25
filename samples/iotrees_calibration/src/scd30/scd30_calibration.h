@@ -2,7 +2,31 @@
 #define SCD30_CALIBRATION_H
 #include <zephyr/drivers/sensor.h>
 
-#define SCD30_SAMPLING_RATE 10000 // 5 seconds
+/**
+ * The datasheets of the SCD30 sensor specify the following response times and
+ * current consumption for different sampling rates:
+ * 
+ *  SAMPLING RATE	|	RESPONSE TIME	|	CURRENT CONSUMPTION
+ * 		2s					20s						19mA
+ * 		15s					72s						6.5mA
+ * 		30s					135s					5.6mA
+ * 
+ * Using those points to interpolate a polynomial in Wolfram Alpha, we get the 
+ * following function in terms of sampling rate:
+ * Response time (RT) = 12.2143 + 3.87857 * x + 0.00714286 * x^2
+ * 
+ * For the current consumption, we interpolate the (x,y) points as (1/x, y) to get:	
+ * Current consumption (CC) = 4.71175 + 4.07599/x^2 + 26.5385/x
+ * 
+ * Multiplying those functions, we have the power consumption in mC, which, for x>0,
+ * has a local minimum between 4 and 5 seconds.
+ * Considering also our empirical results on current consumption, we set the
+ * sampling rate to 5 seconds.
+ *
+ * **Empirical results (sampling rate, current consumption):
+ * {{2.0, 18.4}, {5.0, 9.51}, {10.0, 6.56}, {15.0, 5.94}, {30., 4.83}, {60., 4.4}, {120., 3.8}}
+*/
+#define SCD30_SAMPLING_RATE 5000 // 5 seconds
 #define SCD30_CO2_REFERENCE 410 // Reference CO2 level for calibration in ppm
 #define SCD30_TEMPERATURE_OFFSET 0.0 // Temperature offset in degrees Celsius
 #define SCD30_PRESSURE 1013.25 // Pressure in hPa for calibration
