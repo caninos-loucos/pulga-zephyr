@@ -261,6 +261,7 @@ static int scd30_get_sample_time(const struct device *dev)
 	rc = scd30_read_register(dev, SCD30_CMD_SET_MEASUREMENT_INTERVAL, &sample_time);
 	if (rc != 0)
 	{
+		LOG_ERR("Failed to read sample time: %d", rc);
 		return rc;
 	}
 
@@ -790,6 +791,55 @@ return_clause:
 	return rc;
 }
 
+/**
+ * @brief Start periodic measurements on the SCD30 sensor.
+ *
+ * This function sends a command to the SCD30 sensor to start periodic measurements
+ * with the default ambient pressure setting.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ *
+ * @return 0 if successful, or a negative error code on failure.
+ */
+int scd30_start_periodic_measurement(const struct device *dev)
+{
+	int rc;
+
+	LOG_DBG("Starting periodic measurements");
+	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
+	if (rc != 0)
+	{
+		LOG_ERR("Failed to start periodic measurement");
+		return rc;
+	}
+	LOG_DBG("Periodic measurement started");
+	return 0;
+}
+
+/**
+ * @brief Stop periodic measurements on the SCD30 sensor.
+ *
+ * This function sends a command to the SCD30 sensor to stop periodic measurements.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ *
+ * @return 0 if successful, or a negative error code on failure.
+ */
+int scd30_stop_periodic_measurement(const struct device *dev)
+{
+	int rc;
+
+	LOG_DBG("Stopping periodic measurements");
+	rc = scd30_write_command(dev, SCD30_CMD_STOP_PERIODIC_MEASUREMENT);
+	if (rc != 0)
+	{
+		LOG_ERR("Failed to stop periodic measurement");
+		return rc;
+	}
+	LOG_DBG("Periodic measurement stopped");
+	return 0;
+}
+
 // Sensor driver API structure for the SCD30 sensor
 static const struct sensor_driver_api scd30_driver_api = {
 	.sample_fetch = scd30_sample_fetch,
@@ -798,7 +848,7 @@ static const struct sensor_driver_api scd30_driver_api = {
 	.attr_set = scd30_attr_set,
 };
 
-// Initialize the SCD30 sensor
+// Initialize the SCD30 sensor and start periodic measurements.
 static int scd30_init(const struct device *dev)
 {
 	LOG_DBG("Initializing SCD30");
@@ -820,13 +870,15 @@ static int scd30_init(const struct device *dev)
 	((NRF_TWIM_Type *)NRF_TWIM1_BASE)->FREQUENCY = 0x00500000UL;
 
 	rc = scd30_get_sample_time(dev);
-	LOG_DBG("Sample time: %d", data->sample_time);
-
-	LOG_DBG("Starting periodic measurements");
-	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
 	if (rc != 0)
 	{
-		LOG_ERR("could not start periodic meas");
+		return rc;
+	}
+	LOG_DBG("Sample time: %d", data->sample_time);
+
+	rc = scd30_start_periodic_measurement(dev);
+	if (rc != 0)
+	{
 		return rc;
 	}
 
