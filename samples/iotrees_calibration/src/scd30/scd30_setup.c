@@ -125,7 +125,7 @@ int enable_scd30_low_power_mode()
     calibration_delay = MAX(calibration_delay, 120000); // Ensure at least 2 minutes delay
     k_work_schedule(&trigger_forced_calibration_work, K_MSEC(calibration_delay));
     // Schedule the temperature offset setting after 10 minutes
-    k_work_schedule(&trigger_environment_offset_work, K_MINUTES(10));
+    k_work_schedule(&trigger_environment_offset_work, SCD30_TEMPERATURE_STABILIZATION_TIME);
 
     return 0;
 }
@@ -280,7 +280,7 @@ static inline int set_temperature_offset(float temperature_reference)
         LOG_ERR("Failed to get SCD30 temperature offset: %d", error);
         return error;
     }
-    current_offset_value = sensor_value_to_float(&current_offset) / 100.0f;
+    current_offset_value = sensor_value_to_float(&current_offset);
 
     // Calculate the new offset value
     new_offset_value = scd30_temperature_record.temperature_mean - temperature_reference +
@@ -288,7 +288,7 @@ static inline int set_temperature_offset(float temperature_reference)
     LOG_DBG("Current SCD30 temperature mean: %.2f oC", (double)scd30_temperature_record.temperature_mean);
     LOG_DBG("Current offset: %.2f oC", (double)current_offset_value);
     LOG_DBG("New offset: %.2f oC", (double)new_offset_value);
-    sensor_value_from_float(&new_offset, new_offset_value * 100);
+    sensor_value_from_float(&new_offset, new_offset_value);
 
     // Send the calculated offset to the driver
     error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET,
@@ -307,7 +307,7 @@ static inline int set_pressure_offset(float pressure_reference)
 {
     int error = 0;
     struct sensor_value current_offset, new_offset;
-    float current_offset_value;
+    int current_offset_value;
 
     LOG_DBG("Setting SCD30 pressure offset using reference value: %.2f mb",
             (double)pressure_reference * 10);
@@ -319,12 +319,13 @@ static inline int set_pressure_offset(float pressure_reference)
         LOG_ERR("Failed to get SCD30 pressure offset: %d", error);
         return error;
     }
-    current_offset_value = sensor_value_to_float(&current_offset);
+    current_offset_value = current_offset.val1;
 
     // Calculate the new offset value
-    LOG_DBG("Current offset: %.2f mb", (double)current_offset_value);
-    sensor_value_from_float(&new_offset, pressure_reference * 10);
+    LOG_DBG("Current offset: %d mb", current_offset_value);
 
+    new_offset.val1 = (int)(pressure_reference * 10);
+    new_offset.val2 = 0;
     // Send the calculated offset to the driver
     error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_PRESSURE,
                             &new_offset);
@@ -352,9 +353,9 @@ static inline void present_data_callback()
     // Update the temperature mean value
     float new_temperature = sensor_value_to_float(&scd30_model.temperature);
     scd30_temperature_record.count++;
-    scd30_temperature_record.temperature_mean += (new_temperature -
-                                                  scd30_temperature_record.temperature_mean) /
-                                                 scd30_temperature_record.count;
+    scd30_temperature_record.temperature_mean = (1 - SCD30_TEMPERATURE_WEIGHT) *
+                                                    scd30_temperature_record.temperature_mean +
+                                                SCD30_TEMPERATURE_WEIGHT * new_temperature;
 
     printk("CO2: %.2f ppm; Temperature: %.2f oC; Humidity: %.2f %% RH;\n",
            (double)sensor_value_to_float(&scd30_model.co2),

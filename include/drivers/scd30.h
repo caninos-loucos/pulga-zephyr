@@ -22,9 +22,14 @@ enum scd30_attribute
 	 * two subsequent measurements.
 	 */
 	SCD30_SENSOR_ATTR_SAMPLING_PERIOD = SENSOR_ATTR_PRIV_START,
-	SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET, // Temperature offset in degrees Celsius * 100
+	SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET, // Temperature offset in degrees Celsius
 	SCD30_SENSOR_ATTR_ALTITUDE, // Altitude in meters for calibration
-	SCD30_SENSOR_ATTR_PRESSURE, // Pressure in mBar (Pa * 100) for calibration
+	/**
+	 * @brief Pressure offset in mBar (kPa * 10) for calibration.
+	 * 
+	 * Setting this attribute will start the periodic measurement
+	 */
+	SCD30_SENSOR_ATTR_PRESSURE,
 	SCD30_SENSOR_ATTR_AUTO_SELF_CALIBRATION,
 	SCD30_SENSOR_ATTR_FORCED_RECALIBRATION,
 };
