@@ -306,24 +306,10 @@ static inline int set_temperature_offset(float temperature_reference)
 static inline int set_pressure_offset(float pressure_reference)
 {
     int error = 0;
-    struct sensor_value current_offset, new_offset;
-    int current_offset_value;
+    struct sensor_value new_offset;
 
     LOG_DBG("Setting SCD30 pressure offset using reference value: %.2f mb",
             (double)pressure_reference * 10);
-    // Gets the current pressure offset
-    error = sensor_attr_get(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_PRESSURE,
-                            &current_offset);
-    if (error)
-    {
-        LOG_ERR("Failed to get SCD30 pressure offset: %d", error);
-        return error;
-    }
-    current_offset_value = current_offset.val1;
-
-    // Calculate the new offset value
-    LOG_DBG("Current offset: %d mb", current_offset_value);
-
     new_offset.val1 = (int)(pressure_reference * 10);
     new_offset.val2 = 0;
     // Send the calculated offset to the driver

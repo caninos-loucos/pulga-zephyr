@@ -886,8 +886,7 @@ static int scd30_init(const struct device *dev)
 }
 
 #define SCD30_DEFINE(inst)                                                                  \
-	static struct scd30_data scd30_data_##inst = {                                          \
-		.sample_time = DT_INST_PROP(inst, sample_period)};                                  \
+	static struct scd30_data scd30_data_##inst = {};                                  		\
 	static const struct scd30_config scd30_config_##inst = {                                \
 		.bus = I2C_DT_SPEC_INST_GET(inst),                                                  \
 		.rdy_gpios = GPIO_DT_SPEC_INST_GET(inst, rdy_gpios),                                \
