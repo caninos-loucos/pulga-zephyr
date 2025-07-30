@@ -12,7 +12,7 @@ typedef struct
 } SensorModelVbatt;
 
 // Number of 32-bit words in each data item (model)
-// Each sensor_value has 2 words, vbatt has 3 measurements
+// Each sensor_value has 2 words, vbatt has 1 measurement
 #define VBATT_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelVbatt))
 
 // Register vbatt sensor callbacks

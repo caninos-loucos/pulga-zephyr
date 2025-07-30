@@ -25,9 +25,7 @@
 LOG_MODULE_REGISTER(vbatt_service, CONFIG_APP_LOG_LEVEL);
 
 #define VBATT DT_PATH(vbatt)
-#define ZEPHYR_USER DT_PATH(zephyr_user)
-
-#define BATTERY_ADC_GAIN ADC_GAIN_1_6
+#define ADC DT_IO_CHANNELS_CTLR(VBATT)
 
 /**
  * DEFINITIONS
@@ -55,18 +53,20 @@ static const struct divider_config divider_config = {
     },
     .power_gpios = GPIO_DT_SPEC_GET_OR(VBATT, power_gpios, {}),
     .output_ohm = DT_PROP(VBATT, output_ohms),
-    .full_ohm = DT_PROP(VBATT, full_ohms)};
+    .full_ohm = DT_PROP(VBATT, full_ohms),
+};
 
 struct divider_data
 {
     const struct device *adc;
-    struct adc_channel_cfg adc_cfg;
+    const struct adc_channel_cfg ch_cfg;
     struct adc_sequence adc_seq;
     int16_t raw;
 };
 
 static struct divider_data divider_data = {
-    .adc = DEVICE_DT_GET(DT_IO_CHANNELS_CTLR(VBATT)),
+    .adc = DEVICE_DT_GET(ADC),
+    .ch_cfg = ADC_CHANNEL_CFG_DT(DT_CHILD(ADC, channel_1)),
 };
 
 /**
@@ -100,7 +100,7 @@ static int divider_setup(void)
     }
 
     divider_data.adc_seq = (struct adc_sequence){
-        .channels = BIT(0),
+        .channels = BIT(divider_data.ch_cfg.channel_id),
         .buffer = &divider_data.raw,
         .buffer_size = sizeof(divider_data.raw),
         .oversampling = 4,
@@ -108,14 +108,7 @@ static int divider_setup(void)
         .resolution = 14,
     };
 
-    divider_data.adc_cfg = (struct adc_channel_cfg){
-        .gain = BATTERY_ADC_GAIN,
-        .reference = ADC_REF_INTERNAL,
-        .acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 40),
-        .input_positive = SAADC_CH_PSELP_PSELP_AnalogInput0 + divider_config.io_channel.channel,
-    };
-
-    rc = adc_channel_setup(divider_data.adc, &divider_data.adc_cfg);
+    rc = adc_channel_setup(divider_data.adc, &divider_data.ch_cfg);
     LOG_INF("Setup AIN%u got %d", divider_config.io_channel.channel, rc);
 
     return rc;
@@ -158,7 +151,7 @@ int battery_sample(void)
 
     int32_t val = divider_data.raw;
     adc_raw_to_millivolts(adc_ref_internal(divider_data.adc),
-                          divider_data.adc_cfg.gain,
+                          divider_data.ch_cfg.gain,
                           divider_data.adc_seq.resolution,
                           &val);
     rc = val * (uint64_t)divider_config.full_ohm / divider_config.output_ohm;

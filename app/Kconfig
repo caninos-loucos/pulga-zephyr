@@ -33,7 +33,7 @@ config BUFFER_WORDS
 	depends on RING_BUFFER
 	
 config VBATT
-	bool "Measure battery voltage through the ADC"
+	bool "Enable battery voltage measurement through the ADC"
 	default n
 	select ADC
 	depends on DT_HAS_VOLTAGE_DIVIDER_ENABLED
