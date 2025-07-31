@@ -29,7 +29,7 @@
 
 / {
 	/*Battery Voltage Sensor*/
-	vbatt: vbatt {
+	vbatt {
 		status = "okay";
 		compatible = "voltage-divider";
 		io-channels = <&adc 1>;

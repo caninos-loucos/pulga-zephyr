@@ -32,25 +32,17 @@ LOG_MODULE_REGISTER(vbatt_service, CONFIG_APP_LOG_LEVEL);
  */
 
 static SensorAPI vbatt_api = {0};
-static bool battery_ok = false;
-
-struct io_channel_config
-{
-    uint8_t channel;
-};
 
 struct divider_config
 {
-    struct io_channel_config io_channel;
+    uint8_t io_channel;
     struct gpio_dt_spec power_gpios;
     uint32_t output_ohm;
     uint32_t full_ohm;
 };
 
 static const struct divider_config divider_config = {
-    .io_channel = {
-        DT_IO_CHANNELS_INPUT(VBATT),
-    },
+    .io_channel = DT_IO_CHANNELS_INPUT(VBATT),
     .power_gpios = GPIO_DT_SPEC_GET_OR(VBATT, power_gpios, {}),
     .output_ohm = DT_PROP(VBATT, output_ohms),
     .full_ohm = DT_PROP(VBATT, full_ohms),
@@ -69,12 +61,16 @@ static struct divider_data divider_data = {
     .ch_cfg = ADC_CHANNEL_CFG_DT(DT_CHILD(ADC, channel_1)),
 };
 
+int battery_sample(void);
+
 /**
  * IMPLEMENTATIONS
  */
 
 static int divider_setup(void)
 {
+    const struct gpio_dt_spec *power_gpios = &divider_config.power_gpios;
+
     int rc;
 
     if (!device_is_ready(divider_data.adc))
@@ -83,18 +79,19 @@ static int divider_setup(void)
         return -ENOENT;
     }
 
-    if (divider_config.power_gpios.port)
+    if (power_gpios->port)
     {
-        if (!device_is_ready(divider_config.power_gpios.port))
+        if (!device_is_ready(power_gpios->port))
         {
-            LOG_ERR("%s: device not ready", divider_config.power_gpios.port->name);
+            LOG_ERR("%s: device not ready", power_gpios->port->name);
             return -ENOENT;
         }
-        rc = gpio_pin_configure_dt(&divider_config.power_gpios, GPIO_OUTPUT_INACTIVE);
+
+        rc = gpio_pin_configure_dt(power_gpios, GPIO_OUTPUT_INACTIVE);
         if (rc != 0)
         {
             LOG_ERR("Failed to control feed %s.%u: %d",
-                    divider_config.power_gpios.port->name, divider_config.power_gpios.pin, rc);
+                    power_gpios->port->name, power_gpios->pin, rc);
             return rc;
         }
     }
@@ -109,7 +106,6 @@ static int divider_setup(void)
     };
 
     rc = adc_channel_setup(divider_data.adc, &divider_data.ch_cfg);
-    LOG_INF("Setup AIN%u got %d", divider_config.io_channel.channel, rc);
 
     return rc;
 }
@@ -120,29 +116,24 @@ static int init_sensor()
     LOG_DBG("Initializing vbatt");
 
     int rc = divider_setup();
-    if (rc == 0)
+    if (rc != 0)
     {
-        if (divider_config.power_gpios.port)
-        {
-            rc = gpio_pin_set_dt(&divider_config.power_gpios, true);
-        }
+        LOG_ERR("Error setting up divider on AIN%u got %d",
+                divider_config.io_channel, rc);
+        return rc;
     }
 
-    battery_ok = (rc == 0);
-    LOG_INF("Battery setup: %d %d", rc, battery_ok);
+    rc = battery_sample();
+    divider_data.adc_seq.calibrate = false;
+
+    LOG_INF("Battery setup: %d", rc);
 
     return rc;
 }
 
 int battery_sample(void)
 {
-    if (!battery_ok)
-    {
-        return -ENOENT;
-    }
-
     int rc = adc_read(divider_data.adc, &divider_data.adc_seq);
-    divider_data.adc_seq.calibrate = false;
 
     if (rc != 0)
     {
@@ -156,7 +147,7 @@ int battery_sample(void)
                           &val);
     rc = val * (uint64_t)divider_config.full_ohm / divider_config.output_ohm;
 
-    LOG_DBG("raw %u ~ %u mV => %d mV\n", divider_data.raw, val, rc);
+    LOG_DBG("raw %u (%u mV) => scaled: %d mV\n", divider_data.raw, val, rc);
     return rc;
 }
 
