@@ -605,6 +605,7 @@ void trigger_application_callback(struct k_work *work)
 	if (rc != 0)
 	{
 		LOG_ERR("Error at reading");
+		return;
 	}
 
 	// Call application callback if registered
@@ -786,7 +787,7 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 return_clause:
 	if (rc != 0)
 	{
-		LOG_ERR("%s: reading sample failed", dev->name);
+		LOG_ERR("%s: reading sample failed. (rc = %d)", dev->name, rc);
 	}
 	return rc;
 }
