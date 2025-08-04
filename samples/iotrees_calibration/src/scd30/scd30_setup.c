@@ -343,8 +343,8 @@ static inline void present_data_callback()
                                                     scd30_temperature_record.temperature_mean +
                                                 SCD30_TEMPERATURE_WEIGHT * new_temperature;
 
-    printk("CO2: %.2f ppm; Temperature: %.2f oC; Humidity: %.2f %% RH;\n",
-           (double)sensor_value_to_float(&scd30_model.co2),
-           (double)sensor_value_to_float(&scd30_model.temperature),
-           (double)sensor_value_to_float(&scd30_model.humidity));
+    LOG_DBG("CO2: %.2f ppm; Temperature: %.2f oC; Humidity: %.2f %% RH;",
+            (double)sensor_value_to_float(&scd30_model.co2),
+            (double)sensor_value_to_float(&scd30_model.temperature),
+            (double)sensor_value_to_float(&scd30_model.humidity));
 }
