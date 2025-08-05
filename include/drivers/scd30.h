@@ -14,7 +14,7 @@ typedef void (*scd30_callback_t)(void);
 
 void scd30_register_callback(const struct device *dev, scd30_callback_t cb);
 
-int scd30_start_periodic_measurement(const struct device *dev);
+int scd30_start_periodic_measurement(const struct device *dev, int ambient_pressure);
 
 int scd30_stop_periodic_measurement(const struct device *dev);
 

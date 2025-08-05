@@ -42,6 +42,8 @@
  */
 #define SCD30_TEMPERATURE_STABILIZATION_TIME K_MINUTES(10)
 
+#define SCD30_SAO_PAULO_AMBIENT_PRESSURE 937 // Default ambient pressure in mBar (kPa * 10)
+
 typedef struct
 {
 	struct sensor_value co2;

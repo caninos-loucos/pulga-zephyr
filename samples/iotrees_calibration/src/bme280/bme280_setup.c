@@ -17,7 +17,7 @@ static const struct device *bme280;
 /**
  * @brief This function reads and presents measurements from the BME280 sensor.
  */
-static inline int read_sensor_values(SensorModelBME280 *latest_measurements);
+static inline int read_sensor_values(float *latest_measurements);
 
 /**
  * IMPLEMENTATIONS
@@ -42,40 +42,34 @@ int init_bme280()
     return 0;
 }
 
-int get_mean_bme280_values(SensorModelBME280 *mean_values)
+int get_mean_bme280_values(float *mean_temperature)
 {
     int error = 0;
-    mean_values->temperature = 0.0f;
-    mean_values->pressure = 0.0f;
-    mean_values->humidity = 0.0f;
+    *mean_temperature = 0.0f;
 
     for (int measurement_count = 0; measurement_count < BME280_NUM_SAMPLES_FOR_MEAN; measurement_count++)
     {
-        SensorModelBME280 latest_measurements = {0};
+        float latest_measurement = 0.0f;
         // Read the latest sensor values
         do
         {
-            error = read_sensor_values(&latest_measurements);
+            error = read_sensor_values(&latest_measurement);
         } while (error == -EAGAIN);
 
         // Accumulate the values
-        mean_values->temperature += latest_measurements.temperature;
-        mean_values->pressure += latest_measurements.pressure;
-        mean_values->humidity += latest_measurements.humidity;
+        *mean_temperature += latest_measurement;
         k_sleep(K_MSEC(BME280_SAMPLING_RATE));
     }
 
     // Calculate the mean values
-    mean_values->temperature = mean_values->temperature / BME280_NUM_SAMPLES_FOR_MEAN;
-    mean_values->pressure = mean_values->pressure / BME280_NUM_SAMPLES_FOR_MEAN;
-    mean_values->humidity = mean_values->humidity / BME280_NUM_SAMPLES_FOR_MEAN;
+    *mean_temperature = *mean_temperature / BME280_NUM_SAMPLES_FOR_MEAN;
     return 0;
 }
 
-inline int read_sensor_values(SensorModelBME280 *latest_measurements)
+inline int read_sensor_values(float *latest_measurements)
 {
     LOG_DBG("Reading BME280 sensor values");
-    struct sensor_value temperature, pressure, humidity;
+    struct sensor_value temperature, pressure;
     int error;
 
     // Fetch the latest sample
@@ -89,15 +83,11 @@ inline int read_sensor_values(SensorModelBME280 *latest_measurements)
     // Get the sensor values
     sensor_channel_get(bme280, SENSOR_CHAN_AMBIENT_TEMP, &temperature);
     sensor_channel_get(bme280, SENSOR_CHAN_PRESS, &pressure);
-    sensor_channel_get(bme280, SENSOR_CHAN_HUMIDITY, &humidity);
+    *latest_measurements = sensor_value_to_float(&temperature);
+    float pressure_float = sensor_value_to_float(&pressure);
 
-    latest_measurements->temperature = sensor_value_to_float(&temperature);
-    latest_measurements->pressure = sensor_value_to_float(&pressure);
-    latest_measurements->humidity = sensor_value_to_float(&humidity);
-
-    printk("BME280 readings - Temperature: %.2f oC, Pressure: %.2f kPa, Humidity: %.2f %% RH\n",
-           (double)latest_measurements->temperature,
-           (double)latest_measurements->pressure,
-           (double)latest_measurements->humidity);
+    LOG_DBG("BME280 readings - Temperature: %.2f oC, Pressure: %.2f kPa",
+            (double)*latest_measurements,
+            (double)pressure_float);
     return 0;
 }

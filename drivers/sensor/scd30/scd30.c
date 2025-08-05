@@ -799,15 +799,23 @@ return_clause:
  * with the default ambient pressure setting.
  *
  * @param dev Pointer to the device structure for the driver instance.
+ * @param ambient_pressure The ambient pressure in mBar (kPa * 10) to be used for adjusting
+ * the CO2 measurements. If set to 0, the sensor will not compensate for ambient pressure.
  *
  * @return 0 if successful, or a negative error code on failure.
  */
-int scd30_start_periodic_measurement(const struct device *dev)
+int scd30_start_periodic_measurement(const struct device *dev, int ambient_pressure)
 {
 	int rc;
 
 	LOG_DBG("Starting periodic measurements");
-	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
+	if (ambient_pressure != 0 && (ambient_pressure < SCD30_MIN_PRESSURE_OFFSET ||
+									 ambient_pressure > SCD30_MAX_PRESSURE_OFFSET))
+	{
+		LOG_ERR("Invalid ambient pressure value: %d", ambient_pressure);
+		return -EINVAL;
+	}
+	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, ambient_pressure);
 	if (rc != 0)
 	{
 		LOG_ERR("Failed to start periodic measurement");
@@ -876,12 +884,7 @@ static int scd30_init(const struct device *dev)
 		return rc;
 	}
 	LOG_DBG("Sample time: %d", data->sample_time);
-
-	rc = scd30_start_periodic_measurement(dev);
-	if (rc != 0)
-	{
-		return rc;
-	}
+	LOG_DBG("Sensor initialized, periodic measurements may be started");
 
 	return 0;
 }

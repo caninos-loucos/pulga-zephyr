@@ -59,12 +59,6 @@ static inline void set_environment_offsets(struct k_work *work);
  */
 static inline int set_temperature_offset(float temperature_offset);
 /**
- * Sets pressure offset by restarting the continuous measurements for the SCD30 sensor.
- *
- * @return 0 on success, or a negative error code on failure.
- */
-static inline int set_pressure_offset(float pressure_offset);
-/**
  * Work item for deferring the forced recalibration of the SCD30 sensor until
  * it warms up (2 minutes or 5 times the sampling rate).
  */
@@ -97,7 +91,8 @@ int init_scd30()
     // Registers desired application callback into the scd30 driver api
     scd30_register_callback(scd30, present_data_callback);
 
-    return 0;
+    // Initialize measurements with the default ambient pressure
+    return scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
 }
 
 int enable_scd30_low_power_mode()
@@ -233,10 +228,10 @@ static inline void force_calibration(struct k_work *work)
 static inline void set_environment_offsets(struct k_work *work)
 {
     int error = 0;
-    SensorModelBME280 environment_mean_values;
+    float temperature_reference = 0.0f;
 
     LOG_DBG("Setting SCD30 environment offsets...");
-    error = get_mean_bme280_values(&environment_mean_values);
+    error = get_mean_bme280_values(&temperature_reference);
     if (error)
     {
         LOG_ERR("Failed to get mean BME280 values: %d", error);
@@ -245,7 +240,7 @@ static inline void set_environment_offsets(struct k_work *work)
     }
 
     // Set the temperature offset
-    error = set_temperature_offset(environment_mean_values.temperature);
+    error = set_temperature_offset(temperature_reference);
     if (error)
     {
         LOG_ERR("Failed to set temperature offset: %d", error);
@@ -253,14 +248,6 @@ static inline void set_environment_offsets(struct k_work *work)
         return;
     }
 
-    // Set the pressure offset
-    error = set_pressure_offset(environment_mean_values.pressure);
-    if (error)
-    {
-        LOG_ERR("Failed to set pressure offset: %d", error);
-        k_work_schedule(&trigger_environment_offset_work, K_NO_WAIT);
-        return;
-    }
     LOG_DBG("SCD30 environment offsets set successfully");
 }
 
@@ -300,28 +287,6 @@ static inline int set_temperature_offset(float temperature_reference)
     }
 
     LOG_DBG("New SCD30 temperature offset set.");
-    return 0;
-}
-
-static inline int set_pressure_offset(float pressure_reference)
-{
-    int error = 0;
-    struct sensor_value new_offset;
-
-    LOG_DBG("Setting SCD30 pressure offset using reference value: %.2f mb",
-            (double)pressure_reference * 10);
-    new_offset.val1 = (int)(pressure_reference * 10);
-    new_offset.val2 = 0;
-    // Send the calculated offset to the driver
-    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_PRESSURE,
-                            &new_offset);
-    if (error)
-    {
-        LOG_ERR("Could not set SCD30 pressure offset. Error code: %d", error);
-        return error;
-    }
-
-    LOG_DBG("New SCD30 pressure offset set.");
     return 0;
 }
 
