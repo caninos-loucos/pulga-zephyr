@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2025 Matheus de Almeida Orsi e Silva
  * Copyright (c) 2024 Kauê Rodrigues Barbosa
  * Copyright (c) 2023 Jan Gnip
  * Copyright (c) 2018, Sensirion AG
