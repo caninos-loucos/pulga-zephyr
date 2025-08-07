@@ -11,33 +11,41 @@ LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
  * DEFINITIONS
  */
 
+/** Response time of 30s to read 63% of the value after a sudden change in CO2 concentration,
+ *  considering sampling period of 5s after calibration. Refer to driver and datasheets
+ *  for more details. Change this value to adapt to different sampling periods or to debug
+ *  the application faster.
+ */
+#define SCD30_RESPONSE_TIME K_SECONDS(30)
 static const struct device *scd30;
 static SensorAPI scd30_api = {0};
 // Semaphore to synchronize access to the buffer for storing sensor data
 static struct k_sem store_data;
-
 /**
- * Sets a valid sample time for the SCD30 sensor.
- * Clips the sample time to be within the allowed range of 2s to 1800s, as
- * specified on the datasheet.
- *
- * @param raw_sample_time The desired sample time in milliseconds.
- * @return 0 on success, or a negative error code on failure.
+ * This function allows storing data from the SCD30 sensor into the application buffer
+ * after the sensor has stabilized, considering its response time after starting
+ * periodic measurement.
  */
-static inline int set_valid_sample_time(int raw_sample_time);
+static inline void store_stabilized_data(struct k_work *work);
 /**
- * @brief Callback function to store sensor data.
- *
- * This function is triggered to store data from the SCD30 sensor into a buffer.
- * It first checks if it is allowed to save data by attempting to take a semaphore.
+ * Work item for delaying the storage of sensor data until after the sensor has stabilized.
+ */
+K_WORK_DELAYABLE_DEFINE(trigger_stabilized_sensor_routine, store_stabilized_data);
+/**
+ * @brief Callback function to read sensor data from device instance.
+ *>
+ * This function is triggered when the SCD30 sensor has new data available.
+ * It first checks if it is allowed to save data by attempting to take the semaphore that
+ * signals permission to store data after stabilization of the sensor.
  * If the semaphore is not available, the function returns immediately.
  *
  * The function retrieves CO2, temperature, and humidity data from the SCD30 sensor,
- * stores it in a SensorModelSCD30 structure, and then copies this data into a buffer.
+ * stores it in a SensorModelSCD30 structure, and then copies this data into the aaplication
+ * buffer. After that, it stops the periodic measurement to save power.
  *
  * If the data insertion into the buffer fails, an error message is logged.
  */
-static void store_data_callback();
+static void read_data_callback();
 /**
  * @brief Reads sensor values from the SCD30 sensor and stores them in a buffer.
  */
@@ -72,42 +80,31 @@ static int init_sensor()
         return error;
     }
 
+    // Starts periodic measurements with default ambient pressure if not already started
+    error = scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
+
     // Registers desired application callback into the scd30 driver api
-    scd30_register_callback(scd30, store_data_callback);
+    scd30_register_callback(scd30, read_data_callback);
 
-    // Try to set the application sampling time
-    set_valid_sample_time(get_sampling_interval());
+    // Warns the sampling interval isn't enough for stabilization
+    if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
+    {
+        LOG_WRN("Sampling interval is less than SCD30 response time. Data will "
+                "be reliable after %d seconds.",
+                k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks) / MSEC_PER_SEC);
+    }
 
-    return 0;
+    return error;
 }
 
-inline int set_valid_sample_time(int raw_sample_time)
+inline void store_stabilized_data(struct k_work *work)
 {
-    int error = 0;
-    struct sensor_value period;
-
-    raw_sample_time /= 1000;
-
-    // Clip the value using mathemagical properties
-    period.val1 = CLAMP(raw_sample_time, 2, 1800);
-    if (period.val1 != raw_sample_time)
-    {
-        LOG_INF("Samplig period outside SCD30 specification, SCD30 set to sample every %d seconds.",
-                period.val1);
-    }
-
-    // Send the chosen period to the driver
-    error = sensor_attr_set(scd30, SENSOR_CHAN_ALL, SCD30_SENSOR_ATTR_SAMPLING_PERIOD, &period);
-    if (error)
-    {
-        LOG_ERR("Could not set application sample time. Error code: %d", error);
-        return error;
-    }
-
-    return 0;
+    ARG_UNUSED(work);
+    // Allows storing data from SCD30 sensor
+    k_sem_give(&store_data);
 }
 
-void store_data_callback()
+void read_data_callback()
 {
     // Returns if it's not supposed to save data to buffer
     if (k_sem_take(&store_data, K_NO_WAIT))
@@ -117,7 +114,7 @@ void store_data_callback()
 
     LOG_DBG("Storing SCD30 data");
 
-    SensorModelSCD30 scd30_model;
+    SensorModelSCD30 scd30_model = {0};
     uint32_t scd30_data[MAX_32_WORDS];
     int error = 0;
 
@@ -136,42 +133,29 @@ void store_data_callback()
     {
         LOG_ERR("Failed to insert data in ring buffer.");
     }
+
+    if (get_sampling_interval() >= k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
+    {
+        // Stops periodic measurement to save power
+        scd30_stop_periodic_measurement(scd30);
+    }
 }
 
 static inline void read_sensor_values()
 {
-    LOG_DBG("Allowing SCD30 to store fix data in buffer");
-    k_sem_give(&store_data);
 
-    /**
-     *  Note: Uncomment code bellow and comment the line above if you want the application
-     *  to perform consecutive readings.
-     *  Otherwise, it will wait the interrupt routine in driver, associated with the sampling
-     *  rate configured in the sensor.
-     */
-
-//     LOG_DBG("Reading SCD30");
-
-//     SensorModelSCD30 scd30_model;
-//     uint32_t scd30_data[MAX_32_WORDS];
-//     int error = 0;
-
-// sample_fetch:
-//     error = sensor_sample_fetch(scd30);
-//     if (!error)
-//     {
-//         k_sem_give(&store_data);
-//         store_data_callback();
-//     }
-//     else if (error == -EAGAIN)
-//     {
-//         LOG_WRN("fetch sample from \"%s\" failed: %d, trying again",
-//                 scd30->name, error);
-//         goto sample_fetch;
-//     }
-//     else
-//         LOG_ERR("fetch sample from \"%s\" failed: %d",
-//                 scd30->name, error);
+    if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
+    {
+        k_work_schedule(&trigger_stabilized_sensor_routine, K_NO_WAIT);
+    }
+    else
+    {
+        LOG_DBG("Waking up SCD30 to read data");
+        // Waking up SCD30 to read data
+        scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
+        // Scheduling data storage after sensor response time
+        k_work_schedule(&trigger_stabilized_sensor_routine, SCD30_RESPONSE_TIME);
+    }
 }
 
 // Register SCD30 sensor callbacks

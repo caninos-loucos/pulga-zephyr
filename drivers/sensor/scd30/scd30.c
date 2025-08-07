@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2025 Matheus de Almeida Orsi e Silva
  * Copyright (c) 2024 Kauê Rodrigues Barbosa
  * Copyright (c) 2023 Jan Gnip
  * Copyright (c) 2018, Sensirion AG
@@ -180,6 +181,8 @@ static int scd30_read_register(const struct device *dev, uint16_t reg, uint16_t 
 		return rc;
 	}
 
+	k_sleep(K_MSEC(3)); // Wait for the sensor to process the command
+
 	// Read the response from the sensor
 	rc = i2c_read_dt(&cfg->bus, (uint8_t *)&rx_word, sizeof(rx_word));
 	if (rc != 0)
@@ -259,6 +262,7 @@ static int scd30_get_sample_time(const struct device *dev)
 	rc = scd30_read_register(dev, SCD30_CMD_SET_MEASUREMENT_INTERVAL, &sample_time);
 	if (rc != 0)
 	{
+		LOG_ERR("Failed to read sample time: %d", rc);
 		return rc;
 	}
 
@@ -268,13 +272,91 @@ static int scd30_get_sample_time(const struct device *dev)
 }
 
 /**
+ * @brief Retrieves the automatic self-calibration status.
+ *
+ * This function reads the automatic self-calibration status from the SCD30 sensor
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param enabled Pointer to a sensor_value structure where the status will be stored.
+ * @return 0 if successful, or a negative error code on failure.
+ */
+static int scd30_get_auto_calibration(const struct device *dev, struct sensor_value *enabled)
+{
+	uint16_t auto_self_calibration;
+	int rc;
+
+	rc = scd30_read_register(dev, SCD30_CMD_AUTO_SELF_CALIBRATION, &auto_self_calibration);
+	if (rc != 0)
+	{
+		return rc;
+	}
+
+	enabled->val1 = (auto_self_calibration != 0) ? 1 : 0;
+	enabled->val2 = 0;
+
+	return 0;
+}
+
+/**
+ * @brief Retrieves the CO2 reference value for calibration.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param co2_reference Pointer to a sensor_value structure where the CO2 reference value will be stored.
+ * @return 0 if successful, or a negative error code on failure.
+ */
+static int scd30_get_co2_reference(const struct device *dev, struct sensor_value *co2_reference)
+{
+	uint16_t calibration_reference;
+	int rc;
+
+	rc = scd30_read_register(dev, SCD30_CMD_SET_FORCED_RECALIBRATION, &calibration_reference);
+	if (rc != 0)
+	{
+		return rc;
+	}
+
+	co2_reference->val1 = calibration_reference;
+	co2_reference->val2 = 0;
+
+	return 0;
+}
+
+/**
+ * @brief Retrieves the temperature offset for the SCD30 sensor.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param temperature_offset Pointer to a sensor_value structure where the temperature offset
+ * will be stored in degrees Celsius.
+ * @return 0 if successful, or a negative error code on failure.
+ */
+static int scd30_get_temperature_offset(const struct device *dev,
+										struct sensor_value *temperature_offset)
+{
+	uint16_t temperature_offset_raw;
+	float temperature_offset_degrees;
+	int rc;
+
+	// Read the temperature offset register (degrees Celsius * 100)
+	rc = scd30_read_register(dev, SCD30_CMD_SET_TEMPERATURE_OFFSET, &temperature_offset_raw);
+	if (rc != 0)
+	{
+		return rc;
+	}
+
+	// Convert the raw temperature offset to degrees Celsius
+	temperature_offset_degrees = (float)temperature_offset_raw / 100.0f;
+	sensor_value_from_double(temperature_offset, temperature_offset_degrees);
+
+	return 0;
+}
+
+/**
  * @brief Sets the sample time for the SCD30 sensor.
  *
  * This function sets the sample time for the SCD30 sensor, ensuring that the
  * provided sample time is within the valid range defined by SCD30_MIN_SAMPLE_TIME
- * and SCD30_MAX_SAMPLE_TIME. If the sample time is valid, it stops the periodic
- * measurement, updates the measurement interval, and restarts the periodic
- * measurement with the default ambient pressure.
+ * and SCD30_MAX_SAMPLE_TIME. If the sample time is valid and different from the
+ * one configured in the chip, the driver updates the measurement interval.
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param sample_time Desired sample time in seconds.
@@ -291,9 +373,17 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 		return -EINVAL;
 	}
 
-	rc = scd30_write_command(dev, SCD30_CMD_STOP_PERIODIC_MEASUREMENT);
+	// Avoid writing in the register if the sample time is already set because it
+	// can interfere with the sensor accuracy. Changing the sample time requires
+	// the recalibration of the sensor.
+	rc = scd30_get_sample_time(dev);
 	if (rc != 0)
 	{
+		return rc;
+	}
+	if (data->sample_time == sample_time)
+	{
+		LOG_DBG("Sample time already set to %d seconds", sample_time);
 		return rc;
 	}
 
@@ -302,11 +392,9 @@ static int scd30_set_sample_time(const struct device *dev, uint16_t sample_time)
 	{
 		return rc;
 	}
-
 	data->sample_time = sample_time;
 
-	return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT,
-								SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
+	return 0;
 }
 
 /**
@@ -359,6 +447,9 @@ static int scd30_channel_get(const struct device *dev, enum sensor_channel chan,
  * @param attr The sensor attribute to get the value of. Supported attributes:
  *             - SENSOR_ATTR_SAMPLING_FREQUENCY: Sampling frequency in Hz.
  *             - SCD30_SENSOR_ATTR_SAMPLING_PERIOD: Sampling period in seconds.
+ * 			   - SCD30_SENSOR_ATTR_AUTO_SELF_CALIBRATION: Enable/disable auto self-calibration.
+ * 		   	   - SCD30_SENSOR_ATTR_FORCED_RECALIBRATION: Set CO2 reference value for calibration.
+ * 			   - SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET: Set temperature offset in degrees Celsius.
  * @param val Pointer to the sensor_value structure where the retrieved value will be stored.
  *
  * @return 0 on success, -ENOTSUP if the specified channel or attribute is not supported.
@@ -373,7 +464,7 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 		return -ENOTSUP;
 	}
 
-	switch (attr)
+	switch ((uint16_t)attr)
 	{
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 	{
@@ -388,7 +479,18 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
 		val->val2 = 0;
 		return 0;
 	}
-
+	case SCD30_SENSOR_ATTR_AUTO_SELF_CALIBRATION:
+	{
+		return scd30_get_auto_calibration(dev, val);
+	}
+	case SCD30_SENSOR_ATTR_FORCED_RECALIBRATION:
+	{
+		return scd30_get_co2_reference(dev, val);
+	}
+	case SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET:
+	{
+		return scd30_get_temperature_offset(dev, val);
+	}
 	default:
 		return -ENOTSUP;
 	}
@@ -404,6 +506,10 @@ static int scd30_attr_get(const struct device *dev, enum sensor_channel chan,
  * @param attr The sensor attribute to set the value of. Supported attributes:
  *             - SENSOR_ATTR_SAMPLING_FREQUENCY: Sampling frequency in Hz.
  *             - SCD30_SENSOR_ATTR_SAMPLING_PERIOD: Sampling period in seconds.
+ * 			   - SCD30_SENSOR_ATTR_AUTO_SELF_CALIBRATION: Enable/disable auto self-calibration.
+ * 		   	   - SCD30_SENSOR_ATTR_FORCED_RECALIBRATION: Set CO2 reference value for calibration.
+ * 			   - SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET: Set temperature offset in degrees Celsius.
+ * 			   - SCD30_SENSOR_ATTR_PRESSURE: Set pressure offset in mBar (kPa * 10).
  * @param val Pointer to the sensor_value structure containing the value to be set.
  *
  * @return 0 on success, -ENOTSUP if the specified channel or attribute is not supported.
@@ -416,7 +522,7 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 		return -ENOTSUP;
 	}
 
-	switch (attr)
+	switch ((uint16_t)attr)
 	{
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 	{
@@ -428,6 +534,35 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 	case SCD30_SENSOR_ATTR_SAMPLING_PERIOD:
 	{
 		return scd30_set_sample_time(dev, (uint16_t)val->val1);
+	}
+	case SCD30_SENSOR_ATTR_AUTO_SELF_CALIBRATION:
+	{
+		uint16_t auto_self_calibration = (val->val1 == 0) ? 0 : 1;
+		return scd30_write_register(dev, SCD30_CMD_AUTO_SELF_CALIBRATION, auto_self_calibration);
+	}
+	case SCD30_SENSOR_ATTR_FORCED_RECALIBRATION:
+	{
+		uint16_t co2_reference = val->val1;
+		if (co2_reference < SCD30_MIN_CO2_REFERENCE || co2_reference > SCD30_MAX_CO2_REFERENCE)
+		{
+			return -EINVAL;
+		}
+		return scd30_write_register(dev, SCD30_CMD_SET_FORCED_RECALIBRATION, co2_reference);
+	}
+	case SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET:
+	{
+		uint16_t temperature_offset = (uint16_t)(sensor_value_to_float(val) * 100.0f);
+		return scd30_write_register(dev, SCD30_CMD_SET_TEMPERATURE_OFFSET, temperature_offset);
+	}
+	case SCD30_SENSOR_ATTR_PRESSURE:
+	{
+		uint16_t pressure_offset = val->val1;
+		if (pressure_offset != 0 && (pressure_offset < SCD30_MIN_PRESSURE_OFFSET ||
+									 pressure_offset > SCD30_MAX_PRESSURE_OFFSET))
+		{
+			return -EINVAL;
+		}
+		return scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, pressure_offset);
 	}
 	default:
 		return -ENOTSUP;
@@ -471,6 +606,7 @@ void trigger_application_callback(struct k_work *work)
 	if (rc != 0)
 	{
 		LOG_ERR("Error at reading");
+		return;
 	}
 
 	// Call application callback if registered
@@ -589,7 +725,6 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 		{
 			goto return_clause;
 		}
-		k_sleep(K_MSEC(3));
 	}
 	LOG_DBG("SCD30 data ready");
 
@@ -653,9 +788,66 @@ static int scd30_sample_fetch(const struct device *dev, enum sensor_channel chan
 return_clause:
 	if (rc != 0)
 	{
-		LOG_ERR("%s: reading sample failed", dev->name);
+		LOG_ERR("%s: reading sample failed. (rc = %d)", dev->name, rc);
 	}
 	return rc;
+}
+
+/**
+ * @brief Start periodic measurements on the SCD30 sensor.
+ *
+ * This function sends a command to the SCD30 sensor to start periodic measurements
+ * with the default ambient pressure setting.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param ambient_pressure The ambient pressure in mBar (kPa * 10) to be used for adjusting
+ * the CO2 measurements. If set to 0, the sensor will not compensate for ambient pressure.
+ *
+ * @return 0 if successful, or a negative error code on failure.
+ */
+int scd30_start_periodic_measurement(const struct device *dev, int ambient_pressure)
+{
+	int rc;
+
+	LOG_DBG("Starting periodic measurements");
+	if (ambient_pressure != 0 && (ambient_pressure < SCD30_MIN_PRESSURE_OFFSET ||
+									 ambient_pressure > SCD30_MAX_PRESSURE_OFFSET))
+	{
+		LOG_ERR("Invalid ambient pressure value: %d", ambient_pressure);
+		return -EINVAL;
+	}
+	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, ambient_pressure);
+	if (rc != 0)
+	{
+		LOG_ERR("Failed to start periodic measurement");
+		return rc;
+	}
+	LOG_DBG("Periodic measurement started");
+	return 0;
+}
+
+/**
+ * @brief Stop periodic measurements on the SCD30 sensor.
+ *
+ * This function sends a command to the SCD30 sensor to stop periodic measurements.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ *
+ * @return 0 if successful, or a negative error code on failure.
+ */
+int scd30_stop_periodic_measurement(const struct device *dev)
+{
+	int rc;
+
+	LOG_DBG("Stopping periodic measurements");
+	rc = scd30_write_command(dev, SCD30_CMD_STOP_PERIODIC_MEASUREMENT);
+	if (rc != 0)
+	{
+		LOG_ERR("Failed to stop periodic measurement");
+		return rc;
+	}
+	LOG_DBG("Periodic measurement stopped");
+	return 0;
 }
 
 // Sensor driver API structure for the SCD30 sensor
@@ -666,7 +858,7 @@ static const struct sensor_driver_api scd30_driver_api = {
 	.attr_set = scd30_attr_set,
 };
 
-// Initialize the SCD30 sensor
+// Initialize the SCD30 sensor and start periodic measurements.
 static int scd30_init(const struct device *dev)
 {
 	LOG_DBG("Initializing SCD30");
@@ -687,30 +879,19 @@ static int scd30_init(const struct device *dev)
 	// Really ugly workaround to make I2C1 work at 50KHz
 	((NRF_TWIM_Type *)NRF_TWIM1_BASE)->FREQUENCY = 0x00500000UL;
 
-	rc = scd30_set_sample_time(dev, data->sample_time);
+	rc = scd30_get_sample_time(dev);
 	if (rc != 0)
 	{
-		LOG_WRN("Failed to set sample period. Using period stored of device");
-		/* Try to read sample time from sensor to reflect actual sample period */
-		rc = scd30_get_sample_time(dev);
-	}
-
-	LOG_DBG("Sample time: %d", data->sample_time);
-
-	LOG_DBG("Starting periodic measurements");
-	rc = scd30_write_register(dev, SCD30_CMD_START_PERIODIC_MEASUREMENT, SCD30_MEASUREMENT_DEF_AMBIENT_PRESSURE);
-	if (rc != 0)
-	{
-		LOG_ERR("could not start periodic meas");
 		return rc;
 	}
+	LOG_DBG("Sample time: %d", data->sample_time);
+	LOG_DBG("Sensor initialized, periodic measurements may be started");
 
 	return 0;
 }
 
 #define SCD30_DEFINE(inst)                                                                  \
-	static struct scd30_data scd30_data_##inst = {                                          \
-		.sample_time = DT_INST_PROP(inst, sample_period)};                                  \
+	static struct scd30_data scd30_data_##inst = {};                                  		\
 	static const struct scd30_config scd30_config_##inst = {                                \
 		.bus = I2C_DT_SPEC_INST_GET(inst),                                                  \
 		.rdy_gpios = GPIO_DT_SPEC_INST_GET(inst, rdy_gpios),                                \

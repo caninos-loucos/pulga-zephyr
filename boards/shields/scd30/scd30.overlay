@@ -36,8 +36,7 @@
 		compatible = "sensirion,scd30";
 		reg = <0x61>;   /* Address of sensor */
 		status = "okay";
-		sample-period = <2>; 
 		//zephyr,deferred-init;
-		rdy-gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;  /* Pino de RDY */
+		rdy-gpios = <&gpio0 31 	(GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;  /* Pino de RDY */
 	};
 };
