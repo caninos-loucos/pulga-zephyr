@@ -7,12 +7,10 @@ compatible: "sensirion,scd30"
 
 include: i2c-device.yaml
 
-properties:
-    sample-period:
-      type: int
+properties:    
+    rdy-gpios:
+      type: phandle-array
       required: false
-      default: 2
       description: |
-        The initial sample period in seconds. The sensor will be
-        configured with this value on start up. This values must
-        be in the rang [2; 1800]. This value can be changed at run time.
+        GPIO connected to the SCD30 RDY pin, used to indicate data availability.
+        This property defines the GPIO pin and configuration (active high/low).

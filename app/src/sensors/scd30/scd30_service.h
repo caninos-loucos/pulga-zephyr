@@ -17,6 +17,9 @@ typedef struct
 // Each sensor_value has 2 words, SCD30 has 3 measurements
 #define SCD30_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelSCD30))
 
+// To be used in SCD30 compensation of ambient pressure
+#define SCD30_SAO_PAULO_AMBIENT_PRESSURE 937
+
 // Registers SCD30 model callbacks
 DataAPI *register_scd30_model_callbacks();
 

@@ -126,7 +126,7 @@ static int init_sensor()
     rc = battery_sample();
     divider_data.adc_seq.calibrate = false;
 
-    LOG_INF("Battery setup: %d", rc);
+    LOG_INF("Battery set up");
 
     return rc;
 }
@@ -147,7 +147,7 @@ int battery_sample(void)
                           &val);
     rc = val * (uint64_t)divider_config.full_ohm / divider_config.output_ohm;
 
-    LOG_DBG("raw %u (%u mV) => scaled: %d mV\n", divider_data.raw, val, rc);
+    LOG_DBG("raw: %u mV, scaled: %d mV", val, rc);
     return rc;
 }
 
