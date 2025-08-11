@@ -123,7 +123,7 @@ void lorawan_process_data(void *param0, void *param1, void *param2)
 	uint8_t max_payload_size;
 	uint8_t unused_arg;
 
-	int error, buffered_items = 0;
+	int error = 0;
 
 	while (1)
 	{
