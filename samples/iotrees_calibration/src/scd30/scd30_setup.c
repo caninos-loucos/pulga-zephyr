@@ -88,11 +88,14 @@ int init_scd30()
         LOG_ERR("SCD30 is not ready");
         return -EAGAIN;
     }
+
+    // Initialize measurements with the default ambient pressure
+    int error = scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
+
     // Registers desired application callback into the scd30 driver api
     scd30_register_callback(scd30, present_data_callback);
 
-    // Initialize measurements with the default ambient pressure
-    return scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
+    return error;
 }
 
 int enable_scd30_low_power_mode()
@@ -114,6 +117,10 @@ int enable_scd30_low_power_mode()
         LOG_ERR("Failed to set sample time: %d", error);
         return error;
     }
+
+    // Uncommenting the next line will delay the calibration process
+    // to allow for setting up the sensor in a stable environment.
+    // k_sleep(K_MINUTES(2));
 
     // Schedule the forced recalibration after 5 times the sampling rate
     int calibration_delay = SCD30_SAMPLING_RATE * 5;

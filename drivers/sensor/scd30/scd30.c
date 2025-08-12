@@ -550,8 +550,9 @@ static int scd30_attr_set(const struct device *dev, enum sensor_channel chan,
 		return scd30_write_register(dev, SCD30_CMD_SET_FORCED_RECALIBRATION, co2_reference);
 	}
 	case SCD30_SENSOR_ATTR_TEMPERATURE_OFFSET:
-	{
-		uint16_t temperature_offset = (uint16_t)(sensor_value_to_float(val) * 100.0f);
+	{	
+		// Guarantee that the temperature offset is non-negative
+		uint16_t temperature_offset = (uint16_t)(MAX(0, (sensor_value_to_float(val) * 100.0f)));
 		return scd30_write_register(dev, SCD30_CMD_SET_TEMPERATURE_OFFSET, temperature_offset);
 	}
 	case SCD30_SENSOR_ATTR_PRESSURE:
@@ -811,7 +812,7 @@ int scd30_start_periodic_measurement(const struct device *dev, int ambient_press
 
 	LOG_DBG("Starting periodic measurements");
 	if (ambient_pressure != 0 && (ambient_pressure < SCD30_MIN_PRESSURE_OFFSET ||
-									 ambient_pressure > SCD30_MAX_PRESSURE_OFFSET))
+								  ambient_pressure > SCD30_MAX_PRESSURE_OFFSET))
 	{
 		LOG_ERR("Invalid ambient pressure value: %d", ambient_pressure);
 		return -EINVAL;
@@ -891,7 +892,7 @@ static int scd30_init(const struct device *dev)
 }
 
 #define SCD30_DEFINE(inst)                                                                  \
-	static struct scd30_data scd30_data_##inst = {};                                  		\
+	static struct scd30_data scd30_data_##inst = {};                                        \
 	static const struct scd30_config scd30_config_##inst = {                                \
 		.bus = I2C_DT_SPEC_INST_GET(inst),                                                  \
 		.rdy_gpios = GPIO_DT_SPEC_INST_GET(inst, rdy_gpios),                                \
