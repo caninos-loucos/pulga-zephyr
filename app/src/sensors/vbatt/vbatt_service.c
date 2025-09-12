@@ -11,6 +11,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/adc.h>
 
@@ -26,6 +27,7 @@ LOG_MODULE_REGISTER(vbatt_service, CONFIG_APP_LOG_LEVEL);
 
 #define VBATT DT_PATH(vbatt)
 #define ADC DT_IO_CHANNELS_CTLR(VBATT)
+#define CHANNEL DT_CHILD(ADC, channel_1)
 
 /**
  * DEFINITIONS
@@ -58,10 +60,20 @@ struct divider_data
 
 static struct divider_data divider_data = {
     .adc = DEVICE_DT_GET(ADC),
-    .ch_cfg = ADC_CHANNEL_CFG_DT(DT_CHILD(ADC, channel_1)),
+    .ch_cfg = ADC_CHANNEL_CFG_DT(CHANNEL),
 };
 
-int battery_sample(void);
+int divider_setup(void);
+
+int sample_battery(int32_t *millivolts);
+
+void warn_low_battery(struct k_work *work)
+{
+    LOG_WRN("Battery < %d.%03d V!",
+            CONFIG_LOW_BATT_THRESH / 1000,
+            CONFIG_LOW_BATT_THRESH % 1000);
+}
+K_WORK_DELAYABLE_DEFINE(low_battery_work, warn_low_battery);
 
 /**
  * IMPLEMENTATIONS
@@ -71,7 +83,7 @@ static int divider_setup(void)
 {
     const struct gpio_dt_spec *power_gpios = &divider_config.power_gpios;
 
-    int rc;
+    int error;
 
     if (!device_is_ready(divider_data.adc))
     {
@@ -87,12 +99,12 @@ static int divider_setup(void)
             return -ENOENT;
         }
 
-        rc = gpio_pin_configure_dt(power_gpios, GPIO_OUTPUT_INACTIVE);
-        if (rc != 0)
+        error = gpio_pin_configure_dt(power_gpios, GPIO_OUTPUT_INACTIVE);
+        if (error)
         {
             LOG_ERR("Failed to control feed %s.%u: %d",
-                    power_gpios->port->name, power_gpios->pin, rc);
-            return rc;
+                    power_gpios->port->name, power_gpios->pin, error);
+            return error;
         }
     }
 
@@ -100,14 +112,14 @@ static int divider_setup(void)
         .channels = BIT(divider_data.ch_cfg.channel_id),
         .buffer = &divider_data.raw,
         .buffer_size = sizeof(divider_data.raw),
-        .oversampling = 4,
+        .oversampling = DT_PROP(CHANNEL, zephyr_oversampling),
+        .resolution = DT_PROP(CHANNEL, zephyr_resolution),
         .calibrate = true,
-        .resolution = 14,
     };
 
-    rc = adc_channel_setup(divider_data.adc, &divider_data.ch_cfg);
+    error = adc_channel_setup(divider_data.adc, &divider_data.ch_cfg);
 
-    return rc;
+    return error;
 }
 
 // Gets and initializes device
@@ -115,40 +127,47 @@ static int init_sensor()
 {
     LOG_DBG("Initializing vbatt");
 
-    int rc = divider_setup();
-    if (rc != 0)
+    int error = divider_setup();
+    if (error != 0)
     {
         LOG_ERR("Error setting up divider on AIN%u got %d",
-                divider_config.io_channel, rc);
-        return rc;
+                divider_config.io_channel, error);
+        return error;
     }
 
-    rc = battery_sample();
+    int raw = divider_data.raw;
+    error = sample_battery(&raw);
     divider_data.adc_seq.calibrate = false;
 
     LOG_INF("Battery set up");
-
-    return rc;
+    return 0;
 }
 
-int battery_sample(void)
+int sample_battery(int32_t *millivolts)
 {
-    int rc = adc_read(divider_data.adc, &divider_data.adc_seq);
-
-    if (rc != 0)
+    int error = adc_read(divider_data.adc, &divider_data.adc_seq);
+    if (error)
     {
-        return rc;
+        LOG_ERR("Error reading adc sequence: %d", error);
+        return error;
     }
 
-    int32_t val = divider_data.raw;
-    adc_raw_to_millivolts(adc_ref_internal(divider_data.adc),
-                          divider_data.ch_cfg.gain,
-                          divider_data.adc_seq.resolution,
-                          &val);
-    rc = val * (uint64_t)divider_config.full_ohm / divider_config.output_ohm;
+    int32_t raw = divider_data.raw;
+    error = adc_raw_to_millivolts(
+        adc_ref_internal(divider_data.adc),
+        divider_data.ch_cfg.gain,
+        divider_data.adc_seq.resolution,
+        &raw);
+    if (error)
+    {
+        LOG_ERR("Error converting buffer data: %d", error);
+        return error;
+    }
 
-    LOG_DBG("raw: %u mV, scaled: %d mV", val, rc);
-    return rc;
+    *millivolts = raw * divider_config.full_ohm / divider_config.output_ohm;
+    
+    LOG_DBG("raw: %u mV, scaled: %d mV", raw, (*millivolts));
+    return 0;
 }
 
 // Reads sensor measurements and stores them in buffer
@@ -158,28 +177,36 @@ static void read_sensor_values()
 
     SensorModelVbatt vbatt_model;
     uint32_t vbatt_data[MAX_32_WORDS];
-    int rc = battery_sample();
 
-    while (rc == -EAGAIN)
+    int32_t millivolts = divider_data.raw;
+    int error = sample_battery(&millivolts);
+
+    while (error == -EAGAIN)
     {
-        LOG_WRN("fetch sample from \"%s\" failed: %d, trying again", divider_data.adc->name, rc);
-        rc = battery_sample();
+        LOG_WRN("fetch sample from \"%s\" failed: %d, trying again", divider_data.adc->name, error);
+        error = sample_battery(&millivolts);
     }
 
-    if (rc < 0)
+    if (error)
     {
-        LOG_ERR("fetch sample from \"%s\" failed: %d", divider_data.adc->name, rc);
+        LOG_ERR("fetch sample from \"%s\" failed: %d", divider_data.adc->name, error);
+        return;
     }
 
-    vbatt_model.millivolts.val1 = rc;
+    sensor_value_from_milli(&vbatt_model.voltage, millivolts);
 #ifndef CONFIG_EVENT_TIMESTAMP_NONE
     vbatt_model.timestamp = get_current_timestamp();
 #endif /* CONFIG_EVENT_TIMESTAMP_NONE */
 
     memcpy(&vbatt_data, &vbatt_model, sizeof(SensorModelVbatt));
-    if (insert_in_buffer(&app_buffer, vbatt_data, VBATT_MODEL, rc, VBATT_MODEL_WORDS) != 0)
+    if (insert_in_buffer(&app_buffer, vbatt_data, VBATT_MODEL, 0, VBATT_MODEL_WORDS) != 0)
     {
         LOG_ERR("Failed to insert data in ring buffer.");
+    }
+
+    if (millivolts < CONFIG_LOW_BATT_THRESH)
+    {
+        k_work_schedule(&low_battery_work, K_MSEC(2000));
     }
 }
 

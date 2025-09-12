@@ -7,7 +7,7 @@
 
 typedef struct
 {
-    struct sensor_value millivolts;
+    struct sensor_value voltage;
     uint32_t timestamp;
 } SensorModelVbatt;
 

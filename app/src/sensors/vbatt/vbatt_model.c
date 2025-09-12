@@ -21,9 +21,10 @@ static int encode_verbose(uint32_t *data_words, uint8_t *encoded_data, size_t en
 
     // Formats the string
     return snprintf(encoded_data, encoded_size,
-                    "Timestamp: %d; Voltage: %d mV;",
+                    "Timestamp: %d; Voltage: %d.%03d V;",
                     vbatt_model->timestamp,
-                    vbatt_model->millivolts.val1);
+                    vbatt_model->voltage.val1,
+                    vbatt_model->voltage.val2 / 1000);
 }
 
 // Encodes all values of data model into a minimal string
@@ -36,7 +37,8 @@ static int encode_minimalist(uint32_t *data_words, uint8_t *encoded_data, size_t
     return snprintf(encoded_data, encoded_size,
                     "TS%dmV%d",
                     vbatt_model->timestamp,
-                    vbatt_model->millivolts.val1);
+                    vbatt_model->voltage.val1 * 1000 +
+                        vbatt_model->voltage.val2 / 1000);
 }
 
 static int encode_raw_bytes(uint32_t *data_words, uint8_t *encoded_data, size_t encoded_size)
