@@ -48,7 +48,7 @@ static void read_sensor_values()
 {
     LOG_DBG("Reading %s", divider->name);
 
-    SensorModelVbatt vbatt_model;
+    SensorModelVbatt vbatt_model = {0};
     uint32_t vbatt_data[MAX_32_WORDS];
 
     // Fetch measurements to driver
