@@ -31,10 +31,10 @@ static void ble_init_channel();
 static void ble_send_data(void *, void *, void *);
 
 
-static uint8_t mfg_data[] = { 0xff, 0xff, 0x00 };
+static uint8_t ble_data[25];
 
 static const struct bt_data ad[] = {
-	BT_DATA(BT_DATA_MANUFACTURER_DATA, mfg_data, 3),
+	BT_DATA(BT_DATA_MANUFACTURER_DATA, ble_data, sizeof(ble_data)),
 };
 
 
@@ -73,7 +73,7 @@ static void ble_send_data(void *param0, void *param1, void *param2)
     ARG_UNUSED(param2);
 
     // Max fprintf character output is 4096
-    uint8_t encoded_data[1024];
+    uint8_t encoded_data[25];
     int size;
 
     while (1)
@@ -92,7 +92,13 @@ static void ble_send_data(void *param0, void *param1, void *param2)
                 LOG_ERR("Advertising failed to start (err %d)\n", err);
                 return;
             }
-            printk("%s\n", encoded_data);
+            k_msleep(1000);
+
+            err = bt_le_adv_stop();
+		    if (err) {
+			    LOG_ERR("Advertising failed to stop (err %d)\n", err);
+			return 0;
+		    }
         }
         else
             LOG_ERR("Could not encode data");

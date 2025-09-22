@@ -3,6 +3,7 @@
 #include <communication/comm_interface.h>
 #include <communication/uart/uart_interface.h>
 #include <communication/lorawan/lorawan_interface.h>
+#include <communication/ble/ble_interface.h>
 
 LOG_MODULE_REGISTER(comm_interface, CONFIG_APP_LOG_LEVEL);
 

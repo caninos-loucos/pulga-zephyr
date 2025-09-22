@@ -25,6 +25,7 @@ target_sources(app PRIVATE
                     src/main.c
                     src/communication/comm_interface.c
                     src/communication/uart/uart_interface.c
+                    src/communication/ble/ble_interface.c
                     src/integration/data_buffer/buffer_service.c
                     src/integration/data_abstraction/abstraction_service.c
                     src/integration/data_abstraction/text_model/text_model.c
