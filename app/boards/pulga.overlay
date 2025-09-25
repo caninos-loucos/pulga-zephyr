@@ -26,20 +26,3 @@
 		status = "disabled";
 	};
 };
-
-/ {
-	/*Battery Voltage Sensor*/
-	vbatt {
-		compatible = "voltage-divider";
-		io-channels = <&adc 1>;
-		full-ohms = <(3340 + 10030)>;
-		output-ohms = <10030>;
-
-		status = "okay";
-	};
-};
-
-/*Battery Voltage ADC*/
-&adc {
-	status = "okay";
-};

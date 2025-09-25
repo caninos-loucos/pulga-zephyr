@@ -31,20 +31,6 @@ config BUFFER_WORDS
 	int "Number of 32-bit words the buffers can hold"
 	default 45000 # Using 180 out of 256kB of memory
 	depends on RING_BUFFER
-	
-config VBATT
-	bool "Enable battery voltage measurement through the ADC"
-	default n
-	select ADC
-	select SENSOR
-	select GPIO
-	depends on DT_HAS_VOLTAGE_DIVIDER_ENABLED
-
-config LOW_BATT_THRESH
-	int "Battery voltage threshold (in millivolts). Defines a critical low battery voltage"
-	default 3000
-	depends on VBATT
-
 
 ###
 # Timestamp Configs

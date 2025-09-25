@@ -1,0 +1,22 @@
+# Copyright (c) 2024 LSI-TEC
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_PULGA_VBATT
+	
+config VBATT
+	bool "Enable battery voltage measurement through the ADC"
+	default y
+	select ADC
+	select SENSOR
+	select GPIO
+	depends on DT_HAS_VOLTAGE_DIVIDER_ENABLED
+
+config LOW_BATT_THRESH
+	int "Battery voltage threshold (in millivolts). Defines the low battery voltage"
+	default 3400
+
+config CRITICAL_BATT_THRESH
+	int "Battery voltage threshold (in millivolts). Defines the critical low battery voltage"
+	default 3300
+
+endif # SHIELD_PULGA_VBATT
