@@ -106,7 +106,7 @@ void receive_fix_callback(const struct device *gnss_device,
 
         if (insert_in_buffer(&app_buffer, l86_m33_data, GNSS_MODEL, 0, GNSS_MODEL_WORDS) != 0)
         {
-            LOG_ERR("Failed to insert data in ring buffer.");
+            LOG_ERR("Failed to insert l86_m33 data in ring buffer.");
         }
     }
 }

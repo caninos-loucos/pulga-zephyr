@@ -131,7 +131,7 @@ void read_data_callback()
 
     if (insert_in_buffer(&app_buffer, scd30_data, SCD30_MODEL, error, SCD30_MODEL_WORDS) != 0)
     {
-        LOG_ERR("Failed to insert data in ring buffer.");
+        LOG_ERR("Failed to insert SCD30 data in ring buffer.");
     }
 
     if (get_sampling_interval() >= k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))

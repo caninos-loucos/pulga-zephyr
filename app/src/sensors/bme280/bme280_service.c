@@ -64,7 +64,7 @@ sample_fetch:
 
         if (insert_in_buffer(&app_buffer, bme280_data, BME280_MODEL, error, BME280_MODEL_WORDS) != 0)
         {
-            LOG_ERR("Failed to insert data in ring buffer.");
+            LOG_ERR("Failed to insert BME280 data in ring buffer.");
         }
     }
     else if (error == -EAGAIN)

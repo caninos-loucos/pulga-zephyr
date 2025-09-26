@@ -171,7 +171,7 @@ static int forward_data_cmd_handler(const struct shell *sh, size_t argc, char **
 
     if (insert_in_buffer(&app_buffer, (uint32_t *)payload, TEXT_DATA, 0, MAX_32_WORDS) != 0)
     {
-        shell_error(sh, "Failed to insert data in ring buffer.");
+        shell_error(sh, "Failed to insert communication data in ring buffer.");
         return -EAGAIN;
     }
 
