@@ -67,7 +67,7 @@ sample_fetch:
 
         if (insert_in_buffer(&app_buffer, si1133_data, SI1133_MODEL, error, SI1133_MODEL_WORDS) != 0)
         {
-            LOG_ERR("Failed to insert data in ring buffer.");
+            LOG_ERR("Failed to insert SI1133 data in ring buffer.");
         }
     }
     else if (error == -EAGAIN)

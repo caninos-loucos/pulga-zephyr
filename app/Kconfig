@@ -73,6 +73,10 @@ config SEND_UART
 	bool "Print data in buffer in console via UART"
 	default UART_CONSOLE
 
+config SEND_BLE
+	bool "Send BLE broadcast"
+	default 0
+
 # LoRaWAN configs
 
 config SEND_LORAWAN

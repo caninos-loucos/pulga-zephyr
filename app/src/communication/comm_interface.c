@@ -3,6 +3,7 @@
 #include <communication/comm_interface.h>
 #include <communication/uart/uart_interface.h>
 #include <communication/lorawan/lorawan_interface.h>
+#include <communication/ble/ble_interface.h>
 
 LOG_MODULE_REGISTER(comm_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -46,6 +47,10 @@ int register_comm_callbacks()
 
 #if defined(CONFIG_SEND_LORAWAN)
     channel_apis[LORAWAN] = register_lorawan_callbacks();
+#endif /* CONFIG_SEND_LORAWAN */
+
+#if defined(CONFIG_SEND_BLE)
+    channel_apis[BLE] = register_ble_callbacks();
 #endif /* CONFIG_SEND_LORAWAN */
 
     return 0;

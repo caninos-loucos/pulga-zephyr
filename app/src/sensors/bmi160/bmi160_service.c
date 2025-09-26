@@ -63,7 +63,7 @@ sample_fetch:
 
         if (insert_in_buffer(&app_buffer, bmi160_data, BMI160_MODEL, error, BMI160_MODEL_WORDS) != 0)
         {
-            LOG_ERR("Failed to insert data in ring buffer.");
+            LOG_ERR("Failed to insert BMI160 data in ring buffer.");
         }
     }
     else if (error == -EAGAIN)
