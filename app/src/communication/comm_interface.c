@@ -49,6 +49,10 @@ int register_comm_callbacks()
     channel_apis[LORAWAN] = register_lorawan_callbacks();
 #endif /* CONFIG_SEND_LORAWAN */
 
+#if defined(CONFIG_SEND_BLE)
+    channel_apis[BLE] = register_ble_callbacks();
+#endif /* CONFIG_SEND_LORAWAN */
+
     return 0;
 }
 
