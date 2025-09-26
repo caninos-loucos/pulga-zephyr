@@ -11,6 +11,15 @@
 #include <zephyr/bluetooth/hci.h>
 
 
+#define DEVICE_NAME "Test beacon"
+#define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
+
+
+static const struct bt_data sd[] = {
+	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+};
+
+
 LOG_MODULE_REGISTER(ble_interface, CONFIG_APP_LOG_LEVEL);
 
 /**
@@ -31,7 +40,10 @@ static void ble_init_channel();
 static void ble_send_data(void *, void *, void *);
 
 
-static uint8_t ble_data[25];
+static uint8_t ble_data[25] = { 0xff, 0xff, 0x00 , 0x01, 0x02, 0x03, 0x04, 0x05,
+                                  0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
+                                  0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11,
+                                  0x12, 0x13, 0x14, 0x15, 0x16};
 
 static const struct bt_data ad[] = {
 	BT_DATA(BT_DATA_MANUFACTURER_DATA, ble_data, sizeof(ble_data)),
@@ -82,12 +94,16 @@ static void ble_send_data(void *param0, void *param1, void *param2)
         k_sem_take(&data_ready_sem[BLE], K_FOREVER);
 
         // Encoding data to verbose string
-        size = encode_data(data_unit.data_words, data_unit.data_type, VERBOSE,
+        size = encode_data(data_unit.data_words, data_unit.data_type, MINIMALIST,
                            encoded_data, sizeof(encoded_data));
         if (size >= 0)
         {
+
+            memcpy(ble_data, encoded_data, sizeof(encoded_data));
+            LOG_HEXDUMP_INF(ble_data, sizeof(ble_data), "My buffer");
+            
             int err = bt_le_adv_start(BT_LE_ADV_NCONN, ad, ARRAY_SIZE(ad),
-                    NULL, 0);
+                     sd, ARRAY_SIZE(sd));
             if (err) {
                 LOG_ERR("Advertising failed to start (err %d)\n", err);
                 return;
