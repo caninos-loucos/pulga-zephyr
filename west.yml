@@ -2,26 +2,27 @@
 # SPDX-License-Identifier: Apache-2.0
 
 manifest:
+    remotes:
+        - name: zephyrproject-rtos
+          url-base: https://github.com/zephyrproject-rtos
 
-  remotes:
-    - name: zephyrproject-rtos
-      url-base: https://github.com/zephyrproject-rtos
-    
-    - name: caninos
-      url-base: https://github.com/caninos-loucos
+        - name: caninos
+          url-base: https://github.com/caninos-loucos
 
-  projects:
-    - name: zephyr
-      remote: caninos
-      revision: main
-      import:
-        # By using name-allowlist we can clone only the modules that are
-        # strictly needed by the application.
-        name-allowlist:
-          - cmsis_6      # required by the ARM port
-          - hal_nordic # required by the custom_plank board (Nordic based)
-          
-    - name: loramac-node
-      remote: caninos
-      revision: master
-      path: modules/lib/loramac-node
+    projects:
+        - name: zephyr
+          remote: caninos
+          revision: main
+          import:
+              # By using name-allowlist we can clone only the modules that are
+              # strictly needed by the application.
+              name-allowlist:
+                  - cmsis_6 # required by the ARM port
+                  - hal_nordic # required by the custom_plank board (Nordic based)
+                  - mcuboot
+                  - zcbor
+
+        - name: loramac-node
+          remote: caninos
+          revision: master
+          path: modules/lib/loramac-node
