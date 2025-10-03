@@ -16,8 +16,14 @@ static SensorAPI vbatt_api = {0};
 static int init_sensor(void);
 static void read_sensor_values(void);
 
-void warn_low_battery(struct k_work *work);
-K_WORK_DELAYABLE_DEFINE(low_battery_work, warn_low_battery);
+void low_battery_handler(struct k_work *work);
+K_WORK_DEFINE(low_battery_work, low_battery_handler);
+
+struct battery_trigger_info
+{
+    struct k_work timed_work;
+    int16_t value; // millivolts
+};
 
 /**
  * IMPLEMENTATIONS
@@ -83,19 +89,23 @@ static void read_sensor_values()
         LOG_ERR("Failed to insert data in ring buffer.");
     }
 
-    // Schedule low-battery trigger
-    if (sensor_value_to_milli(&vbatt_model.voltage) < CONFIG_LOW_BATT_THRESH)
+    // low-battery trigger
+    int16_t value = (int16_t)sensor_value_to_milli(&vbatt_model.voltage);
+    if (value < CONFIG_LOW_BATT_THRESH && !k_work_is_pending(&low_battery_work))
     {
-        LOG_WRN("Battery low: %d mV", (int16_t)sensor_value_to_milli(&vbatt_model.voltage));
-        k_work_schedule(&low_battery_work, K_MSEC(2000));
+        struct battery_trigger_info low_battery = {
+            .timed_work = low_battery_work,
+            .value = value,
+        };
+        k_work_submit(&low_battery.timed_work);
     }
 }
 
-void warn_low_battery(struct k_work *work)
+void low_battery_handler(struct k_work *work)
 {
-    LOG_WRN("Battery below %d.%03d V",
-            CONFIG_LOW_BATT_THRESH / 1000,
-            CONFIG_LOW_BATT_THRESH % 1000);
+    LOG_DBG("Battery below threshold (%d) mV", CONFIG_LOW_BATT_THRESH);
+    struct battery_trigger_info *low_battery = CONTAINER_OF(work, struct battery_trigger_info, timed_work);
+    LOG_WRN("low battery: %d mV", low_battery->value);
 }
 
 // Register vbatt sensor callbacks
