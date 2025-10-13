@@ -1,0 +1,30 @@
+/**
+* This piece of code activates the sensors internal to the board,
+* connected to the CPU by I2C0 
+*/
+&i2c0 {
+
+	/*Visible light, Infrared and UV Sensor*/
+	si1133@55 {
+		compatible = "silabs,si1133";
+		reg = <0x55>;
+		status = "disabled";
+	};
+
+	/*Accelerometer and Gyroscope*/
+	bmi160@69 {
+		compatible = "bosch,bmi160";
+		reg = <0x69>;
+		int-gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
+		status = "disabled";
+	};
+
+	/*Umidity, Pressure and Temperature Sensor*/
+	bme280@77 {
+		compatible = "bosch,bme280";
+		reg = <0x77>;
+		status = "disabled";
+	};
+};
+
+
