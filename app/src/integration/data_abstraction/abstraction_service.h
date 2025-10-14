@@ -18,6 +18,7 @@ enum DataType
     BME280_MODEL = SENSOR_TYPE_OFFSET,
     BMI160_MODEL,
     SI1133_MODEL,
+    VBATT_MODEL,
     SCD30_MODEL,
     GNSS_MODEL,
     MAX_DATA_TYPE // Total number of data types

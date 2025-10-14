@@ -107,6 +107,8 @@ static int read_sensors_cmd_handler(const struct shell *sh, size_t argc, char **
             sensor_num = BMI160;
         else if (!strcmp(sensor_name, "si1133"))
             sensor_num = SI1133;
+        else if (!strcmp(sensor_name, "vbatt"))
+            sensor_num = VBATT;
         else if (!strcmp(sensor_name, "scd30"))
             sensor_num = SCD30;
         else if (!strcmp(sensor_name, "gps"))

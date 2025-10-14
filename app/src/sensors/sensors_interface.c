@@ -5,6 +5,7 @@
 #include <sensors/bmi160/bmi160_service.h>
 #include <sensors/scd30/scd30_service.h>
 #include <sensors/l86_m33/l86_m33_service.h>
+#include <sensors/vbatt/vbatt_service.h>
 
 LOG_MODULE_REGISTER(sensors_interface, CONFIG_APP_LOG_LEVEL);
 
@@ -49,6 +50,10 @@ int register_sensors_callbacks()
 #ifdef CONFIG_SI1133
 	sensor_apis[SI1133] = register_si1133_callbacks();
 #endif /* CONFIG_SI1133 */
+
+#ifdef CONFIG_VBATT
+	sensor_apis[VBATT] = register_vbatt_callbacks();
+#endif /* CONFIG_VBATT */
 
 #ifdef CONFIG_SHIELD_SCD30
 	sensor_apis[SCD30] = register_scd30_callbacks();
