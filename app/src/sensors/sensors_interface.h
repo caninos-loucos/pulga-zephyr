@@ -17,8 +17,9 @@ enum SensorType
 	BME280,
 	BMI160,
 	SI1133,
+	VBATT,
 	SCD30,
-	L86_M33, // GNSS Sensor
+	L86_M33,	// GNSS Sensor
 	MAX_SENSORS // Total number of sensors
 };
 
