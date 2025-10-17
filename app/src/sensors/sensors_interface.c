@@ -144,3 +144,59 @@ int get_sampling_interval()
 {
 	return current_sampling_interval;
 }
+
+int suspend_sensor_read(char *sensor_name)
+{
+	enum SensorType sensor_num = -1;
+
+	if (!strcmp(sensor_name, "bme280"))
+		sensor_num = BME280;
+	else if (!strcmp(sensor_name, "bmi160"))
+		sensor_num = BMI160;
+	else if (!strcmp(sensor_name, "si1133"))
+		sensor_num = SI1133;
+	else if (!strcmp(sensor_name, "vbatt"))
+		sensor_num = VBATT;
+	else if (!strcmp(sensor_name, "scd30"))
+		sensor_num = SCD30;
+	else if (!strcmp(sensor_name, "gps"))
+		sensor_num = L86_M33;
+
+	if (sensor_num == -1 || sensor_apis[sensor_num] == NULL)
+	{
+		LOG_ERR("Sensor %s is not available", sensor_name);
+		return -1;
+	}
+
+	sensor_apis[sensor_num]->suspend_periodic_measurement();
+
+	return 0;
+}
+
+int resume_sensor_read(char *sensor_name)
+{
+	enum SensorType sensor_num = -1;
+
+	if (!strcmp(sensor_name, "bme280"))
+		sensor_num = BME280;
+	else if (!strcmp(sensor_name, "bmi160"))
+		sensor_num = BMI160;
+	else if (!strcmp(sensor_name, "si1133"))
+		sensor_num = SI1133;
+	else if (!strcmp(sensor_name, "vbatt"))
+		sensor_num = VBATT;
+	else if (!strcmp(sensor_name, "scd30"))
+		sensor_num = SCD30;
+	else if (!strcmp(sensor_name, "gps"))
+		sensor_num = L86_M33;
+
+	if (sensor_num == -1 || sensor_apis[sensor_num] == NULL)
+	{
+		LOG_ERR("Sensor %s is not available", sensor_name);
+		return -1;
+	}
+
+	sensor_apis[sensor_num]->resume_periodic_measurement();
+
+	return 0;
+}

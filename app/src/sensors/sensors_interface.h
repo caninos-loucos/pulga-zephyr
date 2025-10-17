@@ -30,6 +30,10 @@ typedef struct
 	int (*init_sensor)();
 	// Reads sensor values and stores them in buffer
 	void (*read_sensor_values)();
+	// Suspend periodic measurements on the sensor
+	void (*suspend_periodic_measurement)();
+	// Resume periodic measurements on the sensor, to be used after a stop
+	void (*resume_periodic_measurement)();
 	// Data processing API
 	DataAPI *data_model_api;
 } SensorAPI;
@@ -46,5 +50,9 @@ int read_sensors();
 void set_sampling_interval(int new_interval);
 // Get the interval in milliseconds between samples
 int get_sampling_interval();
+// Suspend the periodic read of a sensor
+int suspend_sensor_read(char *sensor_name);
+// Resume the periodic read of a sensor
+int resume_sensor_read(char *sensor_name);
 
 #endif /* SENSORS_INTERFACE_H */
