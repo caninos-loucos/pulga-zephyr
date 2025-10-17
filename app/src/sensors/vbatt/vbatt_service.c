@@ -106,6 +106,14 @@ void low_battery_handler(struct k_work *work)
     LOG_DBG("Battery below threshold (%d) mV", CONFIG_LOW_BATT_THRESH);
     struct battery_trigger_info *low_battery = CONTAINER_OF(work, struct battery_trigger_info, timed_work);
     LOG_WRN("low battery: %d mV", low_battery->value);
+
+    LOG_DBG("Will suspend scd30 periodic reading");
+
+    int error = suspend_sensor_read("scd30");
+
+    if (error){
+        LOG_ERR("scd30 suspend error");
+    }
 }
 
 // Register vbatt sensor callbacks
