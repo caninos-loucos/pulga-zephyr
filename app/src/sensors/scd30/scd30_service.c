@@ -1,9 +1,11 @@
 #include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
+#include <zephyr/pm/device_runtime.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 #include <sensors/scd30/scd30_service.h>
+#include <errno.h>
 
 LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
 
@@ -80,6 +82,23 @@ static int init_sensor()
         return error;
     }
 
+	enum pm_device_state pm_state;
+
+	error = pm_device_runtime_get(scd30);
+	if (ret < 0) {
+		LOG_ERR("Failed to initialize SCD30 pm runtime: %d", error);
+		return error;
+	}
+
+	(void)pm_device_state_get(dev, &pm_state);
+	if (state == PM_DEVICE_STATE_ACTIVE) {
+		LOG_ERR("SCD30 pm runtime resumed\n");
+		error = 0;
+	} else {
+		LOG_ERR("SCD30 pm runtime Not resumed\n");
+		return -1
+	}
+
     // Starts periodic measurements with default ambient pressure if not already started
     error = scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
 
@@ -143,7 +162,13 @@ void read_data_callback()
 
 static inline void read_sensor_values()
 {
+    enum pm_device_state pm_state;
 
+	(void)pm_device_state_get(dev, &pm_state);
+	if (state != PM_DEVICE_STATE_ACTIVE) {
+		LOG_DEBUG("SCD30 pm runtime suspended\n");
+	}
+    
     if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
     {
         k_work_schedule(&trigger_stabilized_sensor_routine, K_NO_WAIT);
@@ -158,12 +183,48 @@ static inline void read_sensor_values()
     }
 }
 
+static inline void suspend_periodic_measurement()
+{
+    enum pm_device_action pm_action = PM_DEVICE_ACTION_SUSPEND;
+
+    int error = pm_device_action_run(scd30, pm_action);
+
+    if (error == EALREADY)
+    {
+        LOG_ERR("SCD30 already pm suspended");
+    }else if(error == EBUSY){
+        LOG_ERR("SCD30 pm suspend state busy");
+    }else if(error){
+        LOG_ERR("SCD30 pm suspend state error: %d", error);
+    }
+
+}
+
+static inline void resume_periodic_measurement()
+{
+    enum pm_device_action pm_action = PM_DEVICE_ACTION_RESUME;
+
+    int error = pm_device_action_run(scd30, pm_action);
+
+    if (error == EALREADY)
+    {
+        LOG_ERR("SCD30 already pm resumed");
+    }else if(error == EBUSY){
+        LOG_ERR("SCD30 pm resume state busy");
+    }else if(error){
+        LOG_ERR("SCD30 pm resume state error: %d", error);
+    }
+
+}
+
 // Register SCD30 sensor callbacks
 SensorAPI *register_scd30_callbacks()
 {
     LOG_DBG("Registering SCD30 callbacks");
     scd30_api.init_sensor = init_sensor;
     scd30_api.read_sensor_values = read_sensor_values;
+    scd30_api.suspend_periodic_measurement = suspend_periodic_measurement;
+    scd30_api.resume_periodic_measurement = resume_periodic_measurement;
     scd30_api.data_model_api = register_scd30_model_callbacks();
     return &scd30_api;
 }
