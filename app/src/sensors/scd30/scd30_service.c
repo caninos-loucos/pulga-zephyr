@@ -1,5 +1,6 @@
 #include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
+#include <zephyr/pm/device.h>
 #include <zephyr/pm/device_runtime.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
@@ -86,18 +87,18 @@ static int init_sensor()
 	enum pm_device_state pm_state;
 
 	error = pm_device_runtime_get(scd30);
-	if (ret < 0) {
+	if (error < 0) {
 		LOG_ERR("Failed to initialize SCD30 pm runtime: %d", error);
 		return error;
 	}
 
-	(void)pm_device_state_get(dev, &pm_state);
-	if (state == PM_DEVICE_STATE_ACTIVE) {
+	(void)pm_device_state_get(scd30, &pm_state);
+	if (pm_state == PM_DEVICE_STATE_ACTIVE) {
 		LOG_ERR("SCD30 pm runtime resumed\n");
 		error = 0;
 	} else {
 		LOG_ERR("SCD30 pm runtime Not resumed\n");
-		return -1
+		return -1;
 	}
 #endif /* CONFIG_PM_DEVICE */
 
@@ -167,6 +168,11 @@ static inline void read_sensor_values()
 #ifdef CONFIG_PM_DEVICE
     enum pm_device_state pm_state;
 
+    (void)pm_device_state_get(scd30, &pm_state);
+    if (pm_state != PM_DEVICE_STATE_ACTIVE) {
+        LOG_DBG("SCD30 pm runtime suspended\n");
+        return;
+    }
 #endif /* CONFIG_PM_DEVICE */
     
     if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
