@@ -891,6 +891,24 @@ static int scd30_init(const struct device *dev)
 	return 0;
 }
 
+static int scd30_pm_action(const struct device *dev, enum pm_device_action action)
+{
+	switch (action) {
+	case PM_DEVICE_ACTION_RESUME:
+		LOG_DBG("child resuming..\n");
+		scd30_start_periodic_measurement(dev, 937); // should pass SCD30_SAO_PAULO_AMBIENT_PRESSURE to driver or leave hardcoded?
+		break;
+	case PM_DEVICE_ACTION_SUSPEND:
+		LOG_DBG("child suspending..\n");
+		scd30_stop_periodic_measurement(dev);
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 #define SCD30_DEFINE(inst)                                                                  \
 	static struct scd30_data scd30_data_##inst = {};                                        \
 	static const struct scd30_config scd30_config_##inst = {                                \
@@ -898,7 +916,9 @@ static int scd30_init(const struct device *dev)
 		.rdy_gpios = GPIO_DT_SPEC_INST_GET(inst, rdy_gpios),                                \
 	};                                                                                      \
                                                                                             \
-	DEVICE_DT_INST_DEFINE(inst, scd30_init, NULL, &scd30_data_##inst, &scd30_config_##inst, \
+	PM_DEVICE_DEFINE(inst, scd30_pm_action);												\
+	DEVICE_DT_INST_DEFINE(inst, scd30_init, PM_DEVICE_GET(inst),							\
+						  &scd30_data_##inst, &scd30_config_##inst,							\
 						  POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &scd30_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(SCD30_DEFINE);
