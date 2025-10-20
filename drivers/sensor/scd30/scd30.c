@@ -891,6 +891,7 @@ static int scd30_init(const struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_DEVICE
 static int scd30_pm_action(const struct device *dev, enum pm_device_action action)
 {
 	switch (action) {
@@ -908,6 +909,8 @@ static int scd30_pm_action(const struct device *dev, enum pm_device_action actio
 
 	return 0;
 }
+#endif /* CONFIG_PM_DEVICE */
+
 
 #define SCD30_DEFINE(inst)                                                                  \
 	static struct scd30_data scd30_data_##inst = {};                                        \

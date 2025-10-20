@@ -82,6 +82,7 @@ static int init_sensor()
         return error;
     }
 
+#ifdef CONFIG_PM_DEVICE
 	enum pm_device_state pm_state;
 
 	error = pm_device_runtime_get(scd30);
@@ -98,6 +99,7 @@ static int init_sensor()
 		LOG_ERR("SCD30 pm runtime Not resumed\n");
 		return -1
 	}
+#endif /* CONFIG_PM_DEVICE */
 
     // Starts periodic measurements with default ambient pressure if not already started
     error = scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
@@ -162,12 +164,10 @@ void read_data_callback()
 
 static inline void read_sensor_values()
 {
+#ifdef CONFIG_PM_DEVICE
     enum pm_device_state pm_state;
 
-	(void)pm_device_state_get(dev, &pm_state);
-	if (state != PM_DEVICE_STATE_ACTIVE) {
-		LOG_DEBUG("SCD30 pm runtime suspended\n");
-	}
+#endif /* CONFIG_PM_DEVICE */
     
     if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
     {
@@ -183,6 +183,7 @@ static inline void read_sensor_values()
     }
 }
 
+#ifdef CONFIG_PM_DEVICE
 static inline void suspend_periodic_measurement()
 {
     enum pm_device_action pm_action = PM_DEVICE_ACTION_SUSPEND;
@@ -216,6 +217,17 @@ static inline void resume_periodic_measurement()
     }
 
 }
+#else  /* CONFIG_PM_DEVICE */
+static inline void suspend_periodic_measurement()
+{
+    LOG_WRN("CONFIG_PM_DEVICE and CONFIG_PM_DEVICE_RUNTIME must be enabled on .conf");
+}
+
+static inline void resume_periodic_measurement()
+{
+    LOG_WRN("CONFIG_PM_DEVICE and CONFIG_PM_DEVICE_RUNTIME must be enabled on .conf");
+}
+#endif /* CONFIG_PM_DEVICE */
 
 // Register SCD30 sensor callbacks
 SensorAPI *register_scd30_callbacks()
