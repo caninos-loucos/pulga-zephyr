@@ -40,6 +40,8 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/device_runtime.h>
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
 #include <zephyr/sys/crc.h>
@@ -919,8 +921,8 @@ static int scd30_pm_action(const struct device *dev, enum pm_device_action actio
 		.rdy_gpios = GPIO_DT_SPEC_INST_GET(inst, rdy_gpios),                                \
 	};                                                                                      \
                                                                                             \
-	PM_DEVICE_DEFINE(inst, scd30_pm_action);												\
-	DEVICE_DT_INST_DEFINE(inst, scd30_init, PM_DEVICE_GET(inst),							\
+	PM_DEVICE_DT_INST_DEFINE(inst, scd30_pm_action);										\
+	DEVICE_DT_INST_DEFINE(inst, scd30_init, PM_DEVICE_DT_INST_GET(inst),					\
 						  &scd30_data_##inst, &scd30_config_##inst,							\
 						  POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &scd30_driver_api);
 
