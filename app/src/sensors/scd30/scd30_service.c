@@ -24,6 +24,8 @@ static const struct device *scd30;
 static SensorAPI scd30_api = {0};
 // Semaphore to synchronize access to the buffer for storing sensor data
 static struct k_sem store_data;
+// Temporary flag to test suspending scd30 without pm bug
+static bool sensor_read_active;
 /**
  * This function allows storing data from the SCD30 sensor into the application buffer
  * after the sensor has stabilized, considering its response time after starting
@@ -100,6 +102,8 @@ static int init_sensor()
 		LOG_ERR("SCD30 pm runtime Not resumed\n");
 		return -1;
 	}
+#else /* CONFIG_PM_DEVICE */
+    sensor_read_active = true;
 #endif /* CONFIG_PM_DEVICE */
 
     // Starts periodic measurements with default ambient pressure if not already started
@@ -173,6 +177,11 @@ static inline void read_sensor_values()
         LOG_DBG("SCD30 pm runtime suspended\n");
         return;
     }
+#else /* CONFIG_PM_DEVICE */
+    if (!sensor_read_active) {
+        LOG_DBG("SCD30 reading suspended\n");
+        return;
+    }
 #endif /* CONFIG_PM_DEVICE */
     
     if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
@@ -226,12 +235,16 @@ static inline void resume_periodic_measurement()
 #else  /* CONFIG_PM_DEVICE */
 static inline void suspend_periodic_measurement()
 {
-    LOG_WRN("CONFIG_PM_DEVICE and CONFIG_PM_DEVICE_RUNTIME must be enabled on .conf");
+    sensor_read_active = false;
+    scd30_stop_periodic_measurement(scd30);
+    //LOG_WRN("CONFIG_PM_DEVICE and CONFIG_PM_DEVICE_RUNTIME must be enabled on .conf");
 }
 
 static inline void resume_periodic_measurement()
 {
-    LOG_WRN("CONFIG_PM_DEVICE and CONFIG_PM_DEVICE_RUNTIME must be enabled on .conf");
+    sensor_read_active = true;
+    scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
+    //LOG_WRN("CONFIG_PM_DEVICE and CONFIG_PM_DEVICE_RUNTIME must be enabled on .conf");
 }
 #endif /* CONFIG_PM_DEVICE */
 

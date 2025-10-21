@@ -13,10 +13,10 @@ cmake_minimum_required(VERSION 3.13.1)
 # list(APPEND SHIELD pulga-lora)
 
 # Uncomment to activate SCD30 shield, a CO2 concentration sensor
-# list(APPEND SHIELD scd30)
+ list(APPEND SHIELD scd30)
 
 # Uncomment to activate vbatt shield, a battery voltage divider
-# list(APPEND SHIELD pulga_vbatt)
+ #list(APPEND SHIELD pulga_vbatt)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
