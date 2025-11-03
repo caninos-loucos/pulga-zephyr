@@ -164,6 +164,7 @@ void read_data_callback()
     {
         // Stops periodic measurement to save power
         scd30_stop_periodic_measurement(scd30);
+        scd30_soft_reset(scd30);
     }
 }
 
@@ -237,6 +238,7 @@ static inline void suspend_periodic_measurement()
 {
     sensor_read_active = false;
     scd30_stop_periodic_measurement(scd30);
+    scd30_soft_reset(scd30);
     //LOG_WRN("CONFIG_PM_DEVICE and CONFIG_PM_DEVICE_RUNTIME must be enabled on .conf");
 }
 

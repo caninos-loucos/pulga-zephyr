@@ -853,6 +853,30 @@ int scd30_stop_periodic_measurement(const struct device *dev)
 	return 0;
 }
 
+/**
+ * @brief Soft resets the SCD30 sensor.
+ *
+ * This function sends a command to the SCD30 sensor to soft reset.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ *
+ * @return 0 if successful, or a negative error code on failure.
+ */
+int scd30_soft_reset(const struct device *dev)
+{
+	int rc;
+
+	LOG_DBG("Soft resetting");
+	rc = scd30_write_command(dev, SCD30_CMD_SOFT_RESET);
+	if (rc != 0)
+	{
+		LOG_ERR("Failed to soft reset");
+		return rc;
+	}
+	LOG_DBG("Soft reset");
+	return 0;
+}
+
 // Sensor driver API structure for the SCD30 sensor
 static const struct sensor_driver_api scd30_driver_api = {
 	.sample_fetch = scd30_sample_fetch,

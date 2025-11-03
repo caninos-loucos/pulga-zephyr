@@ -18,6 +18,8 @@ int scd30_start_periodic_measurement(const struct device *dev, int ambient_press
 
 int scd30_stop_periodic_measurement(const struct device *dev);
 
+int scd30_soft_reset(const struct device *dev);
+
 /* Additional custom attributes */
 enum scd30_attribute
 {
