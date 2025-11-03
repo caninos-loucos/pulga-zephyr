@@ -13,7 +13,7 @@ config VBATT
 
 config LOW_BATT_THRESH
 	int "Battery voltage threshold (in millivolts). Defines the low battery voltage"
-	default 3400
+	default 3450
 
 config CRITICAL_BATT_THRESH
 	int "Battery voltage threshold (in millivolts). Defines the critical low battery voltage"
