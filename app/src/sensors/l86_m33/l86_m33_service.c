@@ -4,6 +4,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/timeutil.h>
 #include <integration/timestamp/timestamp_service.h>
+#include <drivers/gnss_quectel_l86.h>
 #include <sensors/l86_m33/l86_m33_service.h>
 
 LOG_MODULE_REGISTER(l86_m33_service, CONFIG_APP_LOG_LEVEL);
@@ -11,6 +12,12 @@ LOG_MODULE_REGISTER(l86_m33_service, CONFIG_APP_LOG_LEVEL);
 /**
  * DEFINITIONS
  */
+
+/** Response time of 35s, being the Time to First Fix (TTFF) in cold start. 
+ *  Refer to driver and datasheets for more details. Change this value 
+ *  to adapt to different sampling periods or to debug the application faster.
+ */
+#define L86_M33_RESPONSE_TIME K_SECONDS(35) 
 
 static const struct device *const l86_m33 = DEVICE_DT_GET(DT_ALIAS(gnss));
 // API that concentrates the methods to deal with GNSS (GPS) module
@@ -72,7 +79,13 @@ static int init_sensor()
 static void read_sensor_values()
 {
     LOG_DBG("Allowing L86-M33 to store fix data in buffer");
+    if (get_sampling_interval() >= k_ticks_to_ms_floor32(L86_M33_RESPONSE_TIME.ticks))
+    {
+        // Exit backup mode, resuming periodic measurement
+        quectel_l86_exit_backup_mode(l86_m33);
+    }
     k_sem_give(&process_fix_data);
+    k_sleep(K_MSEC(100000000000)); // Temp for easier test
 }
 
 void receive_fix_callback(const struct device *gnss_device,
@@ -108,6 +121,13 @@ void receive_fix_callback(const struct device *gnss_device,
         {
             LOG_ERR("Failed to insert data in ring buffer.");
         }
+    }
+    
+    // Temp location for easier test, change to doing it after valid fix later
+    if (get_sampling_interval() >= k_ticks_to_ms_floor32(L86_M33_RESPONSE_TIME.ticks))
+    {
+        // Enter backup mode, stop periodic measurement to save power
+        quectel_l86_enter_backup_mode(l86_m33);
     }
 }
 

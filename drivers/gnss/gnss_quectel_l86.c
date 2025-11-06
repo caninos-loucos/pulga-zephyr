@@ -13,6 +13,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <drivers/gnss_quectel_l86.h>
 #include <zephyr/pm/device_runtime.h>
 #include <string.h>
 
@@ -40,6 +41,7 @@ struct quectel_l86_config {
 	const struct device *uart;
 	const enum gnss_pps_mode pps_mode;
 	const uint16_t pps_pulse_width;
+	const struct gpio_dt_spec force_on_gpios;
 };
 
 struct quectel_l86_data {
@@ -707,6 +709,80 @@ static const struct gnss_driver_api gnss_api = {
 	.get_supported_systems = quectel_l86_get_supported_systems,
 };
 
+int quectel_l86_enter_backup_mode(const struct device *dev)
+{
+	const struct quectel_l86_config *cfg = dev->config;
+	struct quectel_l86_data *data = dev->data;
+	int ret=0;
+
+	quectel_l86_lock(dev);
+
+	LOG_DBG("Sending message to enter L86 backup mode");
+
+	ret = gpio_pin_set_dt(&cfg->force_on_gpios, 0); // ensure low level
+	if (ret != 0) {
+		LOG_ERR("Setting force_on pin low (inactive) level failed: %d\n", ret);
+        return ret;
+	}
+
+	ret = gnss_nmea0183_snprintk(data->pmtk_request_buf, sizeof(data->pmtk_request_buf),
+						"$PMTK225,4");
+	if (ret < 0) {
+		goto unlock_return;
+	}
+
+	ret = modem_chat_script_chat_set_request(&data->pmtk_script_chat, data->pmtk_request_buf);
+	if (ret < 0) {
+		goto unlock_return;
+	}
+
+	ret = gnss_nmea0183_snprintk(data->pmtk_match_buf, sizeof(data->pmtk_match_buf),
+						"PMTK001,225,335");
+	if (ret < 0) {
+		goto unlock_return;
+	}
+
+	ret = modem_chat_match_set_match(&data->pmtk_match, data->pmtk_match_buf);
+	if (ret < 0) {
+		goto unlock_return;
+	}
+
+	ret = modem_chat_run_script(&data->chat, &data->pmtk_script);
+	if (ret < 0) {
+		goto unlock_return;
+	}
+
+	LOG_DBG("L86 successfully in backup mode");
+
+unlock_return:
+	quectel_l86_unlock(dev);
+	return ret;
+}
+
+void quectel_l86_exit_backup_mode(const struct device *dev)
+{
+	const struct quectel_l86_config *cfg = dev->config;
+	int ret;
+
+	LOG_DBG("Setting L86 force_on pin to high (active) level to exit backup mode");
+
+	ret = gpio_pin_set_dt(&cfg->force_on_gpios, 1);
+	if (ret != 0) {
+		LOG_ERR("Setting force_on pin high (active) level failed: %d\n", ret);
+        return;
+	}
+	
+    k_sleep(K_MSEC(100));
+
+	ret = gpio_pin_set_dt(&cfg->force_on_gpios, 0);
+	if (ret != 0) {
+		LOG_ERR("Setting force_on pin low (inactive) level failed: %d\n", ret);
+        return;
+	}
+
+    LOG_DBG("Exited L86 backup mode");
+}
+
 static int quectel_l86_init_nmea0183_match(const struct device *dev)
 {
 	struct quectel_l86_data *data = dev->data;
@@ -778,6 +854,7 @@ static void quectel_l86_init_pmtk_script(const struct device *dev)
 
 static int quectel_l86_init(const struct device *dev)
 {
+    const struct quectel_l86_config *cfg = dev->config;
 	struct quectel_l86_data *data = dev->data;
 	int ret;
 
@@ -809,26 +886,48 @@ static int quectel_l86_init(const struct device *dev)
 		pm_device_init_off(dev);
 	}
 
+	ret = gpio_is_ready_dt(&cfg->force_on_gpios);
+	if (ret != 0)
+	{
+		LOG_ERR("Error: ready_pin device %s is not ready\n",
+				cfg->force_on_gpios.port->name);
+		return ret;
+	}
+
+	ret = gpio_pin_configure_dt(&cfg->force_on_gpios, GPIO_OUTPUT_INACTIVE);
+	if (ret != 0)
+	{
+		LOG_ERR("%s: failed to initialize GPIO for force_on (exit backup mode)", dev->name);
+		return ret;
+	}
+
+	ret = gpio_pin_set_dt(&cfg->force_on_gpios, 0); // ensure low level
+	if (ret != 0) {
+		LOG_ERR("Setting force_on pin low (inactive) level failed: %d\n", ret);
+        return ret;
+	}
+
 	return pm_device_runtime_enable(dev);
 }
 
 #define L86_INST_NAME(inst, name) _CONCAT(_CONCAT(_CONCAT(name, _), DT_DRV_COMPAT), inst)
 
-#define L86_DEVICE(inst)                                                                           \
-	static const struct quectel_l86_config L86_INST_NAME(inst, config) = {                     \
-		.uart = DEVICE_DT_GET(DT_INST_BUS(inst)),                                          \
-		.pps_mode = DT_INST_STRING_UPPER_TOKEN(inst, pps_mode),                            \
-		.pps_pulse_width = DT_INST_PROP(inst, pps_pulse_width),                            \
-	};                                                                                         \
-                                                                                                   \
-	static struct quectel_l86_data L86_INST_NAME(inst, data) = {                               \
-		.chat_delimiter = {'\r', '\n'},                                                    \
-	};                                                                                         \
-                                                                                                   \
-	PM_DEVICE_DT_INST_DEFINE(inst, quectel_l86_pm_action);                                     \
-                                                                                                   \
-	DEVICE_DT_INST_DEFINE(inst, quectel_l86_init, PM_DEVICE_DT_INST_GET(inst),                 \
-			      &L86_INST_NAME(inst, data), &L86_INST_NAME(inst, config),            \
+#define L86_DEVICE(inst)                                                                \
+	static const struct quectel_l86_config L86_INST_NAME(inst, config) = {              \
+		.uart = DEVICE_DT_GET(DT_INST_BUS(inst)),                                       \
+		.pps_mode = DT_INST_STRING_UPPER_TOKEN(inst, pps_mode),                         \
+		.pps_pulse_width = DT_INST_PROP(inst, pps_pulse_width),                         \
+		.force_on_gpios = GPIO_DT_SPEC_INST_GET(inst, force_on_gpios),               	\
+	};                                                                                  \
+                                                                                        \
+	static struct quectel_l86_data L86_INST_NAME(inst, data) = {                        \
+		.chat_delimiter = {'\r', '\n'},                                                 \
+	};                                                                                  \
+                                                                                        \
+	PM_DEVICE_DT_INST_DEFINE(inst, quectel_l86_pm_action);                              \
+                                                                                        \
+	DEVICE_DT_INST_DEFINE(inst, quectel_l86_init, PM_DEVICE_DT_INST_GET(inst),          \
+			      &L86_INST_NAME(inst, data), &L86_INST_NAME(inst, config),             \
 			      POST_KERNEL, CONFIG_GNSS_INIT_PRIORITY, &gnss_api);
 
 #define DT_DRV_COMPAT quectel_l86

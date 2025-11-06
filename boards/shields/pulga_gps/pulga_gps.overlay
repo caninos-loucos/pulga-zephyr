@@ -45,5 +45,7 @@
 		compatible = "quectel,l86";
 		pps-mode = "GNSS_PPS_MODE_DISABLED";
 		zephyr,deferred-init;
+
+		force-on-gpios = <&gpio0 27 	(GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>; /* L86 FORCE_ON pull high to return from backup mode */
 	};
 };

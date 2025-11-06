@@ -8,3 +8,11 @@ compatible: "quectel,l86"
 include:
   - uart-device.yaml
   - gnss-pps.yaml
+
+properties:    
+    force-on-gpios:
+      type: phandle-array
+      required: false
+      description: |
+        GPIO connected to the L86 FORCE_ON pin, used to return from backup mode to full on mode.
+        This property defines the GPIO pin and configuration (active high/low).
