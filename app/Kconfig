@@ -32,6 +32,10 @@ config BUFFER_WORDS
 	default 45000 # Using 180 out of 256kB of memory
 	depends on RING_BUFFER
 
+###
+# Timestamp Configs
+###
+
 choice EVENT_TIMESTAMP_SOURCE
     prompt "Selects the source of the time reference used to timestamp events"
     default EVENT_TIMESTAMP_NONE
@@ -73,7 +77,9 @@ config SEND_UART
 	bool "Print data in buffer in console via UART"
 	default UART_CONSOLE
 
-# LoRaWAN configs
+###
+# LoRaWAN Configs
+###
 
 config SEND_LORAWAN
 	bool "Send data using LoRaWAN, given Pulga-LoRa shield is attached"

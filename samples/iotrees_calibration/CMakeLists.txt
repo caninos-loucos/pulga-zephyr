@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+cmake_minimum_required(VERSION 3.20.0)
+list(APPEND SHIELD scd30)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(iotrees_calibration)
+
+target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_sources(app PRIVATE src/main.c
+                    src/scd30/scd30_setup.c
+                    src/bme280/bme280_setup.c)

@@ -17,6 +17,7 @@ enum SensorType
 	BME280,
 	BMI160,
 	SI1133,
+	VBATT,
 	SCD30,
 	L86_M33, // GNSS Sensor
 	BME680, // Air quality sensor

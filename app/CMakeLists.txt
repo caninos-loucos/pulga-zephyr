@@ -15,6 +15,9 @@ cmake_minimum_required(VERSION 3.13.1)
 # Uncomment to activate SCD30 shield, a CO2 concentration sensor
 # list(APPEND SHIELD scd30)
 
+# Uncomment to activate vbatt shield, a battery voltage divider
+# list(APPEND SHIELD pulga_vbatt)
+
 # Uncomment to activate BME680 shield, a gas, humidity, pressure and temperature sensor
 list(APPEND SHIELD bme680)
 
@@ -56,6 +59,12 @@ if(CONFIG_SHIELD_SCD30)
     target_sources(app PRIVATE  
                         src/sensors/scd30/scd30_model.c
                         src/sensors/scd30/scd30_service.c)
+endif()
+
+if(CONFIG_SHIELD_PULGA_VBATT)
+    target_sources(app PRIVATE
+                        src/sensors/vbatt/vbatt_model.c
+                        src/sensors/vbatt/vbatt_service.c)
 endif()
 
 if(CONFIG_SHIELD_BME680)
