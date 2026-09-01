@@ -1,0 +1,9 @@
+
+menu "Zephyr"
+source "Kconfig.zephyr"
+endmenu
+
+module = CALIBRATION
+module-str = CALIBRATION
+
+source "subsys/logging/Kconfig.template.log_config"

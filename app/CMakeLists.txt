@@ -10,10 +10,10 @@ cmake_minimum_required(VERSION 3.13.1)
 # list(APPEND SHIELD pulga_gps)
 
 # Uncomment to activate LoRa shield, when Pulga-LoRa module is attached to the stack
-# list(APPEND SHIELD pulga-lora)
+ list(APPEND SHIELD pulga-lora)
 
 # Uncomment to activate SCD30 shield, a CO2 concentration sensor
-# list(APPEND SHIELD scd30)
+ list(APPEND SHIELD scd30)
 
 # Uncomment to activate vbatt shield, a battery voltage divider
 # list(APPEND SHIELD pulga_vbatt)
@@ -37,7 +37,8 @@ target_sources(app PRIVATE
                     src/sensors/bmi160/bmi160_model.c
                     src/sensors/bmi160/bmi160_service.c
                     src/sensors/si1133/si1133_model.c
-                    src/sensors/si1133/si1133_service.c)
+                    src/sensors/si1133/si1133_service.c
+                    src/communication/ble/ble_setup.c)
                     
 if(CONFIG_SHIELD_PULGA_GPS)
     target_sources(app PRIVATE  

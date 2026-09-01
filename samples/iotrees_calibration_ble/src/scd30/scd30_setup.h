@@ -1,32 +1,32 @@
-#ifndef SCD30_SERVICE_H
-#define SCD30_SERVICE_H
-
+#ifndef SCD30_SETUP_H
+#define SCD30_SETUP_H
 #include <zephyr/drivers/sensor.h>
-#include <sensors/sensors_interface.h>
-#include <integration/data_buffer/buffer_service.h>
 #include <zephyr/bluetooth/gatt.h>
 
-typedef struct
-{
-	struct sensor_value co2;
-	struct sensor_value temperature;
-	struct sensor_value humidity;
-	uint32_t timestamp;
-} SensorModelSCD30;
-
-// Number of 32-bit words in each data item (model)
-// Each sensor_value has 2 words, SCD30 has 3 measurements
-#define SCD30_MODEL_WORDS SIZE_BYTES_TO_32_BIT_WORDS(sizeof(SensorModelSCD30))
-
-// To be used in SCD30 compensation of ambient pressure
-#define SCD30_SAO_PAULO_AMBIENT_PRESSURE 937
-
-// Registers SCD30 model callbacks
-DataAPI *register_scd30_model_callbacks();
-
-// Registers SCD30 sensor callbacks
-SensorAPI *register_scd30_callbacks();
-
+/**
+ * The datasheets of the SCD30 sensor specify the following response times and
+ * current consumption for different sampling rates:
+ *
+ *  SAMPLING RATE	|	RESPONSE TIME	|	CURRENT CONSUMPTION
+ * 		2s					20s						19mA
+ * 		15s					72s						6.5mA
+ * 		30s					135s					5.6mA
+ *
+ * Using those points to interpolate a polynomial in Wolfram Alpha, we get the
+ * following function in terms of sampling rate:
+ * Response time (RT) = 12.2143 + 3.87857 * x + 0.00714286 * x^2
+ *
+ * For the current consumption, we interpolate the (x,y) points as (1/x, y) to get:
+ * Current consumption (CC) = 4.71175 + 4.07599/x^2 + 26.5385/x
+ *
+ * Multiplying those functions, we have the power consumption in mC, which, for x>0,
+ * has a local minimum between 4 and 5 seconds.
+ * Considering also our empirical results on current consumption, we set the
+ * sampling rate to 5 seconds.
+ *
+ * **Empirical results (sampling rate, current consumption):
+ * {{2.0, 18.4}, {5.0, 9.51}, {10.0, 6.56}, {15.0, 5.94}, {30., 4.83}, {60., 4.4}, {120., 3.8}}
+ */
 #define SCD30_SAMPLING_RATE 5000 // 5 seconds
 extern uint32_t scd30_co2_reference;	 // Reference CO2 level for calibration in ppm
 extern float temperature_reference; // Reference temperature level for offset calibration
@@ -45,6 +45,20 @@ extern uint32_t scd30_init_time; // time at sample time configuration, for minim
  */
 #define SCD30_TEMPERATURE_STABILIZATION_TIME K_MINUTES(10)
 
+#define SCD30_SAO_PAULO_AMBIENT_PRESSURE 937 // Default ambient pressure in mBar (kPa * 10)
+
+typedef struct
+{
+	struct sensor_value co2;
+	struct sensor_value temperature;
+	struct sensor_value humidity;
+} SensorModelSCD30;
+
+/**
+ * @brief Gets the SCD30 sensor device instance and guarantees it is ready.
+ */
+int init_scd30();
+
 /**
  * @brief Enables the SCD30 sensor's low power mode.
  *
@@ -61,4 +75,4 @@ ssize_t write_co2_reference(struct bt_conn *conn, const struct bt_gatt_attr *att
 
 ssize_t write_temp_reference(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags);
 
-#endif /* SCD30_SERVICE_H */
+#endif /* SCD30_SETUP_H */

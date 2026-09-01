@@ -1,12 +1,10 @@
-#include <integration/timestamp/timestamp_service.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <drivers/scd30.h>
-#include <sensors/scd30/scd30_service.h>
-
-#include <zephyr/kernel.h>
-#include <communication/ble/ble_setup.h>
+#include <scd30/scd30_setup.h>
+#include <ble/ble_setup.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/byteorder.h>
 #include <math.h>
@@ -18,23 +16,17 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/services/bas.h>
 
-LOG_MODULE_REGISTER(scd30_service, CONFIG_APP_LOG_LEVEL);
+
+LOG_MODULE_REGISTER(scd30_setup, CONFIG_CALIBRATION_LOG_LEVEL);
 
 /**
  * DEFINITIONS
  */
 
-/** Response time of 30s to read 63% of the value after a sudden change in CO2 concentration,
- *  considering sampling period of 5s after calibration. Refer to driver and datasheets
- *  for more details. Change this value to adapt to different sampling periods or to debug
- *  the application faster.
+/**
+ * SCD30 sensor device instance.
  */
-#define SCD30_RESPONSE_TIME K_SECONDS(30)
 static const struct device *scd30;
-static SensorAPI scd30_api = {0};
-// Semaphore to synchronize access to the buffer for storing sensor data
-static struct k_sem store_data;
-
 /**
  * SCD30 temperature records for mean calculation.
  */
@@ -51,36 +43,6 @@ float temperature_reference;
 uint32_t scd30_init_time;
 
 /**
- * This function allows storing data from the SCD30 sensor into the application buffer
- * after the sensor has stabilized, considering its response time after starting
- * periodic measurement.
- */
-static inline void store_stabilized_data(struct k_work *work);
-/**
- * Work item for delaying the storage of sensor data until after the sensor has stabilized.
- */
-K_WORK_DELAYABLE_DEFINE(trigger_stabilized_sensor_routine, store_stabilized_data);
-/**
- * @brief Callback function to read sensor data from device instance.
- *>
- * This function is triggered when the SCD30 sensor has new data available.
- * It first checks if it is allowed to save data by attempting to take the semaphore that
- * signals permission to store data after stabilization of the sensor.
- * If the semaphore is not available, the function returns immediately.
- *
- * The function retrieves CO2, temperature, and humidity data from the SCD30 sensor,
- * stores it in a SensorModelSCD30 structure, and then copies this data into the aaplication
- * buffer. After that, it stops the periodic measurement to save power.
- *
- * If the data insertion into the buffer fails, an error message is logged.
- */
-static void read_data_callback();
-/**
- * @brief Reads sensor values from the SCD30 sensor and stores them in a buffer.
- */
-static inline void read_sensor_values();
-
-/**
  * Sets a valid sample time for the SCD30 sensor.
  * Clips the sample time to be within the allowed range of 2s to 1800s, as
  * specified on the datasheet.
@@ -89,6 +51,10 @@ static inline void read_sensor_values();
  * @return 0 on success, or a negative error code on failure.
  */
 static inline int set_valid_sample_time(int raw_sample_time);
+/**
+ * This function is triggered to present data from the SCD30 sensor.
+ */
+static inline void present_data_callback();
 /**
  * Disables the automatic self-calibration feature of the SCD30 sensor.
  *
@@ -120,14 +86,11 @@ K_WORK_DELAYABLE_DEFINE(trigger_temperature_offset_work, set_temperature_offset)
  * IMPLEMENTATIONS
  */
 
-// Gets and initializes device
-static int init_sensor()
+int init_scd30()
 {
     LOG_DBG("Initializing SCD30");
     scd30 = DEVICE_DT_GET_ANY(sensirion_scd30);
-    int error = 0;
 
-    // Removes sensor API from registered APIs if cannot start sensor
     if (!scd30)
     {
         LOG_ERR("SDC30 not declared at device tree");
@@ -135,134 +98,17 @@ static int init_sensor()
     }
     else if (!device_is_ready(scd30))
     {
-        LOG_ERR("device \"%s\" is not ready", scd30->name);
+        LOG_ERR("SCD30 is not ready");
         return -EAGAIN;
     }
-    error = k_sem_init(&store_data, 0, 1);
-    if (error)
-    {
-        LOG_ERR("Failed to initialize SCD30 semaphore: %d", error);
-        return error;
-    }
 
-    // Starts periodic measurements with default ambient pressure if not already started
-    error = scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
-
-    if (error)
-    {
-        LOG_ERR("Failed to initialize SCD30 measurement: %d", error);
-        return error;
-    }
-
-    error = enable_scd30_low_power_mode();
-
-    if (error)
-    {
-        LOG_ERR("Failed to enable SCD30 low power mode: %d", error);
-        return error;
-    }
+    // Initialize measurements with the default ambient pressure
+    int error = scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
 
     // Registers desired application callback into the scd30 driver api
-    scd30_register_callback(scd30, read_data_callback);
-
-    // Warns the sampling interval isn't enough for stabilization
-    if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
-    {
-        LOG_WRN("Sampling interval is less than SCD30 response time. Data will "
-                "be reliable after %d seconds.",
-                k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks) / MSEC_PER_SEC);
-    }
+    scd30_register_callback(scd30, present_data_callback);
 
     return error;
-}
-
-inline void store_stabilized_data(struct k_work *work)
-{
-    ARG_UNUSED(work);
-    // Allows storing data from SCD30 sensor
-    k_sem_give(&store_data);
-}
-
-void read_data_callback()
-{
-    // Returns if it's not supposed to save data to buffer
-    if (k_sem_take(&store_data, K_NO_WAIT))
-    {
-        return;
-    }
-
-    LOG_DBG("Storing SCD30 data");
-
-    SensorModelSCD30 scd30_model = {0};
-    uint32_t scd30_data[MAX_32_WORDS];
-    int error = 0;
-
-    sensor_channel_get(scd30, SENSOR_CHAN_CO2,
-                       &scd30_model.co2);
-    sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP,
-                       &scd30_model.temperature);
-    sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
-                       &scd30_model.humidity);
-#ifndef CONFIG_EVENT_TIMESTAMP_NONE
-    scd30_model.timestamp = get_current_timestamp();
-#endif /* CONFIG_EVENT_TIMESTAMP_NONE */
-    memcpy(&scd30_data, &scd30_model, sizeof(SensorModelSCD30));
-
-    if (insert_in_buffer(&app_buffer, scd30_data, SCD30_MODEL, error, SCD30_MODEL_WORDS) != 0)
-    {
-        LOG_ERR("Failed to insert data in ring buffer.");
-    }
-
-    if (get_sampling_interval() >= k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
-    {
-        // Stops periodic measurement to save power
-        scd30_stop_periodic_measurement(scd30);
-    }
-
-    // Update the temperature mean value
-    float new_temperature = sensor_value_to_float(&scd30_model.temperature);
-    scd30_temperature_record.count++;
-    scd30_temperature_record.temperature_mean = (1 - SCD30_TEMPERATURE_WEIGHT) *
-                                                    scd30_temperature_record.temperature_mean +
-                                                SCD30_TEMPERATURE_WEIGHT * new_temperature;
-
-
-    char buffer[100];
-    sprintf(buffer, "CO2: %.2f ppm; Temperature: %.2f oC; Humidity: %.2f %% RH;",
-            (double)sensor_value_to_float(&scd30_model.co2),
-            (double)sensor_value_to_float(&scd30_model.temperature),
-            (double)sensor_value_to_float(&scd30_model.humidity));
-
-    LOG_DBG("%s", buffer);
-
-    reading_indicate(buffer);
-}
-
-static inline void read_sensor_values()
-{
-
-    if (get_sampling_interval() < k_ticks_to_ms_floor32(SCD30_RESPONSE_TIME.ticks))
-    {
-        k_work_schedule(&trigger_stabilized_sensor_routine, K_NO_WAIT);
-    }
-    else
-    {
-        LOG_DBG("Waking up SCD30 to read data");
-        // Waking up SCD30 to read data
-        scd30_start_periodic_measurement(scd30, SCD30_SAO_PAULO_AMBIENT_PRESSURE);
-        // Scheduling data storage after sensor response time
-        k_work_schedule(&trigger_stabilized_sensor_routine, SCD30_RESPONSE_TIME);
-    }
-}
-
-// Register SCD30 sensor callbacks
-SensorAPI *register_scd30_callbacks()
-{
-    LOG_DBG("Registering SCD30 callbacks");
-    scd30_api.init_sensor = init_sensor;
-    scd30_api.read_sensor_values = read_sensor_values;
-    scd30_api.data_model_api = register_scd30_model_callbacks();
-    return &scd30_api;
 }
 
 int enable_scd30_low_power_mode()
@@ -370,9 +216,8 @@ ssize_t write_co2_reference(struct bt_conn *conn, const struct bt_gatt_attr *att
     LOG_DBG("CO2 reference value (BLE calibration): %d ppm", scd30_co2_reference);
 
     // Schedule the forced recalibration after 5 times the sampling rate
-    //TODO: uncomment the lines below to guarantee minimum delay from start
-    int calibration_delay = 0; //SCD30_SAMPLING_RATE * 5;
-    //calibration_delay = MAX(calibration_delay, 360000)+scd30_init_time; // Ensure at least 6 minutes delay since sensor init
+    int calibration_delay = SCD30_SAMPLING_RATE * 5;
+    calibration_delay = 0;//MAX(calibration_delay, 360000)+scd30_init_time; // Ensure at least 6 minutes delay since sensor init
     k_work_schedule(&trigger_forced_calibration_work, K_MSEC(MAX(calibration_delay-k_uptime_get(),1000)));
 
     return len;
@@ -438,8 +283,7 @@ ssize_t write_temp_reference(struct bt_conn *conn, const struct bt_gatt_attr *at
     temperature_reference = (float)sys_get_le16(buf)/100; // read 2 bytes (little-endian) (float)temp_aux/100;
 
     LOG_DBG("Temperature reference value (BLE calibration): %.2f oC", (double)temperature_reference);
-    
-    //TODO: uncomment the lines below to guarantee minimum delay from start
+
     int calibration_delay = 0; //600000+scd30_init_time; // Ensure at least 10 minutes delay since sensor init
     k_work_schedule(&trigger_temperature_offset_work, K_MSEC(MAX(calibration_delay-k_uptime_get(),1000)));
 
@@ -498,4 +342,35 @@ static inline void set_temperature_offset(struct k_work *work)
         }
 
     LOG_DBG("New SCD30 temperature offset set.");
+}
+
+static inline void present_data_callback()
+{
+    SensorModelSCD30 scd30_model;
+
+    sensor_channel_get(scd30, SENSOR_CHAN_CO2,
+                       &scd30_model.co2);
+    sensor_channel_get(scd30, SENSOR_CHAN_AMBIENT_TEMP,
+                       &scd30_model.temperature);
+    sensor_channel_get(scd30, SENSOR_CHAN_HUMIDITY,
+                       &scd30_model.humidity);
+
+    // Update the temperature mean value
+    float new_temperature = sensor_value_to_float(&scd30_model.temperature);
+    scd30_temperature_record.count++;
+    scd30_temperature_record.temperature_mean = (1 - SCD30_TEMPERATURE_WEIGHT) *
+                                                    scd30_temperature_record.temperature_mean +
+                                                SCD30_TEMPERATURE_WEIGHT * new_temperature;
+
+
+    char buffer[100];
+    sprintf(buffer, "CO2: %.2f ppm; Temperature: %.2f oC; Humidity: %.2f %% RH;",
+            (double)sensor_value_to_float(&scd30_model.co2),
+            (double)sensor_value_to_float(&scd30_model.temperature),
+            (double)sensor_value_to_float(&scd30_model.humidity));
+
+    LOG_DBG("%s", buffer);
+
+    reading_indicate(buffer);
+
 }

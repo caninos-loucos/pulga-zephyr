@@ -4,6 +4,15 @@
 #include <integration/data_abstraction/abstraction_service.h>
 #include <communication/comm_interface.h>
 
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/hci.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/services/bas.h>
+
+#include <communication/ble/ble_setup.h>
+
 // change log level in debug.conf
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -21,6 +30,23 @@ int main(void)
 			LOG_ERR("Couldn't start sensors.");
 		}
 	}
+
+	int error = bt_enable(NULL);
+
+    if (error)
+    {
+        LOG_DBG("Bluetooth init failed (err %d)\n \r", error);
+        return error;
+    }
+
+    bt_start_advertising();
+
+    while (1)
+    {
+        k_sleep(K_MSEC(1000));
+        bt_start_advertising(); //re-enable advertising after disconnect
+    }
+
 	k_sleep(K_FOREVER);
 	return 0;
 }
