@@ -44,14 +44,14 @@ static void indicate_destroy(struct bt_gatt_indicate_params *params)
 static const struct bt_uuid_128 read_svc_uuid = BT_UUID_INIT_128(READING_SVC_UUID);
 static const struct bt_uuid_128 read_char_ind_accel_uuid = BT_UUID_INIT_128(READING_CHR_IND_ACCEL_UUID);
 
-#define CO2_REFERENCE_SVC_UUID                 BT_UUID_128_ENCODE(0x02b454b7, 0xc19f, 0x4d1c, 0xa2c0, 0xb7fc10f8a8a3)
-#define CO2_REFERENCE_CHR_IND_ACCEL_UUID      BT_UUID_128_ENCODE(0x682d75cf, 0x44fc, 0x4df4, 0xac81, 0x00f02aa9b98a)
+#define CO2_REFERENCE_SVC_UUID                 BT_UUID_128_ENCODE(0x4c1e2038, 0x3a74, 0x4a36, 0x96ac, 0x69c813248c14)
+#define CO2_REFERENCE_CHR_IND_ACCEL_UUID      BT_UUID_128_ENCODE(0x3f49d1f4, 0x3a19, 0x4ca0, 0xa191, 0xd5787cbf2919)
 
 static const struct bt_uuid_128 refe_svc_uuid = BT_UUID_INIT_128(CO2_REFERENCE_SVC_UUID);
 static const struct bt_uuid_128 refe_char_write_uuid = BT_UUID_INIT_128(CO2_REFERENCE_CHR_IND_ACCEL_UUID);
 
-#define TEMP_REFERENCE_SVC_UUID                 BT_UUID_128_ENCODE(0x02b454b7, 0xc19f, 0x4d1c, 0xa2c0, 0xb7fc10f8a8a3)
-#define TEMP_REFERENCE_CHR_IND_ACCEL_UUID      BT_UUID_128_ENCODE(0x682d75cf, 0x44fc, 0x4df4, 0xac81, 0x00f02aa9b98a)
+#define TEMP_REFERENCE_SVC_UUID                 BT_UUID_128_ENCODE(0x5b62dda0, 0xb7eb, 0x4b4d, 0xb958, 0x4dfb1117344e)
+#define TEMP_REFERENCE_CHR_IND_ACCEL_UUID      BT_UUID_128_ENCODE(0xa77f94a0, 0xf7f5, 0x4c64, 0xb8bc, 0xd30297b3f4a4)
 
 static const struct bt_uuid_128 temp_svc_uuid = BT_UUID_INIT_128(TEMP_REFERENCE_SVC_UUID);
 static const struct bt_uuid_128 temp_char_write_uuid = BT_UUID_INIT_128(TEMP_REFERENCE_CHR_IND_ACCEL_UUID);
